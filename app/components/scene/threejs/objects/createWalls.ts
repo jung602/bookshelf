@@ -5,24 +5,8 @@ export function createWalls(scene: THREE.Scene, width: number = 1, height: numbe
   const existingWalls = scene.children.filter(child => child.userData.isWall)
   existingWalls.forEach(wall => scene.remove(wall))
 
-  // 텍스처 로더
-  const textureLoader = new THREE.TextureLoader()
-  
-  // 텍스처 로드 (GitHub Pages 경로 고려)
-  const basePath = process.env.NODE_ENV === 'production' ? '/bookshelf' : ''
-  const diffuseMap = textureLoader.load(`${basePath}/3d/main/textures/wall_diffuse.png`)
-  const normalMap = textureLoader.load(`${basePath}/3d/main/textures/wall_diffuse.png`)
-  const roughnessMap = textureLoader.load(`${basePath}/3d/main/textures/wall_diffuse.png`)
-
-  // 텍스처 반복 설정
-  diffuseMap.wrapS = diffuseMap.wrapT = THREE.RepeatWrapping
-  normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping
-  roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping
-  
-  // 텍스처 반복 횟수 (벽 크기에 맞게 조정)
-  diffuseMap.repeat.set(Math.max(width, height) * 10, wallHeight * 50)
-  normalMap.repeat.set(Math.max(width, height) * 10, wallHeight * 50)
-  roughnessMap.repeat.set(Math.max(width, height) * 10, wallHeight * 50)
+  // 간단한 색상 머티리얼 사용 (텍스처 로딩 문제 해결)
+  // 나중에 텍스처가 필요하면 다시 추가할 수 있음
 
   // 벽 생성 함수
   function createWall(
@@ -32,10 +16,9 @@ export function createWalls(scene: THREE.Scene, width: number = 1, height: numbe
   ) {
     const geometry = new THREE.PlaneGeometry(1, 1)
     const material = new THREE.MeshStandardMaterial({
-      map: diffuseMap.clone(),
-      normalMap: normalMap.clone(),
-      roughnessMap: roughnessMap.clone(),
-      normalScale: new THREE.Vector2(1, 1),
+      color: 0xcccccc,
+      roughness: 0.8,
+      metalness: 0.1,
       side: THREE.FrontSide
     })
 

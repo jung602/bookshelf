@@ -44,6 +44,7 @@ export class RenderPixelatedPass extends Pass {
   render(
     renderer: THREE.WebGLRenderer,
     writeBuffer: THREE.WebGLRenderTarget,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     readBuffer: THREE.WebGLRenderTarget
   ) {
     // RGB 렌더링

@@ -29,7 +29,7 @@ export class PixelationControls {
     // 픽셀화 활성화/비활성화
     this.pane.addBinding(this.params, 'enabled', {
       label: 'Enable Pixelation'
-    }).on('change', (ev) => {
+    }).on('change', () => {
       // 픽셀화 on/off 로직은 SceneManager에서 처리
     })
 

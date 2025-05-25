@@ -3,17 +3,24 @@ import { PixelationParams } from '../passes/RenderPixelatedPass'
 
 export class PixelationControls {
   private pane: Pane
-  private params: PixelationParams & { enabled: boolean }
+  private params: PixelationParams
   private onParamsChange: (params: Partial<PixelationParams>) => void
 
+  // 기본값을 중앙에서 관리
+  public static getDefaultParams(): PixelationParams {
+    return {
+      pixelSize: 3,
+      normalEdgeStrength: 0.20,
+      innerEdgeSensitivity: 0.02,
+      edgeThreshold: 0.01
+    }
+  }
+
   constructor(
-    initialParams: PixelationParams,
     onParamsChange: (params: Partial<PixelationParams>) => void
   ) {
-    this.params = {
-      ...initialParams,
-      enabled: true
-    }
+    const defaultParams = PixelationControls.getDefaultParams()
+    this.params = { ...defaultParams }
     this.onParamsChange = onParamsChange
 
     this.pane = new Pane({
@@ -23,16 +30,12 @@ export class PixelationControls {
 
     this.setupControls()
     this.setupStyles()
+    
+    // 초기값 즉시 적용
+    this.onParamsChange(defaultParams)
   }
 
   private setupControls() {
-    // 픽셀화 활성화/비활성화
-    this.pane.addBinding(this.params, 'enabled', {
-      label: 'Enable Pixelation'
-    }).on('change', () => {
-      // 픽셀화 on/off 로직은 SceneManager에서 처리
-    })
-
     // 픽셀 크기 조절
     this.pane.addBinding(this.params, 'pixelSize', {
       label: 'Pixel Size',
@@ -53,14 +56,24 @@ export class PixelationControls {
       this.onParamsChange({ normalEdgeStrength: ev.value })
     })
 
-    // 깊이 엣지 강도
-    this.pane.addBinding(this.params, 'depthEdgeStrength', {
-      label: 'Depth Edge Strength',
+    // Inner Edge 민감도
+    this.pane.addBinding(this.params, 'innerEdgeSensitivity', {
+      label: 'Inner Edge Sensitivity',
       min: 0,
-      max: 1,
+      max: 2,
       step: 0.01
     }).on('change', (ev) => {
-      this.onParamsChange({ depthEdgeStrength: ev.value })
+      this.onParamsChange({ innerEdgeSensitivity: ev.value })
+    })
+
+    // Edge 임계값
+    this.pane.addBinding(this.params, 'edgeThreshold', {
+      label: 'Edge Threshold',
+      min: 0.001,
+      max: 0.1,
+      step: 0.001
+    }).on('change', (ev) => {
+      this.onParamsChange({ edgeThreshold: ev.value })
     })
 
     // 구분선 추가 (폴더로 대체)
@@ -69,51 +82,11 @@ export class PixelationControls {
       expanded: false
     })
 
-    // 프리셋 버튼들
-    const presetFolder = this.pane.addFolder({
-      title: 'Presets',
-      expanded: false
-    })
-
-    presetFolder.addButton({
-      title: 'Retro Game'
-    }).on('click', () => {
-      this.applyPreset({
-        pixelSize: 8,
-        normalEdgeStrength: 0.5,
-        depthEdgeStrength: 0.6
-      })
-    })
-
-    presetFolder.addButton({
-      title: 'Soft Pixel'
-    }).on('click', () => {
-      this.applyPreset({
-        pixelSize: 4,
-        normalEdgeStrength: 0.2,
-        depthEdgeStrength: 0.3
-      })
-    })
-
-    presetFolder.addButton({
-      title: 'Sharp Edges'
-    }).on('click', () => {
-      this.applyPreset({
-        pixelSize: 6,
-        normalEdgeStrength: 0.8,
-        depthEdgeStrength: 0.9
-      })
-    })
-
     // 리셋 버튼
     this.pane.addButton({
       title: 'Reset to Default'
     }).on('click', () => {
-      this.applyPreset({
-        pixelSize: 6,
-        normalEdgeStrength: 0.3,
-        depthEdgeStrength: 0.4
-      })
+      this.applyPreset(PixelationControls.getDefaultParams())
     })
   }
 
@@ -146,7 +119,7 @@ export class PixelationControls {
     this.pane.refresh()
   }
 
-  public getParams(): PixelationParams & { enabled: boolean } {
+  public getParams(): PixelationParams {
     return { ...this.params }
   }
 

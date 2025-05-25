@@ -5,9 +5,6 @@ export function createWalls(scene: THREE.Scene, width: number = 1, height: numbe
   const existingWalls = scene.children.filter(child => child.userData.isWall)
   existingWalls.forEach(wall => scene.remove(wall))
 
-  // 간단한 색상 머티리얼 사용 (텍스처 로딩 문제 해결)
-  // 나중에 텍스처가 필요하면 다시 추가할 수 있음
-
   // 벽 생성 함수
   function createWall(
     position: [number, number, number], 

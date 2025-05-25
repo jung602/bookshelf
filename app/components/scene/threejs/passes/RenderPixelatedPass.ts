@@ -4,7 +4,8 @@ import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
 export interface PixelationParams {
   pixelSize: number
   normalEdgeStrength: number
-  depthEdgeStrength: number
+  innerEdgeSensitivity: number
+  edgeThreshold: number
 }
 
 export class RenderPixelatedPass extends Pass {
@@ -21,11 +22,7 @@ export class RenderPixelatedPass extends Pass {
     resolution: THREE.Vector2,
     scene: THREE.Scene,
     camera: THREE.Camera,
-    params: PixelationParams = {
-      pixelSize: 6,
-      normalEdgeStrength: 0.3,
-      depthEdgeStrength: 0.4
-    }
+    params: PixelationParams
   ) {
     super()
     
@@ -36,8 +33,8 @@ export class RenderPixelatedPass extends Pass {
     
     this.fsQuad = new FullScreenQuad(this.createMaterial())
     
-    this.rgbRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBAFormat, true)
-    this.normalRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBFormat, false)
+    this.rgbRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBAFormat)
+    this.normalRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBFormat)
     this.normalMaterial = new THREE.MeshNormalMaterial()
   }
 
@@ -61,10 +58,10 @@ export class RenderPixelatedPass extends Pass {
     // 셰이더 유니폼 업데이트
     const uniforms = (this.fsQuad.material as THREE.ShaderMaterial).uniforms
     uniforms.tDiffuse.value = this.rgbRenderTarget.texture
-    uniforms.tDepth.value = this.rgbRenderTarget.depthTexture
     uniforms.tNormal.value = this.normalRenderTarget.texture
     uniforms.normalEdgeStrength.value = this.params.normalEdgeStrength
-    uniforms.depthEdgeStrength.value = this.params.depthEdgeStrength
+    uniforms.innerEdgeSensitivity.value = this.params.innerEdgeSensitivity
+    uniforms.edgeThreshold.value = this.params.edgeThreshold
 
     // 최종 렌더링
     if (this.renderToScreen) {
@@ -90,8 +87,8 @@ export class RenderPixelatedPass extends Pass {
       // 렌더 타겟 재생성
       this.rgbRenderTarget.dispose()
       this.normalRenderTarget.dispose()
-      this.rgbRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBAFormat, true)
-      this.normalRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBFormat, false)
+      this.rgbRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBAFormat)
+      this.normalRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBFormat)
       
       // 해상도 유니폼 업데이트
       const uniforms = (this.fsQuad.material as THREE.ShaderMaterial).uniforms
@@ -108,7 +105,6 @@ export class RenderPixelatedPass extends Pass {
     return new THREE.ShaderMaterial({
       uniforms: {
         tDiffuse: { value: null },
-        tDepth: { value: null },
         tNormal: { value: null },
         resolution: {
           value: new THREE.Vector4(
@@ -119,7 +115,8 @@ export class RenderPixelatedPass extends Pass {
           )
         },
         normalEdgeStrength: { value: this.params.normalEdgeStrength },
-        depthEdgeStrength: { value: this.params.depthEdgeStrength }
+        innerEdgeSensitivity: { value: this.params.innerEdgeSensitivity },
+        edgeThreshold: { value: this.params.edgeThreshold }
       },
       vertexShader: `
         varying vec2 vUv;
@@ -130,61 +127,76 @@ export class RenderPixelatedPass extends Pass {
       `,
       fragmentShader: `
         uniform sampler2D tDiffuse;
-        uniform sampler2D tDepth;
         uniform sampler2D tNormal;
         uniform vec4 resolution;
         uniform float normalEdgeStrength;
-        uniform float depthEdgeStrength;
+        uniform float innerEdgeSensitivity;
+        uniform float edgeThreshold;
         varying vec2 vUv;
-
-        float getDepth(int x, int y) {
-          return texture2D(tDepth, vUv + vec2(x, y) * resolution.zw).r;
-        }
 
         vec3 getNormal(int x, int y) {
           return texture2D(tNormal, vUv + vec2(x, y) * resolution.zw).rgb * 2.0 - 1.0;
         }
 
-        float neighborNormalEdgeIndicator(int x, int y, float depth, vec3 normal) {
-          float depthDiff = getDepth(x, y) - depth;
-          vec3 normalEdgeBias = vec3(1., 1., 1.);
-          float normalDiff = dot(normal - getNormal(x, y), normalEdgeBias);
-          float normalIndicator = clamp(smoothstep(-.01, .01, normalDiff), 0.0, 1.0);
-          float depthIndicator = clamp(sign(depthDiff * .25 + .0025), 0.0, 1.0);
-          return distance(normal, getNormal(x, y)) * depthIndicator * normalIndicator;
+        // Sobel operator for normal edge detection
+        float sobelNormalEdge() {
+          vec3 tl = getNormal(-1, -1);   // top left
+          vec3 tm = getNormal( 0, -1);   // top middle
+          vec3 tr = getNormal( 1, -1);   // top right
+          vec3 ml = getNormal(-1,  0);   // middle left
+          vec3 mr = getNormal( 1,  0);   // middle right
+          vec3 bl = getNormal(-1,  1);   // bottom left
+          vec3 bm = getNormal( 0,  1);   // bottom middle
+          vec3 br = getNormal( 1,  1);   // bottom right
+
+          vec3 sobelX = (tr + 2.0 * mr + br) - (tl + 2.0 * ml + bl);
+          vec3 sobelY = (bl + 2.0 * bm + br) - (tl + 2.0 * tm + tr);
+          
+          return length(sobelX) + length(sobelY);
         }
 
-        float depthEdgeIndicator() {
-          float depth = getDepth(0, 0);
-          float diff = 0.0;
-          diff += clamp(getDepth(1, 0) - depth, 0.0, 1.0);
-          diff += clamp(getDepth(-1, 0) - depth, 0.0, 1.0);
-          diff += clamp(getDepth(0, 1) - depth, 0.0, 1.0);
-          diff += clamp(getDepth(0, -1) - depth, 0.0, 1.0);
-          return floor(smoothstep(0.01, 0.02, diff) * 2.) / 2.;
-        }
-
-        float normalEdgeIndicator() {
-          float depth = getDepth(0, 0);
+        // Enhanced edge detection combining multiple methods
+        float enhancedEdgeDetection() {
           vec3 normal = getNormal(0, 0);
-          float indicator = 0.0;
-          indicator += neighborNormalEdgeIndicator(0, -1, depth, normal);
-          indicator += neighborNormalEdgeIndicator(0, 1, depth, normal);
-          indicator += neighborNormalEdgeIndicator(-1, 0, depth, normal);
-          indicator += neighborNormalEdgeIndicator(1, 0, depth, normal);
-          return step(0.1, indicator);
+          
+          // Sobel edge detection for normals only
+          float sobelNormal = sobelNormalEdge();
+          
+          // Cross-pattern edge detection for normals only
+          float crossNormalDiff = 0.0;
+          crossNormalDiff += distance(normal, getNormal(1, 0));
+          crossNormalDiff += distance(normal, getNormal(-1, 0));
+          crossNormalDiff += distance(normal, getNormal(0, 1));
+          crossNormalDiff += distance(normal, getNormal(0, -1));
+          
+          // Diagonal edge detection for inner corners (normals only)
+          float diagNormalDiff = 0.0;
+          diagNormalDiff += distance(normal, getNormal(1, 1));
+          diagNormalDiff += distance(normal, getNormal(-1, -1));
+          diagNormalDiff += distance(normal, getNormal(1, -1));
+          diagNormalDiff += distance(normal, getNormal(-1, 1));
+          
+          // Combine normal edge detection methods with sensitivity control
+          float normalEdge = max(sobelNormal * (2.0 * innerEdgeSensitivity), crossNormalDiff * (3.0 * innerEdgeSensitivity));
+          normalEdge = max(normalEdge, diagNormalDiff * (2.0 * innerEdgeSensitivity));
+          
+          // Adaptive thresholding based on edgeThreshold parameter (normals only)
+          float adaptiveNormalThreshold = edgeThreshold * 10.0;
+          
+          float normalIndicator = smoothstep(adaptiveNormalThreshold, adaptiveNormalThreshold * 3.0, normalEdge);
+          
+          return normalIndicator;
         }
 
         void main() {
           vec4 texel = texture2D(tDiffuse, vUv);
           
-          float dei = depthEdgeIndicator();
-          float nei = normalEdgeIndicator();
+          float edgeStrength = enhancedEdgeDetection();
           
-          float coefficient = dei > 0.0 ? 
-            (1.0 - depthEdgeStrength * dei) : 
-            (1.0 + normalEdgeStrength * nei);
-            
+          // Apply edge effect (normal edge only)
+          float coefficient = 1.0 - (edgeStrength * normalEdgeStrength);
+          coefficient = clamp(coefficient, 0.2, 1.0); // Prevent completely black edges
+          
           gl_FragColor = texel * coefficient;
         }
       `
@@ -193,16 +205,11 @@ export class RenderPixelatedPass extends Pass {
 
   private createPixelRenderTarget(
     resolution: THREE.Vector2,
-    pixelFormat: THREE.PixelFormat,
-    depthTexture: boolean
+    pixelFormat: THREE.PixelFormat
   ): THREE.WebGLRenderTarget {
     const renderTarget = new THREE.WebGLRenderTarget(
       resolution.x,
-      resolution.y,
-      !depthTexture ? undefined : {
-        depthTexture: new THREE.DepthTexture(resolution.x, resolution.y),
-        depthBuffer: true
-      }
+      resolution.y
     )
     
     renderTarget.texture.format = pixelFormat

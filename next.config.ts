@@ -2,13 +2,16 @@ import type { NextConfig } from "next";
 
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
-  output: 'export',
-  trailingSlash: true,
-  basePath: '/bookshelf',
-  assetPrefix: '/bookshelf/',
-  images: {
-    unoptimized: true
-  },
+  // GitHub Pages 설정은 배포시에만 적용
+  ...(process.env.NODE_ENV === 'production' && process.env.GITHUB_ACTIONS ? {
+    output: 'export',
+    trailingSlash: true,
+    basePath: '/bookshelf',
+    assetPrefix: '/bookshelf/',
+    images: {
+      unoptimized: true
+    }
+  } : {}),
   webpack: (config) => {
     // 캔버스 지원 설정 추가
     config.externals.push({

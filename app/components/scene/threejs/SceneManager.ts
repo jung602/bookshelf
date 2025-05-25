@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { createLights } from './objects/createLights'
 import { createFloor } from './objects/createFloor'
 import { createWalls } from './objects/createWalls'
+import { loadGLBModel } from './objects/loadGLBModel'
 import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
 import { PixelationControls } from './controls/PixelationControls'
 import { RoomControls, RoomParams } from './controls/RoomControls'
@@ -21,15 +22,21 @@ export class SceneManager {
   private animationId: number | null = null
   private pixelationEnabled: boolean = true
   private roomParams: RoomParams = { width: 5, height: 5, wallHeight: 1 }
+  private audioModel!: THREE.Group
+  private rotationTime: number = 0
 
   constructor(container: HTMLElement) {
     this.container = container
     this.init()
-    this.setupScene()
+    this.initializeScene()
     this.setupPostProcessing()
     this.setupControls()
     this.animate()
     this.handleResize()
+  }
+
+  private async initializeScene() {
+    await this.setupScene()
   }
 
   private init() {
@@ -51,7 +58,7 @@ export class SceneManager {
 
     // 카메라 설정 (Orthographic 카메라로 변경)
     const aspectRatio = window.innerWidth / window.innerHeight
-    const frustumSize = 1 // 카메라 시야 크기
+    const frustumSize = 10 // 카메라 시야 크기
     this.camera = new THREE.OrthographicCamera(
       -frustumSize * aspectRatio / 2, // left
       frustumSize * aspectRatio / 2,  // right
@@ -75,7 +82,7 @@ export class SceneManager {
     this.controls.update()
   }
 
-  private setupScene() {
+  private async setupScene() {
     // 조명 추가
     createLights(this.scene)
 
@@ -84,35 +91,52 @@ export class SceneManager {
 
     // 벽들 추가
     createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight)
+
+    // audio.glb 모델 로드 및 배치
+    await this.loadAudioModel()
+  }
+
+  private async loadAudioModel() {
+    try {
+      this.audioModel = await loadGLBModel('/3d/main/models/audio.glb')
+      
+      // 모델을 (0, 0, 0) 위치에 배치
+      this.audioModel.position.set(0, .4, 0)
+      
+      // 모델 크기 조정 (필요에 따라)
+      this.audioModel.scale.set(2, 2, 2)
+
+      this.audioModel.rotation.set(0, Math.PI, 0)
+      
+      // 씬에 추가
+      this.scene.add(this.audioModel)
+      
+      console.log('Audio model loaded successfully at position (0, 0, 0)')
+    } catch (error) {
+      console.error('Failed to load audio model:', error)
+    }
   }
 
   private setupPostProcessing() {
     // EffectComposer 설정
     this.composer = new EffectComposer(this.renderer)
     
-    // 픽셀화 해상도 계산
+    // 픽셀화 해상도 계산 (컨트롤의 기본값 사용)
+    const defaultParams = PixelationControls.getDefaultParams()
     const screenResolution = new THREE.Vector2(window.innerWidth, window.innerHeight)
-    const pixelSize = 6
-    const renderResolution = screenResolution.clone().divideScalar(pixelSize)
+    const renderResolution = screenResolution.clone().divideScalar(defaultParams.pixelSize)
     renderResolution.x = Math.floor(renderResolution.x)
     renderResolution.y = Math.floor(renderResolution.y)
 
     // 픽셀화 패스 추가
-    this.pixelatedPass = new RenderPixelatedPass(renderResolution, this.scene, this.camera)
+    this.pixelatedPass = new RenderPixelatedPass(renderResolution, this.scene, this.camera, defaultParams)
     this.pixelatedPass.renderToScreen = true
     this.composer.addPass(this.pixelatedPass)
   }
 
   private setupControls() {
-    // 픽셀화 컨트롤 패널 설정
-    const initialPixelationParams: PixelationParams = {
-      pixelSize: 6,
-      normalEdgeStrength: 0.3,
-      depthEdgeStrength: 0.4
-    }
-
+    // 픽셀화 컨트롤 패널 설정 (초기값은 컨트롤에서 관리)
     this.pixelationControls = new PixelationControls(
-      initialPixelationParams,
       (params) => {
         this.pixelatedPass.updateParams(params)
       }
@@ -146,6 +170,17 @@ export class SceneManager {
     this.animationId = requestAnimationFrame(this.animate)
     
     this.controls.update()
+    
+    // 오디오 모델 회전 애니메이션
+    if (this.audioModel) {
+      this.rotationTime += 0.01
+      // ease-in-out 함수를 사용한 좌우 90도 회전
+      const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+      const normalizedTime = (Math.sin(this.rotationTime) + 1) / 2 // 0~1 사이 값
+      const easedTime = easeInOut(normalizedTime)
+      const rotationAngle = Math.PI + (easedTime - 0.5) * Math.PI / 2 // 기본 180도에서 ±45도 회전
+      this.audioModel.rotation.y = rotationAngle
+    }
     
     if (this.pixelationEnabled) {
       this.composer.render()

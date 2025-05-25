@@ -2,6 +2,13 @@ import type { NextConfig } from "next";
 
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
+  output: 'export',
+  trailingSlash: true,
+  basePath: '/bookshelf',
+  assetPrefix: '/bookshelf/',
+  images: {
+    unoptimized: true
+  },
   webpack: (config) => {
     // 캔버스 지원 설정 추가
     config.externals.push({

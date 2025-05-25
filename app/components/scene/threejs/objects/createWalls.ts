@@ -8,10 +8,11 @@ export function createWalls(scene: THREE.Scene, width: number = 1, height: numbe
   // 텍스처 로더
   const textureLoader = new THREE.TextureLoader()
   
-  // 텍스처 로드
-  const diffuseMap = textureLoader.load('/3d/main/textures/wall_diffuse.png')
-  const normalMap = textureLoader.load('/3d/main/textures/wall_diffuse.png')
-  const roughnessMap = textureLoader.load('/3d/main/textures/wall_diffuse.png')
+  // 텍스처 로드 (GitHub Pages 경로 고려)
+  const basePath = process.env.NODE_ENV === 'production' ? '/bookshelf' : ''
+  const diffuseMap = textureLoader.load(`${basePath}/3d/main/textures/wall_diffuse.png`)
+  const normalMap = textureLoader.load(`${basePath}/3d/main/textures/wall_diffuse.png`)
+  const roughnessMap = textureLoader.load(`${basePath}/3d/main/textures/wall_diffuse.png`)
 
   // 텍스처 반복 설정
   diffuseMap.wrapS = diffuseMap.wrapT = THREE.RepeatWrapping

@@ -98,7 +98,9 @@ export class SceneManager {
 
   private async loadAudioModel() {
     try {
-      this.audioModel = await loadGLBModel('/3d/main/models/audio.glb')
+      // Next.js basePath를 고려한 경로 설정
+      const basePath = process.env.NODE_ENV === 'production' ? '/bookshelf' : ''
+      this.audioModel = await loadGLBModel(`${basePath}/3d/main/models/audio.glb`)
       
       // 모델을 (0, 0, 0) 위치에 배치
       this.audioModel.position.set(0, .4, 0)

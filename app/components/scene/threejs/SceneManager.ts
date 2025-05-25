@@ -5,7 +5,7 @@ import { createLights } from './objects/createLights'
 import { createFloor } from './objects/createFloor'
 import { createWalls } from './objects/createWalls'
 import { loadGLBModel } from './objects/loadGLBModel'
-import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
+import { RenderPixelatedPass } from './passes/RenderPixelatedPass'
 import { PixelationControls } from './controls/PixelationControls'
 import { RoomControls, RoomParams } from './controls/RoomControls'
 

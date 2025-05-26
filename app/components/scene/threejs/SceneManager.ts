@@ -32,7 +32,6 @@ export class SceneManager {
     this.setupPostProcessing()
     this.setupControls()
     this.animate()
-    this.handleResize()
   }
 
   private async initializeScene() {
@@ -191,20 +190,7 @@ export class SceneManager {
     }
   }
 
-  private handleResize = () => {
-    window.addEventListener('resize', () => {
-      const aspectRatio = window.innerWidth / window.innerHeight
-      const frustumSize = 400
-      
-      this.camera.left = -frustumSize * aspectRatio / 2
-      this.camera.right = frustumSize * aspectRatio / 2
-      this.camera.top = frustumSize / 2
-      this.camera.bottom = -frustumSize / 2
-      this.camera.updateProjectionMatrix()
-      
-      this.renderer.setSize(window.innerWidth, window.innerHeight)
-    })
-  }
+
 
   public dispose() {
     if (this.animationId) {

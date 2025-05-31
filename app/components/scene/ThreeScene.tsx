@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import { SceneManager } from './3d/SceneManager'
-import ColorToolbar from './ColorToolbar'
+import { AudioModel } from './3d/objects/audio'
+import Toolbar from './ui/Toolbar'
 
 export default function ThreeScene() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -33,12 +34,35 @@ export default function ThreeScene() {
     }
   }
 
+  const handleModelAdd = async (modelType: string) => {
+    if (!sceneManagerRef.current) return
+
+    try {
+      let model
+      
+      switch (modelType) {
+        case 'audio':
+          model = new AudioModel()
+          break
+        default:
+          console.warn(`Unknown model type: ${modelType}`)
+          return
+      }
+
+      await sceneManagerRef.current.getModelManager().addModel(model)
+      console.log(`${modelType} model added successfully`)
+    } catch (error) {
+      console.error(`Failed to add ${modelType} model:`, error)
+    }
+  }
+
   return (
     <>
       <div ref={containerRef} className="w-full h-full" />
-      <ColorToolbar
+      <Toolbar
         onWallColorChange={handleWallColorChange}
         onFloorColorChange={handleFloorColorChange}
+        onModelAdd={handleModelAdd}
       />
     </>
   )

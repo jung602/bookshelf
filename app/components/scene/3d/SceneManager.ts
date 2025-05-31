@@ -8,7 +8,8 @@ import { RenderPixelatedPass } from './passes/RenderPixelatedPass'
 import { PixelationControls } from './controls/PixelationControls'
 import { RoomControls, RoomParams } from './controls/RoomControls'
 import { ColorControls, ColorParams } from './controls/ColorControls'
-import { AudioModel } from './objects/audio'
+import { ModelManager } from './managers/ModelManager'
+import { InteractionManager } from './managers/InteractionManager'
 
 export class SceneManager {
   private container: HTMLElement
@@ -21,11 +22,13 @@ export class SceneManager {
   private pixelationControls!: PixelationControls
   private roomControls!: RoomControls
   private colorControls!: ColorControls
+  private modelManager!: ModelManager
+  private interactionManager!: InteractionManager
   private animationId: number | null = null
   private pixelationEnabled: boolean = true
   private roomParams: RoomParams = { width: 5, height: 5, wallHeight: 1 }
   private colorParams: ColorParams = ColorControls.getDefaultParams()
-  private audioModel!: AudioModel
+  private isInitialized: boolean = false
   
   constructor(container: HTMLElement) {
     this.container = container
@@ -33,11 +36,14 @@ export class SceneManager {
     this.initializeScene()
     this.setupPostProcessing()
     this.setupControls()
+    this.setupInteraction()
     this.animate()
   }
 
   private async initializeScene() {
+    if (this.isInitialized) return
     await this.setupScene()
+    this.isInitialized = true
   }
 
   private init() {
@@ -81,6 +87,9 @@ export class SceneManager {
     this.controls.autoRotate = false
     this.controls.target.set(0, 0, 0)
     this.controls.update()
+
+    // ModelManager 초기화
+    this.modelManager = new ModelManager(this.scene, this.roomParams.width, this.roomParams.height)
   }
 
   private async setupScene() {
@@ -93,18 +102,8 @@ export class SceneManager {
     // 벽들 추가
     createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight, this.colorParams.wallColor)
 
-    // audio.glb 모델 로드 및 배치
-    await this.loadAudioModel()
-  }
-
-  private async loadAudioModel() {
-    try {
-      this.audioModel = new AudioModel()
-      await this.audioModel.load()
-      this.audioModel.addToScene(this.scene)
-    } catch (error) {
-      console.error('Failed to load audio model:', error)
-    }
+    // 초기 모델 로드 제거 - 이제 UI에서 추가할 예정
+    console.log('Scene setup completed without initial models')
   }
 
   private setupPostProcessing() {
@@ -149,9 +148,43 @@ export class SceneManager {
     )
   }
 
+  private setupInteraction() {
+    // InteractionManager 초기화
+    this.interactionManager = new InteractionManager(
+      this.scene,
+      this.camera,
+      this.renderer,
+      this.modelManager
+    )
+
+    // OrbitControls와 드래그 상호작용 조정
+    this.setupControlsInteraction()
+  }
+
+  private setupControlsInteraction() {
+    // 드래그 상태 확인을 위한 인터벌 설정
+    const checkDragState = () => {
+      const dragState = this.interactionManager.getDragState()
+      
+      if (dragState.isDragging) {
+        // 드래그 중일 때 OrbitControls 비활성화
+        this.controls.enabled = false
+      } else {
+        // 드래그가 끝나면 OrbitControls 활성화
+        this.controls.enabled = true
+      }
+    }
+
+    // 주기적으로 드래그 상태 확인
+    setInterval(checkDragState, 16) // 60fps
+  }
+
   private updateRoom(params: Partial<RoomParams>) {
     // 방 파라미터 업데이트
     Object.assign(this.roomParams, params)
+    
+    // ModelManager에 새로운 바닥 크기 알림
+    this.modelManager.updateFloorBounds(this.roomParams.width, this.roomParams.height)
     
     // 바닥과 벽 다시 생성
     createFloor(this.scene, this.roomParams.width, this.roomParams.height, this.colorParams.floorColor)
@@ -177,15 +210,21 @@ export class SceneManager {
     return this.colorControls
   }
 
+  public getModelManager(): ModelManager {
+    return this.modelManager
+  }
+
+  public getInteractionManager(): InteractionManager {
+    return this.interactionManager
+  }
+
   private animate = () => {
     this.animationId = requestAnimationFrame(this.animate)
     
     this.controls.update()
     
-    // 오디오 모델 업데이트
-    if (this.audioModel) {
-      this.audioModel.update()
-    }
+    // ModelManager를 통해 모든 모델 업데이트
+    this.modelManager.update()
     
     if (this.pixelationEnabled) {
       this.composer.render()
@@ -206,10 +245,11 @@ export class SceneManager {
     this.pixelatedPass.dispose()
     this.renderer.dispose()
     
-    // AudioModel 정리
-    if (this.audioModel) {
-      this.audioModel.dispose()
-    }
+    // InteractionManager 정리
+    this.interactionManager.dispose()
+    
+    // ModelManager 정리
+    this.modelManager.dispose()
     
     // 씬의 모든 오브젝트 정리
     this.scene.traverse((object) => {

@@ -89,6 +89,14 @@ export class ModelManager {
     console.log(`Model ${modelId} moved to (${clampedPosition.x}, ${modelY}, ${clampedPosition.z})`)
   }
 
+  public rotateModel(modelId: string): void {
+    const model = this.models.get(modelId)
+    if (!model) return
+
+    model.rotateY90()
+    console.log(`Model ${modelId} rotated 90 degrees`)
+  }
+
   private calculateModelFloorY(model: BaseModel): number {
     const threeModel = model.getModel()
     if (!threeModel) return this.floorBounds.floorY

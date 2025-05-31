@@ -9,7 +9,7 @@ import { PixelationControls } from './controls/PixelationControls'
 import { RoomControls, RoomParams } from './controls/RoomControls'
 import { ColorControls, ColorParams } from './controls/ColorControls'
 import { ModelManager } from './managers/ModelManager'
-import { InteractionManager } from './managers/InteractionManager'
+import { InteractionManager, GizmoState } from './managers/InteractionManager'
 
 export class SceneManager {
   private container: HTMLElement
@@ -29,9 +29,12 @@ export class SceneManager {
   private roomParams: RoomParams = { width: 5, height: 5, wallHeight: 1 }
   private colorParams: ColorParams = ColorControls.getDefaultParams()
   private isInitialized: boolean = false
+  private gizmoState: GizmoState = { selectedModelId: null, screenPosition: null }
+  private onGizmoStateChange?: (gizmoState: GizmoState) => void
   
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, onGizmoStateChange?: (gizmoState: GizmoState) => void) {
     this.container = container
+    this.onGizmoStateChange = onGizmoStateChange
     this.init()
     this.initializeScene()
     this.setupPostProcessing()
@@ -154,7 +157,17 @@ export class SceneManager {
       this.scene,
       this.camera,
       this.renderer,
-      this.modelManager
+      this.modelManager,
+      (gizmoState: GizmoState) => {
+        console.log('SceneManager received gizmo state change:', gizmoState)
+        this.gizmoState = gizmoState
+        if (this.onGizmoStateChange) {
+          console.log('SceneManager calling onGizmoStateChange callback')
+          this.onGizmoStateChange(gizmoState)
+        } else {
+          console.log('SceneManager: onGizmoStateChange callback is not set')
+        }
+      }
     )
 
     // OrbitControls와 드래그 상호작용 조정
@@ -216,6 +229,25 @@ export class SceneManager {
 
   public getInteractionManager(): InteractionManager {
     return this.interactionManager
+  }
+
+  public rotateModel(modelId: string): void {
+    this.modelManager.rotateModel(modelId)
+  }
+
+  public deleteModel(modelId: string): void {
+    this.modelManager.removeModel(modelId)
+    // 모델 삭제 후 기즈모 숨기기
+    if (this.gizmoState.selectedModelId === modelId) {
+      this.gizmoState = { selectedModelId: null, screenPosition: null }
+      if (this.onGizmoStateChange) {
+        this.onGizmoStateChange(this.gizmoState)
+      }
+    }
+  }
+
+  public getGizmoState(): GizmoState {
+    return this.gizmoState
   }
 
   private animate = () => {

@@ -13,9 +13,11 @@ export interface ModelType {
 
 interface ModelToolsProps {
   onModelAdd: (modelType: string) => void
+  onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number) => void
+  onShowBookCreator?: () => void
 }
 
-export default function ModelTools({ onModelAdd }: ModelToolsProps) {
+export default function ModelTools({ onModelAdd, onBookCreate, onShowBookCreator }: ModelToolsProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -34,7 +36,13 @@ export default function ModelTools({ onModelAdd }: ModelToolsProps) {
   }, [])
 
   const handleModelSelect = (modelId: string) => {
-    onModelAdd(modelId)
+    if (modelId === 'book') {
+      if (onShowBookCreator) {
+        onShowBookCreator()
+      }
+    } else {
+      onModelAdd(modelId)
+    }
     setIsDropdownOpen(false)
   }
 

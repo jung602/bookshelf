@@ -76,10 +76,10 @@ export abstract class BaseModel {
         // 투명한 재질로 콜라이더 메시 생성
         const colliderMaterial = new THREE.MeshBasicMaterial({
           transparent: true,
-          opacity: 0,
+          opacity: 0, // 다시 완전히 투명하게 설정
           color: 0x00ff00,
           visible: true,
-          wireframe: false
+          wireframe: false // 와이어프레임 비활성화
         })
         
         const colliderMesh = new THREE.Mesh(colliderGeometry, colliderMaterial)
@@ -157,6 +157,13 @@ export abstract class BaseModel {
 
   public getRotation(): ModelRotation {
     return { ...this.rotation }
+  }
+
+  // 90도 회전 기능 추가
+  public rotateY90(): void {
+    const newRotationY = this.rotation.y + Math.PI / 2
+    this.setRotation({ y: newRotationY })
+    console.log(`Model ${this.id} rotated 90 degrees. New Y rotation: ${newRotationY}`)
   }
 
   public getId(): string {

@@ -9,6 +9,11 @@ export interface DragState {
   dragPlane: THREE.Plane
 }
 
+export interface GizmoState {
+  selectedModelId: string | null
+  screenPosition: { x: number; y: number } | null
+}
+
 export class InteractionManager {
   private scene: THREE.Scene
   private camera: THREE.Camera
@@ -17,7 +22,11 @@ export class InteractionManager {
   private raycaster: THREE.Raycaster
   private mouse: THREE.Vector2
   private dragState: DragState
+  private gizmoState: GizmoState
   private floorPlane: THREE.Plane
+  private isDragStarted: boolean = false
+  private clickStartTime: number = 0
+  private clickStartPosition: { x: number; y: number } = { x: 0, y: 0 }
 
   // 이벤트 리스너 참조 저장
   private boundMouseDown: (event: MouseEvent) => void
@@ -29,16 +38,21 @@ export class InteractionManager {
   private boundTouchEnd: (event: TouchEvent) => void
   private boundContextMenu: (event: Event) => void
 
+  // 기즈모 콜백
+  private onGizmoStateChange?: (gizmoState: GizmoState) => void
+
   constructor(
     scene: THREE.Scene,
     camera: THREE.Camera,
     renderer: THREE.WebGLRenderer,
-    modelManager: ModelManager
+    modelManager: ModelManager,
+    onGizmoStateChange?: (gizmoState: GizmoState) => void
   ) {
     this.scene = scene
     this.camera = camera
     this.renderer = renderer
     this.modelManager = modelManager
+    this.onGizmoStateChange = onGizmoStateChange
     this.raycaster = new THREE.Raycaster()
     this.mouse = new THREE.Vector2()
     
@@ -51,6 +65,12 @@ export class InteractionManager {
       selectedModel: null,
       dragOffset: new THREE.Vector3(),
       dragPlane: this.floorPlane.clone()
+    }
+
+    // 기즈모 상태 초기화
+    this.gizmoState = {
+      selectedModelId: null,
+      screenPosition: null
     }
 
     // 이벤트 리스너 바인딩
@@ -153,6 +173,11 @@ export class InteractionManager {
     console.log('Mouse down event triggered')
     this.updateMousePosition(event.clientX, event.clientY)
 
+    // 클릭 시작 시간과 위치 기록
+    this.clickStartTime = Date.now()
+    this.clickStartPosition = { x: event.clientX, y: event.clientY }
+    this.isDragStarted = false
+
     const intersections = this.getIntersectedModels()
     
     if (intersections.length > 0) {
@@ -160,16 +185,33 @@ export class InteractionManager {
       
       if (selectedModel) {
         console.log(`Model selected: ${selectedModel.getId()}`)
-        this.startDrag(selectedModel, intersections[0].point)
+        // 드래그 준비만 하고 실제 드래그는 마우스 이동 시 시작
+        this.prepareForDrag(selectedModel, intersections[0].point)
       }
     } else {
       console.log('No model intersections found')
+      // 빈 공간 클릭 시 기즈모 숨기기
+      this.hideGizmo()
     }
   }
 
   private onMouseMove(event: MouseEvent): void {
     event.preventDefault()
     this.updateMousePosition(event.clientX, event.clientY)
+
+    // 드래그 시작 조건 확인 (마우스가 일정 거리 이상 움직였을 때)
+    if (!this.isDragStarted && this.dragState.selectedModel) {
+      const moveDistance = Math.sqrt(
+        Math.pow(event.clientX - this.clickStartPosition.x, 2) +
+        Math.pow(event.clientY - this.clickStartPosition.y, 2)
+      )
+      
+      if (moveDistance > 5) { // 5픽셀 이상 움직이면 드래그 시작
+        this.isDragStarted = true
+        this.dragState.isDragging = true
+        this.hideGizmo() // 드래그 시작 시 기즈모 숨기기
+      }
+    }
 
     if (this.dragState.isDragging && this.dragState.selectedModel) {
       this.updateDrag()
@@ -182,6 +224,19 @@ export class InteractionManager {
   private onMouseUp(event: MouseEvent): void {
     event.preventDefault()
     console.log('Mouse up event triggered')
+    
+    // 클릭인지 드래그인지 판단
+    const clickDuration = Date.now() - this.clickStartTime
+    const moveDistance = Math.sqrt(
+      Math.pow(event.clientX - this.clickStartPosition.x, 2) +
+      Math.pow(event.clientY - this.clickStartPosition.y, 2)
+    )
+
+    // 짧은 시간 내에 적은 거리만 움직였다면 클릭으로 간주
+    if (clickDuration < 300 && moveDistance < 5 && this.dragState.selectedModel && !this.isDragStarted) {
+      this.handleModelClick(this.dragState.selectedModel, event.clientX, event.clientY)
+    }
+
     this.endDrag()
   }
 
@@ -238,6 +293,20 @@ export class InteractionManager {
     console.log(`Started dragging model ${model.getId()}`)
   }
 
+  private prepareForDrag(model: BaseModel, intersectionPoint: THREE.Vector3): void {
+    this.dragState.selectedModel = model
+    
+    // 모델의 현재 위치와 클릭 지점 간의 오프셋 계산
+    const modelPosition = model.getPosition()
+    this.dragState.dragOffset.set(
+      modelPosition.x - intersectionPoint.x,
+      0, // Y축은 고정
+      modelPosition.z - intersectionPoint.z
+    )
+
+    console.log(`Prepared for dragging model ${model.getId()}`)
+  }
+
   private updateDrag(): void {
     if (!this.dragState.selectedModel) return
 
@@ -253,13 +322,54 @@ export class InteractionManager {
   }
 
   private endDrag(): void {
-    if (this.dragState.isDragging && this.dragState.selectedModel) {
-      console.log(`Ended dragging model ${this.dragState.selectedModel.getId()}`)
+    const wasDragging = this.dragState.isDragging
+    const selectedModel = this.dragState.selectedModel
+    const wasActuallyDragged = this.isDragStarted
+
+    if (wasDragging && selectedModel) {
+      console.log(`Ended dragging model ${selectedModel.getId()}`)
+      
+      // 실제로 드래그가 발생했을 때만 기즈모를 다시 표시
+      if (wasActuallyDragged) {
+        // 모델의 바운딩 박스를 구해서 상단 위치 계산
+        const modelPosition = selectedModel.getPosition()
+        const modelGroup = selectedModel.getModel()
+        
+        if (modelGroup) {
+          // Three.js Box3를 사용해서 바운딩 박스 계산
+          const boundingBox = new THREE.Box3().setFromObject(modelGroup)
+          
+          // 모델의 상단 중앙 위치 계산 (Y축은 바운딩 박스의 최대값 + 약간의 여백)
+          const topPosition = new THREE.Vector3(
+            modelPosition.x,
+            boundingBox.max.y + 0.2, // 모델 상단에서 약간 위
+            modelPosition.z
+          )
+          
+          // 3D 위치를 화면 좌표로 변환
+          topPosition.project(this.camera)
+          
+          const rect = this.renderer.domElement.getBoundingClientRect()
+          const screenX = (topPosition.x + 1) * rect.width / 2 + rect.left
+          const screenY = (-topPosition.y + 1) * rect.height / 2 + rect.top
+          
+          console.log(`Showing gizmo at screen position: (${screenX}, ${screenY})`)
+          
+          this.gizmoState.selectedModelId = selectedModel.getId()
+          this.gizmoState.screenPosition = { x: screenX, y: screenY }
+          
+          // 기즈모 상태 변경 콜백 호출
+          if (this.onGizmoStateChange) {
+            this.onGizmoStateChange(this.gizmoState)
+          }
+        }
+      }
     }
 
     this.dragState.isDragging = false
     this.dragState.selectedModel = null
     this.dragState.dragOffset.set(0, 0, 0)
+    this.isDragStarted = false
   }
 
   private updateHover(): void {
@@ -274,8 +384,58 @@ export class InteractionManager {
     }
   }
 
+  private handleModelClick(model: BaseModel, screenX: number, screenY: number): void {
+    console.log(`Model clicked: ${model.getId()}`)
+    
+    // 모델의 바운딩 박스를 구해서 상단 위치 계산
+    const modelPosition = model.getPosition()
+    const modelGroup = model.getModel()
+    
+    if (modelGroup) {
+      // Three.js Box3를 사용해서 바운딩 박스 계산
+      const boundingBox = new THREE.Box3().setFromObject(modelGroup)
+      
+      // 모델의 상단 중앙 위치 계산 (Y축은 바운딩 박스의 최대값 + 약간의 여백)
+      const topPosition = new THREE.Vector3(
+        modelPosition.x,
+        boundingBox.max.y + 0.2, // 모델 상단에서 약간 위
+        modelPosition.z
+      )
+      
+      // 3D 위치를 화면 좌표로 변환
+      topPosition.project(this.camera)
+      
+      const rect = this.renderer.domElement.getBoundingClientRect()
+      const gizmoScreenX = (topPosition.x + 1) * rect.width / 2 + rect.left
+      const gizmoScreenY = (-topPosition.y + 1) * rect.height / 2 + rect.top
+      
+      // 기즈모 상태 업데이트
+      this.gizmoState.selectedModelId = model.getId()
+      this.gizmoState.screenPosition = { x: gizmoScreenX, y: gizmoScreenY }
+      
+      // 기즈모 상태 변경 콜백 호출
+      if (this.onGizmoStateChange) {
+        this.onGizmoStateChange(this.gizmoState)
+      }
+    }
+  }
+
+  private hideGizmo(): void {
+    this.gizmoState.selectedModelId = null
+    this.gizmoState.screenPosition = null
+    
+    // 기즈모 상태 변경 콜백 호출
+    if (this.onGizmoStateChange) {
+      this.onGizmoStateChange(this.gizmoState)
+    }
+  }
+
   public getDragState(): DragState {
     return { ...this.dragState }
+  }
+
+  public getGizmoState(): GizmoState {
+    return { ...this.gizmoState }
   }
 
   public dispose(): void {

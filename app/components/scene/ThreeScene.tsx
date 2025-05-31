@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { SceneManager } from './threejs/SceneManager'
+import { SceneManager } from './3d/SceneManager'
+import ColorToolbar from './ColorToolbar'
 
 export default function ThreeScene() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -20,5 +21,25 @@ export default function ThreeScene() {
     }
   }, [])
 
-  return <div ref={containerRef} className="w-full h-full" />
+  const handleWallColorChange = (color: string) => {
+    if (sceneManagerRef.current) {
+      sceneManagerRef.current.getColorControls().updateWallColor(color)
+    }
+  }
+
+  const handleFloorColorChange = (color: string) => {
+    if (sceneManagerRef.current) {
+      sceneManagerRef.current.getColorControls().updateFloorColor(color)
+    }
+  }
+
+  return (
+    <>
+      <div ref={containerRef} className="w-full h-full" />
+      <ColorToolbar
+        onWallColorChange={handleWallColorChange}
+        onFloorColorChange={handleFloorColorChange}
+      />
+    </>
+  )
 } 

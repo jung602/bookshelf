@@ -1,6 +1,11 @@
 import * as THREE from 'three'
 
-export function createFloor(scene: THREE.Scene, width: number = 1, height: number = 1) {
+export function createFloor(
+  scene: THREE.Scene, 
+  width: number = 1, 
+  height: number = 1,
+  color: string = '#ffffff'
+) {
   // 기존 바닥 제거
   const existingFloors = scene.children.filter(child => child.userData.isFloor)
   existingFloors.forEach(floor => scene.remove(floor))
@@ -24,6 +29,7 @@ export function createFloor(scene: THREE.Scene, width: number = 1, height: numbe
   const geometry = new THREE.PlaneGeometry(width, height)
   const material = new THREE.MeshStandardMaterial({
     map: checkerTexture,
+    color: new THREE.Color(color), // 색상을 오버레이로 적용
     side: THREE.DoubleSide
   })
 

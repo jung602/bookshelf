@@ -1,13 +1,14 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { createLights } from './objects/createLights'
-import { createFloor } from './objects/createFloor'
-import { createWalls } from './objects/createWalls'
-import { loadGLBModel } from './objects/loadGLBModel'
+import { createLights } from './scenes/createLights'
+import { createFloor } from './scenes/createFloor'
+import { createWalls } from './scenes/createWalls'
 import { RenderPixelatedPass } from './passes/RenderPixelatedPass'
 import { PixelationControls } from './controls/PixelationControls'
 import { RoomControls, RoomParams } from './controls/RoomControls'
+import { ColorControls, ColorParams } from './controls/ColorControls'
+import { AudioModel } from './objects/audio'
 
 export class SceneManager {
   private container: HTMLElement
@@ -19,12 +20,13 @@ export class SceneManager {
   private pixelatedPass!: RenderPixelatedPass
   private pixelationControls!: PixelationControls
   private roomControls!: RoomControls
+  private colorControls!: ColorControls
   private animationId: number | null = null
   private pixelationEnabled: boolean = true
   private roomParams: RoomParams = { width: 5, height: 5, wallHeight: 1 }
-  private audioModel!: THREE.Group
-  private rotationTime: number = 0
-
+  private colorParams: ColorParams = ColorControls.getDefaultParams()
+  private audioModel!: AudioModel
+  
   constructor(container: HTMLElement) {
     this.container = container
     this.init()
@@ -86,10 +88,10 @@ export class SceneManager {
     createLights(this.scene)
 
     // 바닥 추가
-    createFloor(this.scene, this.roomParams.width, this.roomParams.height)
+    createFloor(this.scene, this.roomParams.width, this.roomParams.height, this.colorParams.floorColor)
 
     // 벽들 추가
-    createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight)
+    createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight, this.colorParams.wallColor)
 
     // audio.glb 모델 로드 및 배치
     await this.loadAudioModel()
@@ -97,22 +99,9 @@ export class SceneManager {
 
   private async loadAudioModel() {
     try {
-      // Next.js basePath를 고려한 경로 설정
-      const basePath = process.env.NODE_ENV === 'production' ? '/bookshelf' : ''
-      this.audioModel = await loadGLBModel(`${basePath}/3d/main/models/audio.glb`)
-      
-      // 모델을 (0, 0, 0) 위치에 배치
-      this.audioModel.position.set(0, .4, 0)
-      
-      // 모델 크기 조정 (필요에 따라)
-      this.audioModel.scale.set(2, 2, 2)
-
-      this.audioModel.rotation.set(0, Math.PI, 0)
-      
-      // 씬에 추가
-      this.scene.add(this.audioModel)
-      
-      console.log('Audio model loaded successfully at position (0, 0, 0)')
+      this.audioModel = new AudioModel()
+      await this.audioModel.load()
+      this.audioModel.addToScene(this.scene)
     } catch (error) {
       console.error('Failed to load audio model:', error)
     }
@@ -150,6 +139,14 @@ export class SceneManager {
         this.updateRoom(params)
       }
     )
+
+    // 색상 컨트롤 패널 설정
+    this.colorControls = new ColorControls(
+      this.colorParams,
+      (params) => {
+        this.updateColors(params)
+      }
+    )
   }
 
   private updateRoom(params: Partial<RoomParams>) {
@@ -157,8 +154,8 @@ export class SceneManager {
     Object.assign(this.roomParams, params)
     
     // 바닥과 벽 다시 생성
-    createFloor(this.scene, this.roomParams.width, this.roomParams.height)
-    createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight)
+    createFloor(this.scene, this.roomParams.width, this.roomParams.height, this.colorParams.floorColor)
+    createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight, this.colorParams.wallColor)
     
     // 카메라 위치 조정 (방 크기와 벽 높이에 맞게)
     const maxSize = Math.max(this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight)
@@ -167,20 +164,27 @@ export class SceneManager {
     this.controls.update()
   }
 
+  private updateColors(params: ColorParams) {
+    // 색상 파라미터 업데이트
+    Object.assign(this.colorParams, params)
+    
+    // 바닥과 벽 다시 생성
+    createFloor(this.scene, this.roomParams.width, this.roomParams.height, this.colorParams.floorColor)
+    createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight, this.colorParams.wallColor)
+  }
+
+  public getColorControls(): ColorControls {
+    return this.colorControls
+  }
+
   private animate = () => {
     this.animationId = requestAnimationFrame(this.animate)
     
     this.controls.update()
     
-    // 오디오 모델 회전 애니메이션
+    // 오디오 모델 업데이트
     if (this.audioModel) {
-      this.rotationTime += 0.01
-      // ease-in-out 함수를 사용한 좌우 90도 회전
-      const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-      const normalizedTime = (Math.sin(this.rotationTime) + 1) / 2 // 0~1 사이 값
-      const easedTime = easeInOut(normalizedTime)
-      const rotationAngle = Math.PI + (easedTime - 0.5) * Math.PI / 2 // 기본 180도에서 ±45도 회전
-      this.audioModel.rotation.y = rotationAngle
+      this.audioModel.update()
     }
     
     if (this.pixelationEnabled) {
@@ -190,8 +194,6 @@ export class SceneManager {
     }
   }
 
-
-
   public dispose() {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId)
@@ -200,8 +202,14 @@ export class SceneManager {
     this.controls.dispose()
     this.pixelationControls.dispose()
     this.roomControls.dispose()
+    this.colorControls.dispose()
     this.pixelatedPass.dispose()
     this.renderer.dispose()
+    
+    // AudioModel 정리
+    if (this.audioModel) {
+      this.audioModel.dispose()
+    }
     
     // 씬의 모든 오브젝트 정리
     this.scene.traverse((object) => {

@@ -1,6 +1,12 @@
 import * as THREE from 'three'
 
-export function createWalls(scene: THREE.Scene, width: number = 1, height: number = 1, wallHeight: number = 1) {
+export function createWalls(
+  scene: THREE.Scene, 
+  width: number = 1, 
+  height: number = 1, 
+  wallHeight: number = 1,
+  color: string = '#cccccc'
+) {
   // 기존 벽 제거
   const existingWalls = scene.children.filter(child => child.userData.isWall)
   existingWalls.forEach(wall => scene.remove(wall))
@@ -13,7 +19,7 @@ export function createWalls(scene: THREE.Scene, width: number = 1, height: numbe
   ) {
     const geometry = new THREE.PlaneGeometry(1, 1)
     const material = new THREE.MeshStandardMaterial({
-      color: 0xcccccc,
+      color: new THREE.Color(color),
       roughness: 0.8,
       metalness: 0.1,
       side: THREE.FrontSide

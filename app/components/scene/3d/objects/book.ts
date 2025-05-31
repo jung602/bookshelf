@@ -203,8 +203,9 @@ export class Book extends BaseModel {
     this.model = new THREE.Group()
     this.model.add(this.bookMesh)
 
-    // 책의 Y 위치를 0으로 설정 (ModelManager에서 적절한 표면 위치로 조정됨)
-    this.bookMesh.position.y = 0
+    // 책의 바닥면이 Y=0에 오도록 위치 조정
+    // BoxGeometry는 중심이 원점이므로, 책의 바닥이 Y=0에 오려면 depth/2만큼 위로 올려야 함
+    this.bookMesh.position.y = depth / 2
   }
 
   private createBookCollider(): void {

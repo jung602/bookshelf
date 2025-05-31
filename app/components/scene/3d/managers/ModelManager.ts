@@ -112,19 +112,17 @@ export class ModelManager {
     const threeModel = model.getModel()
     if (!threeModel) return this.floorBounds.floorY
 
-    // 임시로 모델을 원점에 배치해서 정확한 바운딩 박스 계산
-    const originalPosition = threeModel.position.clone()
-    threeModel.position.set(0, 0, 0)
-    
-    // 모델의 바운딩 박스 계산
+    // 현재 위치에서 바운딩 박스 계산
     const box = new THREE.Box3().setFromObject(threeModel)
     
-    // 원래 위치로 복원
-    threeModel.position.copy(originalPosition)
-    
     // 모델의 하단이 바닥에 닿도록 Y 위치 계산
-    const modelBottomY = box.min.y
-    return this.floorBounds.floorY - modelBottomY
+    const modelBottomOffset = box.min.y - threeModel.position.y
+    const floorY = this.floorBounds.floorY - modelBottomOffset
+    
+    // 부동소수점 정밀도 문제 해결을 위해 반올림
+    const roundedY = Math.round(floorY * 10000) / 10000
+    
+    return roundedY
   }
 
   private positionModelOnFloor(model: BaseModel): void {
@@ -270,10 +268,16 @@ export class ModelManager {
       
       // 타겟 모델의 바운딩 박스를 고려하여 Y 위치 계산
       const modelBottomOffset = this.getModelBottomOffset(targetModel)
+      
+      // 표면 Y 위치에서 모델의 바닥 오프셋을 빼서 모델의 중심 위치 계산
+      // bottomOffset이 음수이므로 빼기를 하면 실제로는 더해짐
       const finalY = surfaceY - modelBottomOffset
       
-      console.log(`      -> Surface found at Y: ${surfaceY.toFixed(3)}, model bottom offset: ${modelBottomOffset.toFixed(3)}, final Y: ${finalY.toFixed(3)}`)
-      return finalY
+      // 부동소수점 정밀도 문제 해결을 위해 소수점 4자리에서 반올림
+      const roundedY = Math.round(finalY * 10000) / 10000
+      
+      console.log(`      -> Surface found at Y: ${surfaceY.toFixed(3)}, model bottom offset: ${modelBottomOffset.toFixed(3)}, final Y: ${finalY.toFixed(3)}, rounded Y: ${roundedY.toFixed(3)}`)
+      return roundedY
     }
 
     // 교차점이 없으면 기본 바닥 위치 사용
@@ -287,18 +291,14 @@ export class ModelManager {
     const threeModel = model.getModel()
     if (!threeModel) return 0
 
-    // 임시로 모델을 원점에 배치해서 정확한 바운딩 박스 계산
-    const originalPosition = threeModel.position.clone()
-    threeModel.position.set(0, 0, 0)
-    
-    // 모델의 바운딩 박스 계산
+    // 현재 위치에서 바운딩 박스 계산 (위치 변경 없이)
     const box = new THREE.Box3().setFromObject(threeModel)
     
-    // 원래 위치로 복원
-    threeModel.position.copy(originalPosition)
+    // 모델의 하단 오프셋 반환 (항상 음수이거나 0)
+    const bottomOffset = box.min.y - threeModel.position.y
     
-    // 모델의 하단 오프셋 반환 (음수 값)
-    return box.min.y
+    console.log(`      -> Model ${model.getId()} bottom offset: ${bottomOffset.toFixed(3)} (box.min.y: ${box.min.y.toFixed(3)}, model.position.y: ${threeModel.position.y.toFixed(3)})`)
+    return bottomOffset
   }
 
   // 충돌 감지 및 자동 올라가기 기능
@@ -434,7 +434,7 @@ export class ModelManager {
           console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
           
           // Y 위치가 변경되었을 때만 업데이트
-          if (Math.abs(currentPosition.y - newY) > 0.01) {
+          if (Math.abs(currentPosition.y - newY) > 0.001) {
             model.setPosition({
               x: currentPosition.x,
               y: newY,
@@ -487,7 +487,7 @@ export class ModelManager {
           console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
           
           // Y 위치가 변경되었을 때만 업데이트
-          if (Math.abs(currentPosition.y - newY) > 0.01) {
+          if (Math.abs(currentPosition.y - newY) > 0.001) {
             model.setPosition({
               x: currentPosition.x,
               y: newY,

@@ -27,6 +27,8 @@ export class InteractionManager {
   private isDragStarted: boolean = false
   private clickStartTime: number = 0
   private clickStartPosition: { x: number; y: number } = { x: 0, y: 0 }
+  private lastCollisionCheckTime: number = 0
+  private collisionCheckInterval: number = 16 // 60fps로 제한 (16ms)
 
   // 이벤트 리스너 참조 저장
   private boundMouseDown: (event: MouseEvent) => void
@@ -286,9 +288,14 @@ export class InteractionManager {
     const modelPosition = model.getPosition()
     this.dragState.dragOffset.set(
       modelPosition.x - intersectionPoint.x,
-      0, // Y축은 고정
+      modelPosition.y - intersectionPoint.y, // Y축 오프셋도 계산
       modelPosition.z - intersectionPoint.z
     )
+
+    // 드래그 평면을 카메라 방향에 수직으로 설정 (모델 위치를 지나는 평면)
+    const cameraDirection = new THREE.Vector3()
+    this.camera.getWorldDirection(cameraDirection)
+    this.dragState.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, new THREE.Vector3(modelPosition.x, modelPosition.y, modelPosition.z))
 
     console.log(`Started dragging model ${model.getId()}`)
   }
@@ -300,9 +307,14 @@ export class InteractionManager {
     const modelPosition = model.getPosition()
     this.dragState.dragOffset.set(
       modelPosition.x - intersectionPoint.x,
-      0, // Y축은 고정
+      modelPosition.y - intersectionPoint.y, // Y축 오프셋도 계산
       modelPosition.z - intersectionPoint.z
     )
+
+    // 드래그 평면을 카메라 방향에 수직으로 설정 (모델 위치를 지나는 평면)
+    const cameraDirection = new THREE.Vector3()
+    this.camera.getWorldDirection(cameraDirection)
+    this.dragState.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, new THREE.Vector3(modelPosition.x, modelPosition.y, modelPosition.z))
 
     console.log(`Prepared for dragging model ${model.getId()}`)
   }
@@ -310,15 +322,48 @@ export class InteractionManager {
   private updateDrag(): void {
     if (!this.dragState.selectedModel) return
 
-    const floorIntersection = this.getFloorIntersection()
-    if (!floorIntersection) return
+    // 카메라 방향에 수직인 평면과의 교차점 계산
+    const dragIntersection = this.getDragPlaneIntersection()
+    if (!dragIntersection) return
 
     // 드래그 오프셋을 적용한 새로운 위치 계산
-    const newX = floorIntersection.x + this.dragState.dragOffset.x
-    const newZ = floorIntersection.z + this.dragState.dragOffset.z
+    const newX = dragIntersection.x + this.dragState.dragOffset.x
+    const newY = dragIntersection.y + this.dragState.dragOffset.y
+    const newZ = dragIntersection.z + this.dragState.dragOffset.z
 
-    // ModelManager를 통해 모델 이동 (경계 체크 포함)
-    this.modelManager.moveModel(this.dragState.selectedModel.getId(), newX, newZ)
+    // 충돌 감지 throttling - 성능 최적화
+    const currentTime = Date.now()
+    const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
+
+    let adjustedPosition = { x: newX, y: newY, z: newZ }
+
+    if (shouldCheckCollision) {
+      // 충돌 감지 및 자동 올라가기 적용
+      adjustedPosition = this.modelManager.checkCollisionAndAdjust(
+        this.dragState.selectedModel, 
+        newX, 
+        newY, 
+        newZ
+      )
+      this.lastCollisionCheckTime = currentTime
+    }
+
+    // 조정된 위치로 모델 이동
+    this.dragState.selectedModel.setPosition({
+      x: adjustedPosition.x,
+      y: adjustedPosition.y,
+      z: adjustedPosition.z
+    })
+  }
+
+  // 드래그 평면과의 교차점을 계산하는 새로운 메서드
+  private getDragPlaneIntersection(): THREE.Vector3 | null {
+    this.raycaster.setFromCamera(this.mouse, this.camera)
+    
+    const intersectionPoint = new THREE.Vector3()
+    const intersected = this.raycaster.ray.intersectPlane(this.dragState.dragPlane, intersectionPoint)
+    
+    return intersected ? intersectionPoint : null
   }
 
   private endDrag(): void {
@@ -328,6 +373,30 @@ export class InteractionManager {
 
     if (wasDragging && selectedModel) {
       console.log(`Ended dragging model ${selectedModel.getId()}`)
+      
+      // 드래그가 끝날 때 위치 조정
+      if (wasActuallyDragged) {
+        const currentPosition = selectedModel.getPosition()
+        
+        // 모델의 바운딩 박스를 고려한 경계 체크
+        const clampedPosition = this.modelManager.clampToFloorWithBounds(selectedModel, currentPosition.x, currentPosition.z)
+        
+        // 항상 표면 감지를 통해 Y 위치 계산
+        const surfaceY = this.modelManager.calculateSurfaceY(selectedModel, clampedPosition.x, clampedPosition.z)
+        
+        // 항상 표면에 붙도록 설정
+        selectedModel.setPosition({
+          x: clampedPosition.x,
+          y: surfaceY,
+          z: clampedPosition.z
+        })
+        
+        console.log(`Model positioned at (${clampedPosition.x}, ${surfaceY}, ${clampedPosition.z})`)
+        
+        // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
+        console.log('Recalculating positions for other models after drag...')
+        this.modelManager.recalculateOtherModelPositions(selectedModel.getId())
+      }
       
       // 실제로 드래그가 발생했을 때만 기즈모를 다시 표시
       if (wasActuallyDragged) {

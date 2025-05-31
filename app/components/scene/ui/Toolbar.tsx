@@ -9,7 +9,7 @@ interface ToolbarProps {
   onWallColorChange: (color: string) => void
   onFloorColorChange: (color: string) => void
   onModelAdd: (modelType: string) => void
-  onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number) => void
+  onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
   initialWallColor?: string
   initialFloorColor?: string
 }
@@ -28,9 +28,9 @@ export default function Toolbar({
     setShowBookCreator(true)
   }
 
-  const handleBookCreate = (imageUrl: string, thickness: number, aspectRatio: number) => {
+  const handleBookCreate = (imageUrl: string, thickness: number, aspectRatio: number, title: string) => {
     if (onBookCreate) {
-      onBookCreate(imageUrl, thickness, aspectRatio)
+      onBookCreate(imageUrl, thickness, aspectRatio, title)
     }
     setShowBookCreator(false)
   }

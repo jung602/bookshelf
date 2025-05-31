@@ -13,7 +13,7 @@ export interface ModelType {
 
 interface ModelToolsProps {
   onModelAdd: (modelType: string) => void
-  onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number) => void
+  onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
   onShowBookCreator?: () => void
 }
 

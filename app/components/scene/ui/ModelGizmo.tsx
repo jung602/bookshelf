@@ -31,6 +31,43 @@ export default function ModelGizmo({
     }
   }, [modelId, position])
 
+  // OrbitControls나 드래그 시 기즈모 닫기
+  useEffect(() => {
+    if (!isVisible) return
+
+    const handleMouseDown = (e: MouseEvent) => {
+      // 기즈모 영역 클릭이 아닌 경우에만 닫기
+      const target = e.target as HTMLElement
+      const gizmoElement = document.querySelector('[data-gizmo="true"]')
+      
+      if (gizmoElement && !gizmoElement.contains(target)) {
+        onClose()
+      }
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // 마우스 버튼이 눌린 상태에서 움직이면 (드래그나 OrbitControls) 기즈모 닫기
+      if (e.buttons > 0) {
+        onClose()
+      }
+    }
+
+    const handleWheel = (e: WheelEvent) => {
+      // 휠 이벤트 발생 시 (줌인/줌아웃) 기즈모 닫기
+      onClose()
+    }
+
+    document.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('wheel', handleWheel)
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('wheel', handleWheel)
+    }
+  }, [isVisible, onClose])
+
   console.log('ModelGizmo render:', { isVisible, modelId, position })
 
   if (!isVisible || !modelId || !position) {
@@ -73,6 +110,7 @@ export default function ModelGizmo({
           zIndex: 50,
           pointerEvents: 'none' // 기본적으로 이벤트 통과
         }}
+        data-gizmo="true"
       >
         <div style={{
           backgroundColor: 'rgba(255, 255, 255, 0.95)',

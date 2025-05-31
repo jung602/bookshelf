@@ -5,6 +5,7 @@ export interface BookConfig {
   imageUrl: string
   thickness: number // 1-5
   aspectRatio: number // width/height
+  title: string
 }
 
 export class Book extends BaseModel {
@@ -94,6 +95,64 @@ export class Book extends BaseModel {
     }
   }
 
+  private createTextTexture(text: string, backgroundColor: THREE.Color): THREE.Texture {
+    // 캔버스 생성
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    
+    if (!ctx) {
+      throw new Error('Canvas context not available')
+    }
+
+    // 캔버스 크기 설정
+    canvas.width = 256
+    canvas.height = 50
+    
+    // 배경색 설정
+    ctx.fillStyle = `rgb(${Math.floor(backgroundColor.r * 255)}, ${Math.floor(backgroundColor.g * 255)}, ${Math.floor(backgroundColor.b * 255)})`
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // 텍스트 스타일 설정
+    ctx.fillStyle = 'white'
+    ctx.font = 'bold 24px Arial, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    
+    // 긴 제목의 경우 줄바꿈 처리
+    const words = text.split(' ')
+    const lines: string[] = []
+    let currentLine = ''
+    
+    for (const word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word
+      const metrics = ctx.measureText(testLine)
+      
+      if (metrics.width > canvas.width - 40 && currentLine) {
+        lines.push(currentLine)
+        currentLine = word
+      } else {
+        currentLine = testLine
+      }
+    }
+    if (currentLine) {
+      lines.push(currentLine)
+    }
+    
+    // 텍스트 그리기
+    const lineHeight = 30
+    const startY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2
+    
+    lines.forEach((line, index) => {
+      ctx.fillText(line, canvas.width / 2, startY + index * lineHeight)
+    })
+    
+    // 텍스처 생성
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.needsUpdate = true
+    
+    return texture
+  }
+
   private async createBookModel(): Promise<void> {
     // 이미지 텍스처 로드
     const textureLoader = new THREE.TextureLoader()
@@ -116,6 +175,9 @@ export class Book extends BaseModel {
     // 이미지에서 주요 색상 추출
     const dominantColor = this.extractDominantColor(texture)
     
+    // 제목 텍스처 생성
+    const titleTexture = this.createTextTexture(this.config.title, dominantColor)
+    
     // 책 크기 계산 (기존 크기의 절반으로 변경)
     const width = 0.5 // 기준 크기를 1에서 0.5로 변경
     const height = width / this.config.aspectRatio
@@ -126,7 +188,7 @@ export class Book extends BaseModel {
 
     // 재질 배열 생성 (각 면마다 다른 재질)
     const materials = [
-      new THREE.MeshLambertMaterial({ color: dominantColor }), // 오른쪽 면 (이미지에서 추출한 색상)
+      new THREE.MeshLambertMaterial({ map: titleTexture }), // 오른쪽 면 (제목 텍스처)
       new THREE.MeshLambertMaterial({ color: 0xffffff }), // 왼쪽 면 (흰색)
       new THREE.MeshLambertMaterial({ map: texture }), // 윗면 (이미지 텍스처)
       new THREE.MeshLambertMaterial({ color: 0xffffff }), // 아래면 (흰색)
@@ -141,8 +203,8 @@ export class Book extends BaseModel {
     this.model = new THREE.Group()
     this.model.add(this.bookMesh)
 
-    // 책이 바닥에 놓이도록 Y 위치 조정
-    this.bookMesh.position.y = depth / 2
+    // 책의 Y 위치를 0으로 설정 (ModelManager에서 적절한 표면 위치로 조정됨)
+    this.bookMesh.position.y = 0
   }
 
   private createBookCollider(): void {

@@ -1,5 +1,5 @@
 // 모든 모델들을 자동으로 import하고 메타데이터를 수집
-import { modelMetadata as audioMetadata } from './audio'
+import { modelMetadata as stoolMetadata } from './stool'
 import { modelMetadata as chairMetadata } from './chair'
 import { modelMetadata as bookMetadata } from './book'
 
@@ -14,7 +14,7 @@ export interface ModelMetadata {
 
 // 모든 모델 메타데이터를 배열로 수집
 export const allModels: ModelMetadata[] = [
-  audioMetadata,
+  stoolMetadata,
   chairMetadata,
   bookMetadata
 ]

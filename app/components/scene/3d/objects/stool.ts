@@ -1,15 +1,15 @@
 import * as THREE from 'three'
 import { BaseModel, ModelPosition, ModelScale, ModelRotation } from './BaseModel'
 
-export class AudioModel extends BaseModel {
+export class StoolModel extends BaseModel {
   private rotationTime: number = 0
 
   constructor(
     position: ModelPosition = { x: 0, y: 0, z: 0 },
-    scale: ModelScale = { x: 2, y: 2, z: 2 },
+    scale: ModelScale = { x: 1.6, y: 1.6, z: 1.6 },
     rotation: ModelRotation = { x: 0, y: 0, z: 0 }
   ) {
-    super('/3d/main/models/audio.glb', position, scale, rotation)
+    super('/3d/main/models/stool.glb', position, scale, rotation)
   }
 
   protected setupModel(): void {
@@ -33,9 +33,9 @@ export class AudioModel extends BaseModel {
 
 // 모델 메타데이터 export
 export const modelMetadata = {
-  id: 'audio',
-  name: '오디오 시스템',
-  description: '회전하는 오디오 스피커 모델',
-  icon: '🔊',
-  modelClass: AudioModel
+  id: 'stool',
+  name: '스툴',
+  description: '스툴 모델',
+  icon: '🪑',
+  modelClass: StoolModel
 } 

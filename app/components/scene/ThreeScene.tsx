@@ -71,14 +71,15 @@ export default function ThreeScene() {
     }
   }
 
-  const handleBookCreate = async (imageUrl: string, thickness: number, aspectRatio: number) => {
+  const handleBookCreate = async (imageUrl: string, thickness: number, aspectRatio: number, title: string) => {
     if (!sceneManagerRef.current) return
 
     try {
       const bookConfig = {
         imageUrl,
         thickness,
-        aspectRatio
+        aspectRatio,
+        title
       }
       
       const book = new Book(bookConfig)

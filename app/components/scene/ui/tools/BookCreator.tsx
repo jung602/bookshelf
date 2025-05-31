@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 
 interface BookCreatorProps {
-  onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number) => void
+  onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
   onClose: () => void
 }
 
@@ -12,6 +12,7 @@ export default function BookCreator({ onBookCreate, onClose }: BookCreatorProps)
   const [imageUrl, setImageUrl] = useState<string>('')
   const [thickness, setThickness] = useState<number>(2)
   const [aspectRatio, setAspectRatio] = useState<number>(1)
+  const [title, setTitle] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,9 +36,9 @@ export default function BookCreator({ onBookCreate, onClose }: BookCreatorProps)
   }
 
   const handleCreate = () => {
-    if (imageUrl && aspectRatio > 0) {
-      // 책 생성 시 URL 전달 (Three.js에서 사용할 수 있도록)
-      onBookCreate(imageUrl, thickness, aspectRatio)
+    if (imageUrl && aspectRatio > 0 && title.trim()) {
+      // 책 생성 시 제목도 함께 전달
+      onBookCreate(imageUrl, thickness, aspectRatio, title.trim())
       onClose()
     }
   }
@@ -83,6 +84,41 @@ export default function BookCreator({ onBookCreate, onClose }: BookCreatorProps)
         }}>
           📚 책 만들기
         </h2>
+
+        {/* 책 제목 입력 */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#374151',
+            marginBottom: '8px'
+          }}>
+            책 제목
+          </label>
+          
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="책 제목을 입력하세요"
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '14px',
+              outline: 'none',
+              transition: 'border-color 0.2s'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#3b82f6'
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#d1d5db'
+            }}
+          />
+        </div>
 
         {/* 이미지 업로드 */}
         <div style={{ marginBottom: '20px' }}>
@@ -226,26 +262,26 @@ export default function BookCreator({ onBookCreate, onClose }: BookCreatorProps)
           
           <button
             onClick={handleCreate}
-            disabled={!imageUrl}
+            disabled={!imageUrl || !title.trim()}
             style={{
               flex: 1,
               padding: '10px 16px',
               border: 'none',
               borderRadius: '8px',
-              backgroundColor: imageUrl ? '#3b82f6' : '#d1d5db',
+              backgroundColor: (imageUrl && title.trim()) ? '#3b82f6' : '#d1d5db',
               color: 'white',
               fontSize: '14px',
               fontWeight: '500',
-              cursor: imageUrl ? 'pointer' : 'not-allowed',
+              cursor: (imageUrl && title.trim()) ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-              if (imageUrl) {
+              if (imageUrl && title.trim()) {
                 e.currentTarget.style.backgroundColor = '#2563eb'
               }
             }}
             onMouseLeave={(e) => {
-              if (imageUrl) {
+              if (imageUrl && title.trim()) {
                 e.currentTarget.style.backgroundColor = '#3b82f6'
               }
             }}

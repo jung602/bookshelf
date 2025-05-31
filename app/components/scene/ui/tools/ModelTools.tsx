@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { availableModels } from '../../3d/objects'
 
 // 사용 가능한 모델 타입 정의
 export interface ModelType {
@@ -9,17 +10,6 @@ export interface ModelType {
   description: string
   icon: string
 }
-
-// 사용 가능한 모델들
-const AVAILABLE_MODELS: ModelType[] = [
-  {
-    id: 'audio',
-    name: '오디오 시스템',
-    description: '회전하는 오디오 스피커 모델',
-    icon: '🔊'
-  }
-  // 추후 다른 모델들을 여기에 추가할 수 있습니다
-]
 
 interface ModelToolsProps {
   onModelAdd: (modelType: string) => void
@@ -93,9 +83,9 @@ export default function ModelTools({ onModelAdd }: ModelToolsProps) {
       {isDropdownOpen && (
         <div style={{
           position: 'absolute',
-          top: '100%',
+          bottom: '100%',
           left: '0',
-          marginTop: '8px',
+          marginBottom: '8px',
           backgroundColor: 'white',
           borderRadius: '8px',
           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
@@ -104,7 +94,7 @@ export default function ModelTools({ onModelAdd }: ModelToolsProps) {
           zIndex: 100,
           overflow: 'hidden'
         }}>
-          {AVAILABLE_MODELS.map((model) => (
+          {availableModels.map((model) => (
             <button
               key={model.id}
               onClick={() => handleModelSelect(model.id)}

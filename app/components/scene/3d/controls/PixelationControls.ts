@@ -9,10 +9,12 @@ export class PixelationControls {
   // 기본값을 중앙에서 관리
   public static getDefaultParams(): PixelationParams {
     return {
-      pixelSize: 3,
+      pixelSize: 2,
       normalEdgeStrength: 0.20,
       innerEdgeSensitivity: 0.02,
-      edgeThreshold: 0.01
+      edgeThreshold: 0.01,
+      ditherStrength: 0.02,
+      ditherScale: 1.0
     }
   }
 
@@ -74,6 +76,26 @@ export class PixelationControls {
       step: 0.001
     }).on('change', (ev) => {
       this.onParamsChange({ edgeThreshold: ev.value })
+    })
+
+    // 디더링 강도
+    this.pane.addBinding(this.params, 'ditherStrength', {
+      label: 'Dither Strength',
+      min: 0,
+      max: 0.1,
+      step: 0.001
+    }).on('change', (ev) => {
+      this.onParamsChange({ ditherStrength: ev.value })
+    })
+
+    // 디더링 스케일 (패턴 크기)
+    this.pane.addBinding(this.params, 'ditherScale', {
+      label: 'Dither Scale',
+      min: 0.5,
+      max: 4.0,
+      step: 0.1
+    }).on('change', (ev) => {
+      this.onParamsChange({ ditherScale: ev.value })
     })
 
     // 구분선 추가 (폴더로 대체)

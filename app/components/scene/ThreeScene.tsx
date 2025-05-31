@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { SceneManager } from './3d/SceneManager'
-import { AudioModel } from './3d/objects/audio'
+import { getModelClass } from './3d/objects'
 import Toolbar from './ui/Toolbar'
 
 export default function ThreeScene() {
@@ -38,17 +38,15 @@ export default function ThreeScene() {
     if (!sceneManagerRef.current) return
 
     try {
-      let model
+      // 동적으로 모델 클래스 가져오기
+      const ModelClass = getModelClass(modelType)
       
-      switch (modelType) {
-        case 'audio':
-          model = new AudioModel()
-          break
-        default:
-          console.warn(`Unknown model type: ${modelType}`)
-          return
+      if (!ModelClass) {
+        console.warn(`Unknown model type: ${modelType}`)
+        return
       }
 
+      const model = new ModelClass()
       await sceneManagerRef.current.getModelManager().addModel(model)
       console.log(`${modelType} model added successfully`)
     } catch (error) {

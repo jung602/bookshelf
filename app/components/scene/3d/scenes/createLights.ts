@@ -5,13 +5,13 @@ export function createLights(scene: THREE.Scene) {
   const hemisphereLight = new THREE.HemisphereLight(
     0xffffff, // sky color
     0x444444, // ground color
-    1 // intensity
+    3 // intensity
   )
   hemisphereLight.position.set(10, 10, 10)
   scene.add(hemisphereLight)
 
   // 방향광 (기존 directionalLight와 동일)
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 2)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
   directionalLight.position.set(0, 10, 10)
   directionalLight.castShadow = true
   

@@ -6,6 +6,8 @@ export interface PixelationParams {
   normalEdgeStrength: number
   innerEdgeSensitivity: number
   edgeThreshold: number
+  ditherStrength: number
+  ditherScale: number
 }
 
 export class RenderPixelatedPass extends Pass {
@@ -62,6 +64,8 @@ export class RenderPixelatedPass extends Pass {
     uniforms.normalEdgeStrength.value = this.params.normalEdgeStrength
     uniforms.innerEdgeSensitivity.value = this.params.innerEdgeSensitivity
     uniforms.edgeThreshold.value = this.params.edgeThreshold
+    uniforms.ditherStrength.value = this.params.ditherStrength
+    uniforms.ditherScale.value = this.params.ditherScale
 
     // 최종 렌더링
     if (this.renderToScreen) {
@@ -116,7 +120,9 @@ export class RenderPixelatedPass extends Pass {
         },
         normalEdgeStrength: { value: this.params.normalEdgeStrength },
         innerEdgeSensitivity: { value: this.params.innerEdgeSensitivity },
-        edgeThreshold: { value: this.params.edgeThreshold }
+        edgeThreshold: { value: this.params.edgeThreshold },
+        ditherStrength: { value: this.params.ditherStrength },
+        ditherScale: { value: this.params.ditherScale }
       },
       vertexShader: `
         varying vec2 vUv;
@@ -132,7 +138,31 @@ export class RenderPixelatedPass extends Pass {
         uniform float normalEdgeStrength;
         uniform float innerEdgeSensitivity;
         uniform float edgeThreshold;
+        uniform float ditherStrength;
+        uniform float ditherScale;
         varying vec2 vUv;
+
+        // Bayer matrix for ordered dithering (4x4)
+        float bayerMatrix4x4[16] = float[](
+          0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
+         12.0/16.0,  4.0/16.0, 14.0/16.0,  6.0/16.0,
+          3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
+         15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
+        );
+
+        float getBayerValue(vec2 coord) {
+          int x = int(mod(coord.x / ditherScale, 4.0));
+          int y = int(mod(coord.y / ditherScale, 4.0));
+          return bayerMatrix4x4[y * 4 + x];
+        }
+
+        vec3 dither(vec3 color, vec2 coord) {
+          float bayerValue = getBayerValue(coord);
+          
+          // 각 색상 채널에 디더링 적용
+          vec3 dithered = color + (bayerValue - 0.5) * ditherStrength;
+          return clamp(dithered, 0.0, 1.0);
+        }
 
         vec3 getNormal(int x, int y) {
           return texture2D(tNormal, vUv + vec2(x, y) * resolution.zw).rgb * 2.0 - 1.0;
@@ -193,11 +223,17 @@ export class RenderPixelatedPass extends Pass {
           
           float edgeStrength = enhancedEdgeDetection();
           
-          // Apply edge effect (normal edge only)
-          float coefficient = 1.0 - (edgeStrength * normalEdgeStrength);
-          coefficient = clamp(coefficient, 0.2, 1.0); // Prevent completely black edges
+          // 픽셀 게임 스타일 아웃라인: 원본 색상에서 조금 어둡게
+          vec3 darkenedColor = texel.rgb * 0.5; // 원본 색상의 50%로 어둡게
           
-          gl_FragColor = texel * coefficient;
+          // 엣지 강도에 따라 원본 색상과 어두운 색상을 믹스
+          vec3 finalColor = mix(texel.rgb, darkenedColor, edgeStrength * normalEdgeStrength);
+          
+          // 디더링 적용 (픽셀 좌표 사용)
+          vec2 pixelCoord = vUv * resolution.xy;
+          finalColor = dither(finalColor, pixelCoord);
+          
+          gl_FragColor = vec4(finalColor, texel.a);
         }
       `
     })

@@ -442,7 +442,7 @@ export class ModelManager {
   }
 
   // 올라갈 수 있는 표면인지 확인하는 헬퍼 메서드
-  private isClimbableSurface(targetModel: BaseModel, surfaceModel: BaseModel, targetX: number, targetZ: number): boolean {
+  private isClimbableSurface(targetModel: BaseModel, surfaceModel: BaseModel): boolean {
     const targetModelGroup = targetModel.getModel()
     const surfaceModelGroup = surfaceModel.getModel()
     

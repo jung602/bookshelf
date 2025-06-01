@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
-import { ColorPalettes, type PaletteMetadata } from './ColorPalettes'
+import { ColorPalettes } from './ColorPalettes'
 
 // 기본 파라미터 타입
 interface BasePixelationParams {

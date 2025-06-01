@@ -9,6 +9,7 @@ export interface ModelMetadata {
   name: string
   description: string
   icon: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   modelClass: any
 }
 
@@ -26,4 +27,5 @@ export function getModelClass(modelId: string) {
 }
 
 // UI에서 사용할 모델 리스트 (ModelClass 제외)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const availableModels = allModels.map(({ modelClass, ...rest }) => rest) 

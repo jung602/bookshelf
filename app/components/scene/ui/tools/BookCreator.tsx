@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 
 interface BookCreatorProps {
   onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
@@ -10,7 +11,7 @@ interface BookCreatorProps {
 export default function BookCreator({ onBookCreate, onClose }: BookCreatorProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imageUrl, setImageUrl] = useState<string>('')
-  const [thickness, setThickness] = useState<number>(2)
+  const [thickness, setThickness] = useState<number>(3)
   const [aspectRatio, setAspectRatio] = useState<number>(1)
   const [title, setTitle] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -19,25 +20,21 @@ export default function BookCreator({ onBookCreate, onClose }: BookCreatorProps)
     const file = event.target.files?.[0]
     if (file) {
       setSelectedImage(file)
-      
-      // 이미지 URL 생성 (영구적으로 사용할 수 있도록)
       const url = URL.createObjectURL(file)
       setImageUrl(url)
       
-      // 이미지 로드하여 비율 계산
-      const img = new Image()
+      // 이미지 로드해서 비율 계산
+      const img = new window.Image()
       img.onload = () => {
         const ratio = img.width / img.height
         setAspectRatio(ratio)
-        // URL은 책 생성 시까지 유지
       }
       img.src = url
     }
   }
 
   const handleCreate = () => {
-    if (imageUrl && aspectRatio > 0 && title.trim()) {
-      // 책 생성 시 제목도 함께 전달
+    if (imageUrl && title.trim()) {
       onBookCreate(imageUrl, thickness, aspectRatio, title.trim())
       onClose()
     }
@@ -55,35 +52,59 @@ export default function BookCreator({ onBookCreate, onClose }: BookCreatorProps)
       position: 'fixed',
       top: 0,
       left: 0,
-      right: 0,
-      bottom: 0,
+      width: '100%',
+      height: '100%',
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px',
-      overflowY: 'auto'
+      zIndex: 1000
     }}>
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
         padding: '24px',
-        maxWidth: '400px',
-        width: '100%',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        margin: 'auto'
+        width: '400px',
+        maxWidth: '90vw',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
       }}>
-        <h2 style={{
-          fontSize: '20px',
-          fontWeight: '600',
-          marginBottom: '20px',
-          color: '#374151'
+        {/* 헤더 */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px'
         }}>
-          📚 책 만들기
-        </h2>
+          <h2 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#111827',
+            margin: 0
+          }}>
+            새 책 만들기
+          </h2>
+          
+          <button
+            onClick={handleCancel}
+            style={{
+              padding: '8px',
+              border: 'none',
+              background: 'none',
+              fontSize: '20px',
+              cursor: 'pointer',
+              color: '#6b7280',
+              borderRadius: '4px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f3f4f6'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            ✕
+          </button>
+        </div>
 
         {/* 책 제목 입력 */}
         <div style={{ marginBottom: '20px' }}>
@@ -170,14 +191,17 @@ export default function BookCreator({ onBookCreate, onClose }: BookCreatorProps)
               marginTop: '12px',
               textAlign: 'center'
             }}>
-              <img
+              <Image
                 src={imageUrl}
                 alt="미리보기"
+                width={120}
+                height={120}
                 style={{
                   maxWidth: '100%',
                   maxHeight: '120px',
                   borderRadius: '4px',
-                  border: '1px solid #e5e7eb'
+                  border: '1px solid #e5e7eb',
+                  objectFit: 'contain'
                 }}
               />
               <p style={{

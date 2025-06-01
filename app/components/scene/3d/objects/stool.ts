@@ -1,4 +1,3 @@
-import * as THREE from 'three'
 import { BaseModel, ModelPosition, ModelScale, ModelRotation } from './BaseModel'
 
 export class StoolModel extends BaseModel {

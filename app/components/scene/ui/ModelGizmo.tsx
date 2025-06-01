@@ -52,7 +52,7 @@ export default function ModelGizmo({
       }
     }
 
-    const handleWheel = (e: WheelEvent) => {
+    const handleWheel = () => {
       // 휠 이벤트 발생 시 (줌인/줌아웃) 기즈모 닫기
       onClose()
     }

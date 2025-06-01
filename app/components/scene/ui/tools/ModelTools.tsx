@@ -13,11 +13,10 @@ export interface ModelType {
 
 interface ModelToolsProps {
   onModelAdd: (modelType: string) => void
-  onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
   onShowBookCreator?: () => void
 }
 
-export default function ModelTools({ onModelAdd, onBookCreate, onShowBookCreator }: ModelToolsProps) {
+export default function ModelTools({ onModelAdd, onShowBookCreator }: ModelToolsProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 

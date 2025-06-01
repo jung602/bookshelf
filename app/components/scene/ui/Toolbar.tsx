@@ -79,7 +79,6 @@ export default function Toolbar({
             {/* 모델 도구 */}
             <ModelTools 
               onModelAdd={onModelAdd} 
-              onBookCreate={onBookCreate}
               onShowBookCreator={handleShowBookCreator}
             />
           </div>

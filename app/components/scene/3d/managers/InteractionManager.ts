@@ -236,7 +236,7 @@ export class InteractionManager {
 
     // 짧은 시간 내에 적은 거리만 움직였다면 클릭으로 간주
     if (clickDuration < 300 && moveDistance < 5 && this.dragState.selectedModel && !this.isDragStarted) {
-      this.handleModelClick(this.dragState.selectedModel, event.clientX, event.clientY)
+      this.handleModelClick(this.dragState.selectedModel)
     }
 
     this.endDrag()
@@ -419,13 +419,13 @@ export class InteractionManager {
           topPosition.project(this.camera)
           
           const rect = this.renderer.domElement.getBoundingClientRect()
-          const screenX = (topPosition.x + 1) * rect.width / 2 + rect.left
-          const screenY = (-topPosition.y + 1) * rect.height / 2 + rect.top
+          const gizmoScreenX = (topPosition.x + 1) * rect.width / 2 + rect.left
+          const gizmoScreenY = (-topPosition.y + 1) * rect.height / 2 + rect.top
           
-          console.log(`Showing gizmo at screen position: (${screenX}, ${screenY})`)
+          console.log(`Showing gizmo at screen position: (${gizmoScreenX}, ${gizmoScreenY})`)
           
           this.gizmoState.selectedModelId = selectedModel.getId()
-          this.gizmoState.screenPosition = { x: screenX, y: screenY }
+          this.gizmoState.screenPosition = { x: gizmoScreenX, y: gizmoScreenY }
           
           // 기즈모 상태 변경 콜백 호출
           if (this.onGizmoStateChange) {
@@ -453,7 +453,7 @@ export class InteractionManager {
     }
   }
 
-  private handleModelClick(model: BaseModel, screenX: number, screenY: number): void {
+  private handleModelClick(model: BaseModel): void {
     console.log(`Model clicked: ${model.getId()}`)
     
     // 모델의 바운딩 박스를 구해서 상단 위치 계산

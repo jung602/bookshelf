@@ -7,10 +7,16 @@ export class PixelationControls {
   private params: PixelationParams
   private onParamsChange: (params: Partial<PixelationParams>) => void
 
+  // 화면 크기에 따른 픽셀 크기 계산
+  private static calculatePixelSize(): number {
+    const screenWidth = window.innerWidth
+    return screenWidth <= 1440 ? 2.5 : 3.5
+  }
+
   // 기본값을 중앙에서 관리 (자동 생성)
   public static getDefaultParams(): PixelationParams {
     const baseParams = {
-      pixelSize: 2,
+      pixelSize: PixelationControls.calculatePixelSize(),
       normalEdgeStrength: 0.20,
       ditherStrength: 0.02,
       ditherScale: 1.0
@@ -39,22 +45,31 @@ export class PixelationControls {
 
     this.setupControls()
     this.setupStyles()
+    this.setupResizeListener()
     
     // 초기값 즉시 적용
     this.onParamsChange(defaultParams)
   }
 
-  private setupControls() {
-    // 픽셀 크기 조절
-    this.pane.addBinding(this.params, 'pixelSize', {
-      label: 'Pixel Size',
-      min: 1,
-      max: 20,
-      step: 1
-    }).on('change', (ev) => {
-      this.onParamsChange({ pixelSize: ev.value })
-    })
+  private setupResizeListener() {
+    const handleResize = () => {
+      const newPixelSize = PixelationControls.calculatePixelSize()
+      if (this.params.pixelSize !== newPixelSize) {
+        this.params.pixelSize = newPixelSize
+        this.onParamsChange({ pixelSize: newPixelSize })
+        console.log(`Screen width: ${window.innerWidth}px, Pixel size updated to: ${newPixelSize}`)
+      }
+    }
 
+    window.addEventListener('resize', handleResize)
+    
+    // 컴포넌트 정리를 위해 참조 저장
+    this.resizeHandler = handleResize
+  }
+
+  private resizeHandler?: () => void
+
+  private setupControls() {
     // 노멀 엣지 강도
     this.pane.addBinding(this.params, 'normalEdgeStrength', {
       label: 'Normal Edge Strength',
@@ -145,6 +160,10 @@ export class PixelationControls {
   }
 
   public dispose() {
+    // 리사이즈 이벤트 리스너 제거
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler)
+    }
     this.pane.dispose()
   }
 } 

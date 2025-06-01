@@ -254,29 +254,76 @@ export class InteractionManager {
     if (event.touches.length === 1) {
       const touch = event.touches[0]
       this.updateMousePosition(touch.clientX, touch.clientY)
-      
+
+      // 클릭 시작 시간과 위치 기록 (마우스와 동일)
+      this.clickStartTime = Date.now()
+      this.clickStartPosition = { x: touch.clientX, y: touch.clientY }
+      this.isDragStarted = false
+
       const intersections = this.getIntersectedModels()
+      
       if (intersections.length > 0) {
         const selectedModel = this.getModelFromIntersection(intersections[0])
+        
         if (selectedModel) {
-          this.startDrag(selectedModel, intersections[0].point)
+          console.log(`Model selected via touch: ${selectedModel.getId()}`)
+          // 드래그 준비만 하고 실제 드래그는 터치 이동 시 시작 (마우스와 동일)
+          this.prepareForDrag(selectedModel, intersections[0].point)
         }
+      } else {
+        console.log('No model intersections found via touch')
+        // 빈 공간 터치 시 기즈모 숨기기
+        this.hideGizmo()
       }
     }
   }
 
   private onTouchMove(event: TouchEvent): void {
     event.preventDefault()
-    if (event.touches.length === 1 && this.dragState.isDragging) {
+    if (event.touches.length === 1) {
       const touch = event.touches[0]
       this.updateMousePosition(touch.clientX, touch.clientY)
-      this.updateDrag()
+
+      // 드래그 시작 조건 확인 (마우스와 동일한 로직)
+      if (!this.isDragStarted && this.dragState.selectedModel) {
+        const moveDistance = Math.sqrt(
+          Math.pow(touch.clientX - this.clickStartPosition.x, 2) +
+          Math.pow(touch.clientY - this.clickStartPosition.y, 2)
+        )
+        
+        if (moveDistance > 5) { // 5픽셀 이상 움직이면 드래그 시작
+          this.isDragStarted = true
+          this.dragState.isDragging = true
+          this.hideGizmo() // 드래그 시작 시 기즈모 숨기기
+        }
+      }
+
+      if (this.dragState.isDragging && this.dragState.selectedModel) {
+        this.updateDrag()
+      } else {
+        // 호버 효과 (선택사항)
+        this.updateHover()
+      }
     }
   }
 
   private onTouchEnd(event: TouchEvent): void {
     event.preventDefault()
     console.log('Touch end event triggered')
+    
+    // 클릭인지 드래그인지 판단 (마우스와 동일한 로직)
+    const clickDuration = Date.now() - this.clickStartTime
+    const touch = event.changedTouches[0]
+    const moveDistance = Math.sqrt(
+      Math.pow(touch.clientX - this.clickStartPosition.x, 2) +
+      Math.pow(touch.clientY - this.clickStartPosition.y, 2)
+    )
+
+    // 짧은 시간 내에 적은 거리만 움직였다면 클릭으로 간주
+    if (clickDuration < 300 && moveDistance < 5 && this.dragState.selectedModel && !this.isDragStarted) {
+      this.handleModelClick(this.dragState.selectedModel)
+    }
+
     this.endDrag()
   }
 

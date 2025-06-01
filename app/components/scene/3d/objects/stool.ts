@@ -17,10 +17,11 @@ export class StoolModel extends BaseModel {
   }
 
   public update(): void {
-    // 회전 애니메이션
+    // 좌우 왕복 회전 애니메이션 (180도씩)
     this.rotationTime += 0.01
     if (this.model) {
-      this.model.rotation.y = this.rotationTime
+      // Math.sin을 사용해서 -1에서 1 사이 값을 얻고, Math.PI를 곱해서 -180도에서 180도 사이로 변환
+      this.model.rotation.y = Math.sin(this.rotationTime) * Math.PI/2
     }
   }
 

@@ -84,7 +84,7 @@ export class SceneManager {
 
     // 씬 설정
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x121212)
+    this.scene.background = new THREE.Color(0xffffff)
 
     // 카메라 초기 설정
     this.updateCamera(width, height, 10)

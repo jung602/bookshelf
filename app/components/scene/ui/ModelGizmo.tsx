@@ -57,14 +57,34 @@ export default function ModelGizmo({
       onClose()
     }
 
+    // 터치 이벤트 처리 추가
+    const handleTouchStart = (e: TouchEvent) => {
+      // 기즈모 영역 터치가 아닌 경우에만 닫기
+      const target = e.target as HTMLElement
+      const gizmoElement = document.querySelector('[data-gizmo="true"]')
+      
+      if (gizmoElement && !gizmoElement.contains(target)) {
+        onClose()
+      }
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      // 터치 이동 시 기즈모 닫기
+      onClose()
+    }
+
     document.addEventListener('mousedown', handleMouseDown)
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('wheel', handleWheel)
+    document.addEventListener('touchstart', handleTouchStart)
+    document.addEventListener('touchmove', handleTouchMove)
 
     return () => {
       document.removeEventListener('mousedown', handleMouseDown)
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('wheel', handleWheel)
+      document.removeEventListener('touchstart', handleTouchStart)
+      document.removeEventListener('touchmove', handleTouchMove)
     }
   }, [isVisible, onClose])
 

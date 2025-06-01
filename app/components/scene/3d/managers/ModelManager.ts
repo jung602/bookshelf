@@ -386,9 +386,10 @@ export class ModelManager {
     // 원래 위치로 복원
     targetModelGroup.position.copy(originalPosition)
 
-    // 다른 모든 모든 모델과 충돌 검사
+    // 다른 모든 모델과 충돌 검사
     let highestSurfaceY = newY
     let foundCollision = false
+    let climbableSurfaces: { model: BaseModel, surfaceY: number }[] = []
 
     this.models.forEach((otherModel) => {
       if (otherModel.getId() !== targetModel.getId() && otherModel.isModelLoaded()) {
@@ -410,23 +411,38 @@ export class ModelManager {
 
           // 타겟 모델이 다른 모델과 Y축에서도 겹치는지 확인
           if (targetBottomY < otherTopY && targetBoundingBox.max.y > otherBoundingBox.min.y) {
-            // 충돌 발생! 다른 모델 위로 올라가야 함
+            // 충돌 발생! 
             foundCollision = true
             const modelBottomOffset = this.getModelBottomOffset(targetModel)
-            const adjustedY = otherTopY - modelBottomOffset
+            const surfaceY = otherTopY - modelBottomOffset
             
-            if (adjustedY > highestSurfaceY) {
-              highestSurfaceY = adjustedY
+            // 올라갈 수 있는 표면인지 확인
+            if (this.isClimbableSurface(targetModel, otherModel)) {
+              console.log(`Climbable surface found! Surface Y: ${surfaceY}`)
+              climbableSurfaces.push({ model: otherModel, surfaceY })
+            } else {
+              console.log(`Surface too small - blocking movement`)
+              // 좁은 표면이면 이동을 차단 (원래 위치 유지)
+              return { x: targetModel.getPosition().x, y: targetModel.getPosition().y, z: targetModel.getPosition().z }
             }
-            
-            console.log(`Collision detected! Moving model above surface at Y: ${adjustedY}`)
           }
         }
       }
     })
 
-    // 바닥과의 충돌도 확인
-    if (!foundCollision) {
+    // 올라갈 수 있는 표면 중 가장 높은 곳 선택
+    if (climbableSurfaces.length > 0) {
+      // 모든 올라갈 수 있는 표면 중 가장 높은 곳으로 이동
+      const highestClimbableSurface = climbableSurfaces.reduce((highest, current) => 
+        current.surfaceY > highest.surfaceY ? current : highest
+      )
+      
+      highestSurfaceY = highestClimbableSurface.surfaceY
+      console.log(`Moving to highest climbable surface at Y: ${highestSurfaceY}`)
+    }
+
+    // 바닥과의 충돌도 확인 (올라갈 수 있는 표면이 없을 때만)
+    if (!foundCollision || climbableSurfaces.length === 0) {
       const floorY = this.calculateSurfaceY(targetModel, adjustedX, adjustedZ)
       if (newY < floorY) {
         highestSurfaceY = floorY
@@ -469,7 +485,11 @@ export class ModelManager {
     const minRequiredWidth = targetWidth * 0.8
     const minRequiredDepth = targetDepth * 0.8
     
-    return surfaceWidth >= minRequiredWidth && surfaceDepth >= minRequiredDepth
+    const isClimbable = surfaceWidth >= minRequiredWidth && surfaceDepth >= minRequiredDepth
+    
+    console.log(`Surface check - Target: ${targetWidth.toFixed(2)}x${targetDepth.toFixed(2)}, Surface: ${surfaceWidth.toFixed(2)}x${surfaceDepth.toFixed(2)}, Required: ${minRequiredWidth.toFixed(2)}x${minRequiredDepth.toFixed(2)}, Climbable: ${isClimbable}`)
+    
+    return isClimbable
   }
 
   // 모든 모델의 위치를 재계산하는 메서드

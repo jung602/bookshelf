@@ -1,21 +1,28 @@
 import { Pane } from 'tweakpane'
 import { PixelationParams } from '../passes/RenderPixelatedPass'
+import { ColorPalettes } from '../passes/ColorPalettes'
 
 export class PixelationControls {
   private pane: Pane
   private params: PixelationParams
   private onParamsChange: (params: Partial<PixelationParams>) => void
 
-  // 기본값을 중앙에서 관리
+  // 기본값을 중앙에서 관리 (자동 생성)
   public static getDefaultParams(): PixelationParams {
-    return {
+    const baseParams = {
       pixelSize: 2,
       normalEdgeStrength: 0.20,
-      innerEdgeSensitivity: 0.02,
-      edgeThreshold: 0.01,
       ditherStrength: 0.02,
       ditherScale: 1.0
     }
+
+    // 팔레트 파라미터 자동 추가
+    const paletteParams: Record<string, number> = {}
+    ColorPalettes.PALETTE_METADATA.forEach(palette => {
+      paletteParams[palette.key] = 0.0
+    })
+
+    return { ...baseParams, ...paletteParams } as PixelationParams
   }
 
   constructor(
@@ -58,26 +65,6 @@ export class PixelationControls {
       this.onParamsChange({ normalEdgeStrength: ev.value })
     })
 
-    // Inner Edge 민감도
-    this.pane.addBinding(this.params, 'innerEdgeSensitivity', {
-      label: 'Inner Edge Sensitivity',
-      min: 0,
-      max: 2,
-      step: 0.01
-    }).on('change', (ev) => {
-      this.onParamsChange({ innerEdgeSensitivity: ev.value })
-    })
-
-    // Edge 임계값
-    this.pane.addBinding(this.params, 'edgeThreshold', {
-      label: 'Edge Threshold',
-      min: 0.001,
-      max: 0.1,
-      step: 0.001
-    }).on('change', (ev) => {
-      this.onParamsChange({ edgeThreshold: ev.value })
-    })
-
     // 디더링 강도
     this.pane.addBinding(this.params, 'ditherStrength', {
       label: 'Dither Strength',
@@ -96,6 +83,18 @@ export class PixelationControls {
       step: 0.1
     }).on('change', (ev) => {
       this.onParamsChange({ ditherScale: ev.value })
+    })
+
+    // 팔레트 컨트롤 자동 생성
+    ColorPalettes.PALETTE_METADATA.forEach(palette => {
+      this.pane.addBinding(this.params, palette.key as keyof PixelationParams, {
+        label: `${palette.emoji} ${palette.name}`,
+        min: 0,
+        max: 1,
+        step: 0.01
+      }).on('change', (ev) => {
+        this.onParamsChange({ [palette.key]: ev.value })
+      })
     })
 
     // 구분선 추가 (폴더로 대체)

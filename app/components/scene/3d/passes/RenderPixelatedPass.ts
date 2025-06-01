@@ -1,14 +1,22 @@
 import * as THREE from 'three'
 import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
+import { ColorPalettes, type PaletteMetadata } from './ColorPalettes'
 
-export interface PixelationParams {
+// 기본 파라미터 타입
+interface BasePixelationParams {
   pixelSize: number
   normalEdgeStrength: number
-  innerEdgeSensitivity: number
-  edgeThreshold: number
   ditherStrength: number
   ditherScale: number
 }
+
+// 팔레트 파라미터 타입 자동 생성
+type PaletteParams = {
+  [K in typeof ColorPalettes.PALETTE_METADATA[number]['key']]: number
+}
+
+// 전체 PixelationParams 타입
+export type PixelationParams = BasePixelationParams & PaletteParams
 
 export class RenderPixelatedPass extends Pass {
   private fsQuad: FullScreenQuad
@@ -62,10 +70,13 @@ export class RenderPixelatedPass extends Pass {
     uniforms.tDiffuse.value = this.rgbRenderTarget.texture
     uniforms.tNormal.value = this.normalRenderTarget.texture
     uniforms.normalEdgeStrength.value = this.params.normalEdgeStrength
-    uniforms.innerEdgeSensitivity.value = this.params.innerEdgeSensitivity
-    uniforms.edgeThreshold.value = this.params.edgeThreshold
     uniforms.ditherStrength.value = this.params.ditherStrength
     uniforms.ditherScale.value = this.params.ditherScale
+    
+    // 팔레트 유니폼 자동 업데이트
+    ColorPalettes.PALETTE_METADATA.forEach(palette => {
+      uniforms[palette.key].value = this.params[palette.key as keyof PixelationParams]
+    })
 
     // 최종 렌더링
     if (this.renderToScreen) {
@@ -106,24 +117,36 @@ export class RenderPixelatedPass extends Pass {
   }
 
   private createMaterial(): THREE.ShaderMaterial {
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        tDiffuse: { value: null },
-        tNormal: { value: null },
-        resolution: {
-          value: new THREE.Vector4(
-            this.resolution.x,
-            this.resolution.y,
-            1 / this.resolution.x,
-            1 / this.resolution.y
-          )
-        },
-        normalEdgeStrength: { value: this.params.normalEdgeStrength },
-        innerEdgeSensitivity: { value: this.params.innerEdgeSensitivity },
-        edgeThreshold: { value: this.params.edgeThreshold },
-        ditherStrength: { value: this.params.ditherStrength },
-        ditherScale: { value: this.params.ditherScale }
+    // 기본 유니폼
+    const baseUniforms = {
+      tDiffuse: { value: null },
+      tNormal: { value: null },
+      resolution: {
+        value: new THREE.Vector4(
+          this.resolution.x,
+          this.resolution.y,
+          1 / this.resolution.x,
+          1 / this.resolution.y
+        )
       },
+      normalEdgeStrength: { value: this.params.normalEdgeStrength },
+      ditherStrength: { value: this.params.ditherStrength },
+      ditherScale: { value: this.params.ditherScale }
+    }
+
+    // 팔레트 유니폼 자동 생성
+    const paletteUniforms: Record<string, { value: number }> = {}
+    ColorPalettes.PALETTE_METADATA.forEach(palette => {
+      paletteUniforms[palette.key] = { value: this.params[palette.key as keyof PixelationParams] as number }
+    })
+
+    // 팔레트 유니폼 선언 자동 생성
+    const paletteUniformDeclarations = ColorPalettes.PALETTE_METADATA
+      .map(palette => `uniform float ${palette.key};`)
+      .join('\n        ')
+
+    return new THREE.ShaderMaterial({
+      uniforms: { ...baseUniforms, ...paletteUniforms },
       vertexShader: `
         varying vec2 vUv;
         void main() {
@@ -136,11 +159,12 @@ export class RenderPixelatedPass extends Pass {
         uniform sampler2D tNormal;
         uniform vec4 resolution;
         uniform float normalEdgeStrength;
-        uniform float innerEdgeSensitivity;
-        uniform float edgeThreshold;
         uniform float ditherStrength;
         uniform float ditherScale;
+        ${paletteUniformDeclarations}
         varying vec2 vUv;
+
+        ${ColorPalettes.getAllPalettesShaderCode()}
 
         // Bayer matrix for ordered dithering (4x4)
         float bayerMatrix4x4[16] = float[](
@@ -207,11 +231,11 @@ export class RenderPixelatedPass extends Pass {
           diagNormalDiff += distance(normal, getNormal(-1, 1));
           
           // Combine normal edge detection methods with sensitivity control
-          float normalEdge = max(sobelNormal * (2.0 * innerEdgeSensitivity), crossNormalDiff * (3.0 * innerEdgeSensitivity));
-          normalEdge = max(normalEdge, diagNormalDiff * (2.0 * innerEdgeSensitivity));
+          float normalEdge = max(sobelNormal * (2.0 * normalEdgeStrength), crossNormalDiff * (3.0 * normalEdgeStrength));
+          normalEdge = max(normalEdge, diagNormalDiff * (2.0 * normalEdgeStrength));
           
           // Adaptive thresholding based on edgeThreshold parameter (normals only)
-          float adaptiveNormalThreshold = edgeThreshold * 10.0;
+          float adaptiveNormalThreshold = normalEdgeStrength * 10.0;
           
           float normalIndicator = smoothstep(adaptiveNormalThreshold, adaptiveNormalThreshold * 3.0, normalEdge);
           
@@ -232,6 +256,8 @@ export class RenderPixelatedPass extends Pass {
           // 디더링 적용 (픽셀 좌표 사용)
           vec2 pixelCoord = vUv * resolution.xy;
           finalColor = dither(finalColor, pixelCoord);
+          
+          ${ColorPalettes.generatePaletteApplicationCode()}
           
           gl_FragColor = vec4(finalColor, texel.a);
         }

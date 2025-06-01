@@ -179,9 +179,9 @@ export class Book extends BaseModel {
     const titleTexture = this.createTextTexture(this.config.title, dominantColor)
     
     // 책 크기 계산 (기존 크기의 절반으로 변경)
-    const width = 0.5 // 기준 크기를 1에서 0.5로 변경
+    const width = 0.3 // 기준 크기를 1에서 0.5로 변경
     const height = width / this.config.aspectRatio
-    const depth = this.config.thickness * 0.05 // 두께도 절반으로 (0.1에서 0.05로)
+    const depth = this.config.thickness * 0.03 // 두께도 절반으로 (0.1에서 0.05로)
 
     // 책 지오메트리 생성
     const geometry = new THREE.BoxGeometry(width, depth, height)

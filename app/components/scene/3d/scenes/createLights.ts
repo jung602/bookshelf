@@ -5,7 +5,7 @@ export function createLights(scene: THREE.Scene) {
   const hemisphereLight = new THREE.HemisphereLight(
     0xffffff, // sky color
     0x444444, // ground color
-    3 // intensity
+    5 // intensity
   )
   hemisphereLight.position.set(10, 10, 10)
   scene.add(hemisphereLight)

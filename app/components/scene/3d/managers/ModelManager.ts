@@ -238,10 +238,12 @@ export class ModelManager {
 
     // 다른 모든 모든 모델의 콜라이더 수집 (자기 자신 제외)
     const colliders: THREE.Mesh[] = []
+    const otherModels: BaseModel[] = []
     this.models.forEach((model) => {
       if (model.getId() !== targetModel.getId() && model.isModelLoaded()) {
         const modelColliders = model.getAllColliders()
         colliders.push(...modelColliders)
+        otherModels.push(model)
         console.log(`      -> Added ${modelColliders.length} colliders from model ${model.getId()}`)
       }
     })
@@ -262,28 +264,91 @@ export class ModelManager {
     console.log(`      -> Raycast found ${intersections.length} intersections`)
     
     if (intersections.length > 0) {
-      // 가장 가까운(높은) 교차점 찾기
-      const highestIntersection = intersections[0]
-      const surfaceY = highestIntersection.point.y
+      // 모든 교차점을 검사하여 실제로 지지할 수 있는 표면 찾기
+      let validSurfaceY = null
       
-      // 타겟 모델의 바운딩 박스를 고려하여 Y 위치 계산
-      const modelBottomOffset = this.getModelBottomOffset(targetModel)
+      for (const intersection of intersections) {
+        const surfaceY = intersection.point.y
+        
+        // 바닥 메시인지 확인
+        const isFloorMesh = intersection.object.userData.isFloor
+        
+        if (isFloorMesh) {
+          // 바닥이면 항상 유효한 표면
+          if (validSurfaceY === null || surfaceY > validSurfaceY) {
+            validSurfaceY = surfaceY
+            console.log(`      -> Found floor surface at Y: ${surfaceY.toFixed(3)}`)
+          }
+        } else {
+          // 다른 모델의 표면인 경우, 실제로 그 위에 올라갈 수 있는지 확인
+          const surfaceModelId = intersection.object.userData.modelId
+          const surfaceModel = this.models.get(surfaceModelId)
+          
+          if (surfaceModel && this.canModelSupportAnother(surfaceModel, targetModel, x, z)) {
+            if (validSurfaceY === null || surfaceY > validSurfaceY) {
+              validSurfaceY = surfaceY
+              console.log(`      -> Found valid model surface at Y: ${surfaceY.toFixed(3)} from model ${surfaceModelId}`)
+            }
+          } else {
+            console.log(`      -> Rejected surface at Y: ${surfaceY.toFixed(3)} from model ${surfaceModelId} (not supportable)`)
+          }
+        }
+      }
       
-      // 표면 Y 위치에서 모델의 바닥 오프셋을 빼서 모델의 중심 위치 계산
-      // bottomOffset이 음수이므로 빼기를 하면 실제로는 더해짐
-      const finalY = surfaceY - modelBottomOffset
-      
-      // 부동소수점 정밀도 문제 해결을 위해 소수점 4자리에서 반올림
-      const roundedY = Math.round(finalY * 10000) / 10000
-      
-      console.log(`      -> Surface found at Y: ${surfaceY.toFixed(3)}, model bottom offset: ${modelBottomOffset.toFixed(3)}, final Y: ${finalY.toFixed(3)}, rounded Y: ${roundedY.toFixed(3)}`)
-      return roundedY
+      if (validSurfaceY !== null) {
+        // 타겟 모델의 바운딩 박스를 고려하여 Y 위치 계산
+        const modelBottomOffset = this.getModelBottomOffset(targetModel)
+        
+        // 표면 Y 위치에서 모델의 바닥 오프셋을 빼서 모델의 중심 위치 계산
+        // bottomOffset이 음수이므로 빼기를 하면 실제로는 더해짐
+        const finalY = validSurfaceY - modelBottomOffset
+        
+        // 부동소수점 정밀도 문제 해결을 위해 소수점 4자리에서 반올림
+        const roundedY = Math.round(finalY * 10000) / 10000
+        
+        console.log(`      -> Valid surface found at Y: ${validSurfaceY.toFixed(3)}, model bottom offset: ${modelBottomOffset.toFixed(3)}, final Y: ${finalY.toFixed(3)}, rounded Y: ${roundedY.toFixed(3)}`)
+        return roundedY
+      }
     }
 
-    // 교차점이 없으면 기본 바닥 위치 사용
+    // 교차점이 없거나 유효한 표면이 없으면 기본 바닥 위치 사용
     const fallbackY = this.calculateModelFloorY(targetModel)
-    console.log(`      -> No intersections found, using fallback Y: ${fallbackY.toFixed(3)}`)
+    console.log(`      -> No valid intersections found, using fallback floor Y: ${fallbackY.toFixed(3)}`)
     return fallbackY
+  }
+
+  // 한 모델이 다른 모델을 지지할 수 있는지 확인하는 메서드
+  private canModelSupportAnother(supportModel: BaseModel, targetModel: BaseModel, targetX: number, targetZ: number): boolean {
+    const supportModelGroup = supportModel.getModel()
+    const targetModelGroup = targetModel.getModel()
+    
+    if (!supportModelGroup || !targetModelGroup) return false
+
+    // 지지하는 모델의 바운딩 박스 계산
+    const supportBox = new THREE.Box3().setFromObject(supportModelGroup)
+    
+    // 타겟 모델을 임시로 목표 위치에 배치하여 바운딩 박스 계산
+    const originalTargetPosition = targetModelGroup.position.clone()
+    targetModelGroup.position.set(targetX, 0, targetZ)
+    const targetBox = new THREE.Box3().setFromObject(targetModelGroup)
+    targetModelGroup.position.copy(originalTargetPosition)
+    
+    // X, Z 축에서 충분한 겹침이 있는지 확인 (최소 50% 겹침)
+    const xOverlap = Math.min(targetBox.max.x, supportBox.max.x) - Math.max(targetBox.min.x, supportBox.min.x)
+    const zOverlap = Math.min(targetBox.max.z, supportBox.max.z) - Math.max(targetBox.min.z, supportBox.min.z)
+    
+    const targetWidth = targetBox.max.x - targetBox.min.x
+    const targetDepth = targetBox.max.z - targetBox.min.z
+    
+    const xOverlapRatio = xOverlap / targetWidth
+    const zOverlapRatio = zOverlap / targetDepth
+    
+    // 최소 50% 이상 겹쳐야 지지할 수 있음
+    const canSupport = xOverlapRatio >= 0.5 && zOverlapRatio >= 0.5 && xOverlap > 0 && zOverlap > 0
+    
+    console.log(`      -> Support check: ${supportModel.getId()} -> ${targetModel.getId()}: xOverlap=${xOverlapRatio.toFixed(2)}, zOverlap=${zOverlapRatio.toFixed(2)}, canSupport=${canSupport}`)
+    
+    return canSupport
   }
 
   // 모델의 하단 오프셋 계산 (모델의 바운딩 박스 하단)
@@ -458,11 +523,38 @@ export class ModelManager {
   // 특정 모델을 제외한 다른 모든 모델들의 위치를 재계산하는 메서드
   public recalculateOtherModelPositions(excludeModelId: string): void {
     console.log(`=== Starting position recalculation for models (excluding ${excludeModelId}) ===`)
-    console.log(`Total models to check: ${this.models.size - 1}`)
+    
+    // 제외된 모델을 제외한 모든 모델 수집
+    const modelsToRecalculate: BaseModel[] = []
+    this.models.forEach((model) => {
+      if (model.getId() !== excludeModelId && model.isModelLoaded()) {
+        modelsToRecalculate.push(model)
+      }
+    })
+    
+    console.log(`Total models to check: ${modelsToRecalculate.length}`)
+    
+    if (modelsToRecalculate.length === 0) {
+      console.log('No models to recalculate')
+      return
+    }
+    
+    // 모델들을 Y 좌표가 낮은 순서대로 정렬 (아래에서부터 위로)
+    modelsToRecalculate.sort((a, b) => {
+      const aY = a.getPosition().y
+      const bY = b.getPosition().y
+      return aY - bY
+    })
+    
+    console.log('Models sorted by Y position (lowest first):')
+    modelsToRecalculate.forEach((model, index) => {
+      const pos = model.getPosition()
+      console.log(`  ${index + 1}. ${model.getId()} at Y: ${pos.y.toFixed(3)}`)
+    })
     
     let hasChanges = true
     let iterations = 0
-    const maxIterations = 5 // 무한 루프 방지
+    const maxIterations = 3 // 무한 루프 방지 (줄임)
     
     // 연쇄적으로 떨어질 수 있는 모델들을 고려하여 여러 번 재계산
     while (hasChanges && iterations < maxIterations) {
@@ -471,23 +563,37 @@ export class ModelManager {
       
       console.log(`=== Position recalculation iteration ${iterations} (excluding ${excludeModelId}) ===`)
       
-      // 제외된 모델을 제외한 모든 모델에 대해 현재 X, Z 위치에서 올바른 Y 위치를 재계산
-      this.models.forEach((model) => {
-        // 제외할 모델은 건너뛰기
-        if (model.getId() === excludeModelId) {
-          return
+      // Y 좌표가 낮은 순서대로 재계산 (가장 아래에 있는 것부터)
+      for (let i = 0; i < modelsToRecalculate.length; i++) {
+        const model = modelsToRecalculate[i]
+        const currentPosition = model.getPosition()
+        console.log(`Checking model ${model.getId()} (${i + 1}/${modelsToRecalculate.length}) at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
+        
+        // 가장 아래에 있는 모델이면서 바닥에 닿아있지 않다면 강제로 바닥에 붙임
+        if (i === 0) {
+          const floorY = this.calculateModelFloorY(model)
+          const isOnFloor = Math.abs(currentPosition.y - floorY) < 0.01
+          
+          if (!isOnFloor) {
+            console.log(`  -> 🔧 Forcing lowest model ${model.getId()} to floor Y: ${floorY.toFixed(3)}`)
+            model.setPosition({
+              x: currentPosition.x,
+              y: floorY,
+              z: currentPosition.z
+            })
+            hasChanges = true
+            continue
+          }
         }
         
-        if (model.isModelLoaded()) {
-          const currentPosition = model.getPosition()
-          console.log(`Checking model ${model.getId()} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
-          
-          // 현재 X, Z 위치에서 올바른 표면 Y 위치 계산
-          const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
-          console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
-          
-          // Y 위치가 변경되었을 때만 업데이트
-          if (Math.abs(currentPosition.y - newY) > 0.001) {
+        // 현재 X, Z 위치에서 올바른 표면 Y 위치 계산
+        const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
+        console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
+        
+        // Y 위치가 변경되었을 때만 업데이트
+        if (Math.abs(currentPosition.y - newY) > 0.001) {
+          // 새로운 Y 위치가 현재보다 아래에 있을 때만 이동 (떨어지기만 허용)
+          if (newY <= currentPosition.y + 0.001) {
             model.setPosition({
               x: currentPosition.x,
               y: newY,
@@ -496,13 +602,20 @@ export class ModelManager {
             
             hasChanges = true // 변경이 있었음을 표시
             console.log(`  -> ✅ Model ${model.getId()} repositioned from Y:${currentPosition.y.toFixed(3)} to Y:${newY.toFixed(3)}`)
+            
+            // 위치가 변경된 모델을 다시 정렬에 반영하기 위해 배열 재정렬
+            modelsToRecalculate.sort((a, b) => {
+              const aY = a.getPosition().y
+              const bY = b.getPosition().y
+              return aY - bY
+            })
           } else {
-            console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
+            console.log(`  -> ⚠️ Model ${model.getId()} would move up (from ${currentPosition.y.toFixed(3)} to ${newY.toFixed(3)}), preventing upward movement`)
           }
         } else {
-          console.log(`Model ${model.getId()} is not loaded, skipping`)
+          console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
         }
-      })
+      }
     }
     
     console.log(`=== Position recalculation completed after ${iterations} iterations (excluding ${excludeModelId}) ===`)

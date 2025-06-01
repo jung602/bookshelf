@@ -9,8 +9,8 @@ const Scene = dynamic(() => import('./components/scene/Scene'), {
 
 export default function Home() {
   return (
-    <div className="w-[100dvw] h-[100dvh]">
-      <Scene />
+    <div className="w-[100dvw] h-[100dvh] flex items-center justify-center bg-white overflow-hidden">
+        <Scene />
     </div>
   );
 }

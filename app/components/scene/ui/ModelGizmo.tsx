@@ -68,7 +68,7 @@ export default function ModelGizmo({
       }
     }
 
-    const handleTouchMove = (e: TouchEvent) => {
+    const handleTouchMove = () => {
       // 터치 이동 시 기즈모 닫기
       onClose()
     }

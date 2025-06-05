@@ -22,7 +22,7 @@ export default function ThreeScene() {
   }
 
   // SceneManager가 생성된 후에 useResponsiveScene 훅 사용
-  const { viewportSize, currentFrustumSize, updateConfig, forceUpdate } = useResponsiveScene(
+  const { forceUpdate } = useResponsiveScene(
     sceneManager,
     responsiveConfig
   )

@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { createLights } from './scenes/createLights'
 import { createFloor } from './scenes/createFloor'
 import { createWalls } from './scenes/createWalls'
-import { RenderPixelatedPass } from './passes/RenderPixelatedPass'
+import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
 import { PixelationControls } from './controls/PixelationControls'
 import { RoomControls, RoomParams } from './controls/RoomControls'
 import { ColorControls, ColorParams } from './controls/ColorControls'
@@ -395,7 +395,7 @@ export class SceneManager {
     this.applySizeAndFrustum(this.currentSize.width, this.currentSize.height, this.currentFrustumSize)
   }
 
-  public updatePixelationParams(params: Partial<any>): void {
+  public updatePixelationParams(params: Partial<PixelationParams>): void {
     if (this.pixelatedPass) {
       this.pixelatedPass.updateParams(params)
     }

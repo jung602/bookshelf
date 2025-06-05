@@ -389,7 +389,7 @@ export class ModelManager {
     // 다른 모든 모델과 충돌 검사
     let highestSurfaceY = newY
     let foundCollision = false
-    let climbableSurfaces: { model: BaseModel, surfaceY: number }[] = []
+    const climbableSurfaces: { model: BaseModel, surfaceY: number }[] = []
 
     this.models.forEach((otherModel) => {
       if (otherModel.getId() !== targetModel.getId() && otherModel.isModelLoaded()) {

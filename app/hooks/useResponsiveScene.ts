@@ -52,8 +52,8 @@ export function useResponsiveScene(
   // 실제 사용 가능한 크기 가져오기
   const getActualSize = useCallback(() => {
     // sceneManager의 container 크기를 우선 사용
-    if (sceneManager && (sceneManager as any).container) {
-      const container = (sceneManager as any).container as HTMLElement
+    if (sceneManager && (sceneManager as unknown as { container: HTMLElement }).container) {
+      const container = (sceneManager as unknown as { container: HTMLElement }).container
       const rect = container.getBoundingClientRect()
       if (rect.width > 0 && rect.height > 0) {
         return { width: rect.width, height: rect.height }

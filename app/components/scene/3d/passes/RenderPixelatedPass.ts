@@ -192,66 +192,57 @@ export class RenderPixelatedPass extends Pass {
           return texture2D(tNormal, vUv + vec2(x, y) * resolution.zw).rgb * 2.0 - 1.0;
         }
 
-        // Sobel operator for normal edge detection
-        float sobelNormalEdge() {
-          vec3 tl = getNormal(-1, -1);   // top left
-          vec3 tm = getNormal( 0, -1);   // top middle
-          vec3 tr = getNormal( 1, -1);   // top right
-          vec3 ml = getNormal(-1,  0);   // middle left
-          vec3 mr = getNormal( 1,  0);   // middle right
-          vec3 bl = getNormal(-1,  1);   // bottom left
-          vec3 bm = getNormal( 0,  1);   // bottom middle
-          vec3 br = getNormal( 1,  1);   // bottom right
-
-          vec3 sobelX = (tr + 2.0 * mr + br) - (tl + 2.0 * ml + bl);
-          vec3 sobelY = (bl + 2.0 * bm + br) - (tl + 2.0 * tm + tr);
-          
-          return length(sobelX) + length(sobelY);
+        // 주변 픽셀의 실제 RGB 색상을 가져오는 함수 추가
+        vec3 getRGBColor(int x, int y) {
+          return texture2D(tDiffuse, vUv + vec2(x, y) * resolution.zw).rgb;
         }
 
-        // Enhanced edge detection combining multiple methods
-        float enhancedEdgeDetection() {
-          vec3 normal = getNormal(0, 0);
+        // 가장 간단한 엣지 감지
+        float simpleEdge() {
+          vec3 center = getNormal(0, 0);
           
-          // Sobel edge detection for normals only
-          float sobelNormal = sobelNormalEdge();
+          // 오른쪽과 아래쪽 방향 확인 (대각선 포함)
+          float rightDiff = distance(center, getNormal(1, 0));
+          float downDiff = distance(center, getNormal(0, 1));
           
-          // Cross-pattern edge detection for normals only
-          float crossNormalDiff = 0.0;
-          crossNormalDiff += distance(normal, getNormal(1, 0));
-          crossNormalDiff += distance(normal, getNormal(-1, 0));
-          crossNormalDiff += distance(normal, getNormal(0, 1));
-          crossNormalDiff += distance(normal, getNormal(0, -1));
-          
-          // Diagonal edge detection for inner corners (normals only)
-          float diagNormalDiff = 0.0;
-          diagNormalDiff += distance(normal, getNormal(1, 1));
-          diagNormalDiff += distance(normal, getNormal(-1, -1));
-          diagNormalDiff += distance(normal, getNormal(1, -1));
-          diagNormalDiff += distance(normal, getNormal(-1, 1));
-          
-          // Combine normal edge detection methods with sensitivity control
-          float normalEdge = max(sobelNormal * (2.0 * normalEdgeStrength), crossNormalDiff * (3.0 * normalEdgeStrength));
-          normalEdge = max(normalEdge, diagNormalDiff * (2.0 * normalEdgeStrength));
-          
-          // Adaptive thresholding based on edgeThreshold parameter (normals only)
-          float adaptiveNormalThreshold = normalEdgeStrength * 10.0;
-          
-          float normalIndicator = smoothstep(adaptiveNormalThreshold, adaptiveNormalThreshold * 3.0, normalEdge);
-          
-          return normalIndicator;
+          // 둘 중 하나라도 임계값을 넘으면 엣지
+          float maxDiff = max(rightDiff, downDiff);
+          return maxDiff > 0.5 ? 1.0 : 0.0;
         }
 
         void main() {
           vec4 texel = texture2D(tDiffuse, vUv);
+          vec3 finalColor = texel.rgb;
           
-          float edgeStrength = enhancedEdgeDetection();
+          float edge = simpleEdge();
           
-          // 픽셀 게임 스타일 아웃라인: 원본 색상에서 조금 어둡게
-          vec3 darkenedColor = texel.rgb * 0.5; // 원본 색상의 50%로 어둡게
-          
-          // 엣지 강도에 따라 원본 색상과 어두운 색상을 믹스
-          vec3 finalColor = mix(texel.rgb, darkenedColor, edgeStrength * normalEdgeStrength);
+          // 엣지가 감지되면 색상별로 명확하게 다른 어두운 색상
+          if (edge > 0.5) {
+            // 빨간색 계열
+            if (texel.r > 0.6 && texel.g < 0.4 && texel.b < 0.4) {
+              finalColor = vec3(0.5, 0.1, 0.1); // 어두운 빨강
+            }
+            // 파란색 계열
+            else if (texel.r < 0.4 && texel.g < 0.4 && texel.b > 0.6) {
+              finalColor = vec3(0.1, 0.1, 0.5); // 어두운 파랑
+            }
+            // 노란색 계열 (의자)
+            else if (texel.r > 0.6 && texel.g > 0.6 && texel.b < 0.4) {
+              finalColor = vec3(0.8, 0.6, 0.0); // 어두운 노란색/갈색
+            }
+            // 흰색 계열 (바닥)
+            else if (texel.r > 0.8 && texel.g > 0.8 && texel.b > 0.8) {
+              finalColor = vec3(0.7, 0.7, 0.7); // 회색
+            }
+            // 회색 계열 (벽)
+            else if (texel.r > 0.4 && texel.g > 0.4 && texel.b > 0.4) {
+              finalColor = vec3(0.5, 0.5, 0.5); // 진한 회색
+            }
+            // 기타
+            else {
+              finalColor = texel.rgb * 0.3; // 30% 어둡게
+            }
+          }
           
           // 디더링 적용 (픽셀 좌표 사용)
           vec2 pixelCoord = vUv * resolution.xy;

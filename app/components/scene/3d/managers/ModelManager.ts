@@ -1,42 +1,112 @@
 import * as THREE from 'three'
 import { BaseModel } from '../objects/BaseModel'
 
-export interface FloorBounds {
-  width: number
-  height: number
-  minX: number
-  maxX: number
-  minZ: number
-  maxZ: number
-  floorY: number
-}
-
 export class ModelManager {
   private models: Map<string, BaseModel> = new Map()
   private scene: THREE.Scene
-  private floorBounds!: FloorBounds
 
-  constructor(scene: THREE.Scene, floorWidth: number = 5, floorHeight: number = 5) {
+  constructor(scene: THREE.Scene) {
     this.scene = scene
-    this.updateFloorBounds(floorWidth, floorHeight)
   }
 
-  public updateFloorBounds(width: number, height: number): void {
-    this.floorBounds = {
-      width,
-      height,
-      minX: -width / 2,
-      maxX: width / 2,
-      minZ: -height / 2,
-      maxZ: height / 2,
-      floorY: 0 // 바닥의 Y 위치
+  // 실제 바닥 메시가 있는지 확인하는 메서드
+  private hasFloorMeshes(): boolean {
+    const floorMeshes: THREE.Mesh[] = []
+    this.scene.traverse((child) => {
+      if (child.userData.isFloor && child instanceof THREE.Mesh) {
+        floorMeshes.push(child)
+      }
+    })
+    return floorMeshes.length > 0
+  }
+
+  // 실제 바닥 메시들의 경계 계산
+  private calculateFloorBounds(): { minX: number, maxX: number, minZ: number, maxZ: number, floorY: number } | null {
+    const floorMeshes: THREE.Mesh[] = []
+    this.scene.traverse((child) => {
+      if (child.userData.isFloor && child instanceof THREE.Mesh) {
+        floorMeshes.push(child)
+      }
+    })
+
+    if (floorMeshes.length === 0) {
+      return null
     }
 
-    // 기존 모델들의 위치를 새로운 바닥 경계에 맞게 조정
-    this.adjustModelsToFloorBounds()
+    let minX = Infinity, maxX = -Infinity
+    let minZ = Infinity, maxZ = -Infinity
+    let floorY = 0
+
+    floorMeshes.forEach(mesh => {
+      const box = new THREE.Box3().setFromObject(mesh)
+      minX = Math.min(minX, box.min.x)
+      maxX = Math.max(maxX, box.max.x)
+      minZ = Math.min(minZ, box.min.z)
+      maxZ = Math.max(maxZ, box.max.z)
+      floorY = Math.max(floorY, box.max.y) // 가장 높은 바닥 표면
+    })
+
+    return { minX, maxX, minZ, maxZ, floorY }
+  }
+
+  // 특정 위치에 실제 바닥 타일이 있는지 확인
+  private hasFloorTileAt(x: number, z: number): boolean {
+    const raycaster = new THREE.Raycaster()
+    
+    // 위에서 아래로 레이캐스팅
+    const rayOrigin = new THREE.Vector3(x, 1, z)
+    const rayDirection = new THREE.Vector3(0, -1, 0)
+    raycaster.set(rayOrigin, rayDirection)
+
+    // 바닥 메시들만 대상으로 레이캐스팅
+    const floorMeshes: THREE.Mesh[] = []
+    this.scene.traverse((child) => {
+      if (child.userData.isFloor && child instanceof THREE.Mesh) {
+        floorMeshes.push(child)
+      }
+    })
+
+    const intersections = raycaster.intersectObjects(floorMeshes, false)
+    return intersections.length > 0
+  }
+
+  // 가장 가까운 유효한 바닥 타일 위치 찾기
+  private findNearestFloorTile(x: number, z: number): { x: number, z: number } | null {
+    const floorMeshes: THREE.Mesh[] = []
+    this.scene.traverse((child) => {
+      if (child.userData.isFloor && child instanceof THREE.Mesh) {
+        floorMeshes.push(child)
+      }
+    })
+
+    if (floorMeshes.length === 0) {
+      return null
+    }
+
+    let nearestTile = null
+    let minDistance = Infinity
+
+    floorMeshes.forEach(mesh => {
+      const meshPosition = mesh.position
+      const distance = Math.sqrt(
+        Math.pow(x - meshPosition.x, 2) + Math.pow(z - meshPosition.z, 2)
+      )
+      
+      if (distance < minDistance) {
+        minDistance = distance
+        nearestTile = { x: meshPosition.x, z: meshPosition.z }
+      }
+    })
+
+    return nearestTile
   }
 
   public async addModel(model: BaseModel): Promise<void> {
+    // 바닥이 없으면 모델 추가 거부
+    if (!this.hasFloorMeshes()) {
+      throw new Error('바닥을 먼저 생성해주세요. 모델은 바닥이 있어야만 배치할 수 있습니다.')
+    }
+
     try {
       await model.load()
       
@@ -86,6 +156,12 @@ export class ModelManager {
     const model = this.models.get(modelId)
     if (!model) return
 
+    // 실제 바닥이 있는지 확인
+    if (!this.hasFloorMeshes()) {
+      console.log('No floor available - cannot move model')
+      return
+    }
+
     // 모델의 바운딩 박스를 고려한 경계 체크
     const clampedPosition = this.clampToFloorWithBounds(model, x, z)
 
@@ -108,23 +184,6 @@ export class ModelManager {
     console.log(`Model ${modelId} rotated 90 degrees`)
   }
 
-  private calculateModelFloorY(model: BaseModel): number {
-    const threeModel = model.getModel()
-    if (!threeModel) return this.floorBounds.floorY
-
-    // 현재 위치에서 바운딩 박스 계산
-    const box = new THREE.Box3().setFromObject(threeModel)
-    
-    // 모델의 하단이 바닥에 닿도록 Y 위치 계산
-    const modelBottomOffset = box.min.y - threeModel.position.y
-    const floorY = this.floorBounds.floorY - modelBottomOffset
-    
-    // 부동소수점 정밀도 문제 해결을 위해 반올림
-    const roundedY = Math.round(floorY * 10000) / 10000
-    
-    return roundedY
-  }
-
   private positionModelOnFloor(model: BaseModel): void {
     const position = model.getPosition()
     
@@ -143,7 +202,7 @@ export class ModelManager {
     console.log(`Model positioned on surface at (${clampedPosition.x}, ${modelY}, ${clampedPosition.z})`)
   }
 
-  // 모델의 바운딩 박스를 고려한 경계 체크
+  // 모델의 바운딩 박스를 고려한 경계 체크 (실제 바닥 기반)
   public clampToFloorWithBounds(model: BaseModel, x: number, z: number): { x: number, z: number } {
     const threeModel = model.getModel()
     if (!threeModel) {
@@ -159,35 +218,56 @@ export class ModelManager {
     // 원래 위치로 복원
     threeModel.position.copy(originalPosition)
     
-    // 모델의 경계가 바닥 경계를 넘지 않도록 조정
-    const modelMinX = box.min.x
-    const modelMaxX = box.max.x
-    const modelMinZ = box.min.z
-    const modelMaxZ = box.max.z
+    // 모델의 4개 모서리 점이 모두 유효한 바닥 타일 위에 있는지 확인
+    const corners = [
+      { x: box.min.x, z: box.min.z }, // 좌하단
+      { x: box.max.x, z: box.min.z }, // 우하단
+      { x: box.min.x, z: box.max.z }, // 좌상단
+      { x: box.max.x, z: box.max.z }  // 우상단
+    ]
     
-    // X축 경계 체크 (모델의 가장자리가 벽을 넘지 않도록)
-    let clampedX = x
-    if (modelMinX < this.floorBounds.minX) {
-      clampedX = x + (this.floorBounds.minX - modelMinX)
-    } else if (modelMaxX > this.floorBounds.maxX) {
-      clampedX = x - (modelMaxX - this.floorBounds.maxX)
+    // 모든 모서리가 유효한 바닥 위에 있는지 확인
+    const allCornersValid = corners.every(corner => this.hasFloorTileAt(corner.x, corner.z))
+    
+    if (allCornersValid) {
+      return { x, z } // 모든 모서리가 유효하면 원래 위치 유지
     }
-    
-    // Z축 경계 체크 (모델의 가장자리가 벽을 넘지 않도록)
-    let clampedZ = z
-    if (modelMinZ < this.floorBounds.minZ) {
-      clampedZ = z + (this.floorBounds.minZ - modelMinZ)
-    } else if (modelMaxZ > this.floorBounds.maxZ) {
-      clampedZ = z - (modelMaxZ - this.floorBounds.maxZ)
-    }
-    
-    return { x: clampedX, z: clampedZ }
-  }
 
-  private adjustModelsToFloorBounds(): void {
-    this.models.forEach((model) => {
-      this.positionModelOnFloor(model)
-    })
+    // 일부 모서리가 유효하지 않으면 가장 가까운 유효한 위치로 이동
+    const centerX = (box.min.x + box.max.x) / 2
+    const centerZ = (box.min.z + box.max.z) / 2
+    const modelWidth = box.max.x - box.min.x
+    const modelDepth = box.max.z - box.min.z
+    
+    // 가장 가까운 유효한 타일 찾기
+    const nearestTile = this.findNearestFloorTile(centerX, centerZ)
+    if (!nearestTile) {
+      return { x, z } // 유효한 타일이 없으면 원래 위치 유지
+    }
+
+    // 모델의 중심이 해당 타일에 오도록 조정
+    let adjustedX = nearestTile.x
+    let adjustedZ = nearestTile.z
+
+    // 조정된 위치에서 모델의 모든 모서리가 유효한지 다시 확인
+    threeModel.position.set(adjustedX, 0, adjustedZ)
+    const adjustedBox = new THREE.Box3().setFromObject(threeModel)
+    threeModel.position.copy(originalPosition)
+
+    const adjustedCorners = [
+      { x: adjustedBox.min.x, z: adjustedBox.min.z },
+      { x: adjustedBox.max.x, z: adjustedBox.min.z },
+      { x: adjustedBox.min.x, z: adjustedBox.max.z },
+      { x: adjustedBox.max.x, z: adjustedBox.max.z }
+    ]
+
+    // 조정된 위치에서도 모든 모서리가 유효하지 않으면 추가 조정
+    if (!adjustedCorners.every(corner => this.hasFloorTileAt(corner.x, corner.z))) {
+      // 모델이 너무 크거나 복잡한 경우, 단순히 중심점만 유효한 타일 위에 놓기
+      return { x: nearestTile.x, z: nearestTile.z }
+    }
+
+    return { x: adjustedX, z: adjustedZ }
   }
 
   public update(): void {
@@ -196,25 +276,26 @@ export class ModelManager {
     })
   }
 
-  public getFloorBounds(): FloorBounds {
-    return { ...this.floorBounds }
-  }
-
   public isPositionValid(x: number, z: number): boolean {
-    return (
-      x >= this.floorBounds.minX &&
-      x <= this.floorBounds.maxX &&
-      z >= this.floorBounds.minZ &&
-      z <= this.floorBounds.maxZ
-    )
+    // 실제 바닥 타일이 있는 위치인지 확인
+    return this.hasFloorTileAt(x, z)
   }
 
-  // 3D 공간의 좌표를 바닥 위의 유효한 위치로 변환
+  // 3D 공간의 좌표를 바닥 위의 유효한 위치로 변환 (실제 바닥 기반)
   public clampToFloor(x: number, z: number): { x: number, z: number } {
-    return {
-      x: Math.max(this.floorBounds.minX, Math.min(this.floorBounds.maxX, x)),
-      z: Math.max(this.floorBounds.minZ, Math.min(this.floorBounds.maxZ, z))
+    // 실제 타일이 있는 위치인지 확인
+    if (this.hasFloorTileAt(x, z)) {
+      return { x, z }
     }
+
+    // 가장 가까운 유효한 타일 위치 찾기
+    const nearestTile = this.findNearestFloorTile(x, z)
+    if (nearestTile) {
+      return { x: nearestTile.x, z: nearestTile.z }
+    }
+
+    // 바닥이 없으면 원래 위치 유지
+    return { x, z }
   }
 
   public dispose(): void {
@@ -225,7 +306,23 @@ export class ModelManager {
     this.models.clear()
   }
 
-  // 지정된 위치에서 가장 높은 표면의 Y 좌표를 찾는 메서드
+  private calculateModelFloorY(model: BaseModel): number {
+    const threeModel = model.getModel()
+    if (!threeModel) return 0
+
+    // 현재 위치에서 바운딩 박스 계산
+    const box = new THREE.Box3().setFromObject(threeModel)
+    
+    // 모델의 하단이 바닥에 닿도록 Y 위치 계산
+    const modelBottomOffset = box.min.y - threeModel.position.y
+    const floorY = 0 - modelBottomOffset
+    
+    // 부동소수점 정밀도 문제 해결을 위해 반올림
+    const roundedY = Math.round(floorY * 10000) / 10000
+    
+    return roundedY
+  }
+
   public calculateSurfaceY(targetModel: BaseModel, x: number, z: number): number {
     const raycaster = new THREE.Raycaster()
     
@@ -311,13 +408,11 @@ export class ModelManager {
       }
     }
 
-    // 교차점이 없거나 유효한 표면이 없으면 기본 바닥 위치 사용
-    const fallbackY = this.calculateModelFloorY(targetModel)
-    console.log(`      -> No valid intersections found, using fallback floor Y: ${fallbackY.toFixed(3)}`)
-    return fallbackY
+    // 교차점이 없거나 유효한 표면이 없으면 null 반환 (바닥이 없음을 의미)
+    console.log(`      -> No valid surface found, cannot place model without floor`)
+    throw new Error('유효한 표면을 찾을 수 없습니다. 모델을 배치할 바닥이 필요합니다.')
   }
 
-  // 한 모델이 다른 모델을 지지할 수 있는지 확인하는 메서드
   private canModelSupportAnother(supportModel: BaseModel, targetModel: BaseModel, targetX: number, targetZ: number): boolean {
     const supportModelGroup = supportModel.getModel()
     const targetModelGroup = targetModel.getModel()
@@ -351,7 +446,6 @@ export class ModelManager {
     return canSupport
   }
 
-  // 모델의 하단 오프셋 계산 (모델의 바운딩 박스 하단)
   private getModelBottomOffset(model: BaseModel): number {
     const threeModel = model.getModel()
     if (!threeModel) return 0
@@ -366,133 +460,6 @@ export class ModelManager {
     return bottomOffset
   }
 
-  // 충돌 감지 및 자동 올라가기 기능
-  public checkCollisionAndAdjust(targetModel: BaseModel, newX: number, newY: number, newZ: number): { x: number, y: number, z: number } {
-    const targetModelGroup = targetModel.getModel()
-    if (!targetModelGroup) {
-      return { x: newX, y: newY, z: newZ }
-    }
-
-    // 먼저 경계 체크를 통해 X, Z 좌표를 벽 안쪽으로 제한
-    const clampedPosition = this.clampToFloorWithBounds(targetModel, newX, newZ)
-    const adjustedX = clampedPosition.x
-    const adjustedZ = clampedPosition.z
-
-    // 임시로 모델을 경계가 적용된 새 위치에 배치하여 바운딩 박스 계산
-    const originalPosition = targetModelGroup.position.clone()
-    targetModelGroup.position.set(adjustedX, newY, adjustedZ)
-    const targetBoundingBox = new THREE.Box3().setFromObject(targetModelGroup)
-    
-    // 원래 위치로 복원
-    targetModelGroup.position.copy(originalPosition)
-
-    // 다른 모든 모델과 충돌 검사
-    let highestSurfaceY = newY
-    let foundCollision = false
-    const climbableSurfaces: { model: BaseModel, surfaceY: number }[] = []
-
-    this.models.forEach((otherModel) => {
-      if (otherModel.getId() !== targetModel.getId() && otherModel.isModelLoaded()) {
-        const otherModelGroup = otherModel.getModel()
-        if (!otherModelGroup) return
-
-        const otherBoundingBox = new THREE.Box3().setFromObject(otherModelGroup)
-        
-        // X, Z 축에서 겹치는지 확인 (Y축은 제외)
-        const xOverlap = targetBoundingBox.max.x > otherBoundingBox.min.x && 
-                        targetBoundingBox.min.x < otherBoundingBox.max.x
-        const zOverlap = targetBoundingBox.max.z > otherBoundingBox.min.z && 
-                        targetBoundingBox.min.z < otherBoundingBox.max.z
-
-        if (xOverlap && zOverlap) {
-          // X, Z에서 겹침이 있음 - 충돌 가능성
-          const otherTopY = otherBoundingBox.max.y
-          const targetBottomY = targetBoundingBox.min.y
-
-          // 타겟 모델이 다른 모델과 Y축에서도 겹치는지 확인
-          if (targetBottomY < otherTopY && targetBoundingBox.max.y > otherBoundingBox.min.y) {
-            // 충돌 발생! 
-            foundCollision = true
-            const modelBottomOffset = this.getModelBottomOffset(targetModel)
-            const surfaceY = otherTopY - modelBottomOffset
-            
-            // 올라갈 수 있는 표면인지 확인
-            if (this.isClimbableSurface(targetModel, otherModel)) {
-              console.log(`Climbable surface found! Surface Y: ${surfaceY}`)
-              climbableSurfaces.push({ model: otherModel, surfaceY })
-            } else {
-              console.log(`Surface too small - blocking movement`)
-              // 좁은 표면이면 이동을 차단 (원래 위치 유지)
-              return { x: targetModel.getPosition().x, y: targetModel.getPosition().y, z: targetModel.getPosition().z }
-            }
-          }
-        }
-      }
-    })
-
-    // 올라갈 수 있는 표면 중 가장 높은 곳 선택
-    if (climbableSurfaces.length > 0) {
-      // 모든 올라갈 수 있는 표면 중 가장 높은 곳으로 이동
-      const highestClimbableSurface = climbableSurfaces.reduce((highest, current) => 
-        current.surfaceY > highest.surfaceY ? current : highest
-      )
-      
-      highestSurfaceY = highestClimbableSurface.surfaceY
-      console.log(`Moving to highest climbable surface at Y: ${highestSurfaceY}`)
-    }
-
-    // 바닥과의 충돌도 확인 (올라갈 수 있는 표면이 없을 때만)
-    if (!foundCollision || climbableSurfaces.length === 0) {
-      const floorY = this.calculateSurfaceY(targetModel, adjustedX, adjustedZ)
-      if (newY < floorY) {
-        highestSurfaceY = floorY
-        foundCollision = true
-      }
-    }
-
-    return {
-      x: adjustedX,  // 경계가 적용된 X 좌표
-      y: highestSurfaceY,
-      z: adjustedZ   // 경계가 적용된 Z 좌표
-    }
-  }
-
-  // 올라갈 수 있는 표면인지 확인하는 헬퍼 메서드
-  private isClimbableSurface(targetModel: BaseModel, surfaceModel: BaseModel): boolean {
-    const targetModelGroup = targetModel.getModel()
-    const surfaceModelGroup = surfaceModel.getModel()
-    
-    if (!targetModelGroup || !surfaceModelGroup) return false
-
-    // 임시로 타겟 모델을 원점에 배치하여 크기 계산
-    const originalTargetPosition = targetModelGroup.position.clone()
-    targetModelGroup.position.set(0, 0, 0)
-    const targetBox = new THREE.Box3().setFromObject(targetModelGroup)
-    targetModelGroup.position.copy(originalTargetPosition)
-
-    // 표면 모델의 바운딩 박스 계산
-    const surfaceBox = new THREE.Box3().setFromObject(surfaceModelGroup)
-    
-    // 타겟 모델의 크기
-    const targetWidth = targetBox.max.x - targetBox.min.x
-    const targetDepth = targetBox.max.z - targetBox.min.z
-    
-    // 표면의 크기
-    const surfaceWidth = surfaceBox.max.x - surfaceBox.min.x
-    const surfaceDepth = surfaceBox.max.z - surfaceBox.min.z
-    
-    // 표면이 타겟 모델보다 충분히 큰지 확인 (최소 80% 이상)
-    const minRequiredWidth = targetWidth * 0.8
-    const minRequiredDepth = targetDepth * 0.8
-    
-    const isClimbable = surfaceWidth >= minRequiredWidth && surfaceDepth >= minRequiredDepth
-    
-    console.log(`Surface check - Target: ${targetWidth.toFixed(2)}x${targetDepth.toFixed(2)}, Surface: ${surfaceWidth.toFixed(2)}x${surfaceDepth.toFixed(2)}, Required: ${minRequiredWidth.toFixed(2)}x${minRequiredDepth.toFixed(2)}, Climbable: ${isClimbable}`)
-    
-    return isClimbable
-  }
-
-  // 모든 모델의 위치를 재계산하는 메서드
   private recalculateAllModelPositions(): void {
     console.log('=== Starting position recalculation for all models ===')
     console.log(`Total models to check: ${this.models.size}`)
@@ -515,21 +482,26 @@ export class ModelManager {
           console.log(`Checking model ${model.getId()} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
           
           // 현재 X, Z 위치에서 올바른 표면 Y 위치 계산
-          const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
-          console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
-          
-          // Y 위치가 변경되었을 때만 업데이트
-          if (Math.abs(currentPosition.y - newY) > 0.001) {
-            model.setPosition({
-              x: currentPosition.x,
-              y: newY,
-              z: currentPosition.z
-            })
+          try {
+            const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
+            console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
             
-            hasChanges = true // 변경이 있었음을 표시
-            console.log(`  -> ✅ Model ${model.getId()} repositioned from Y:${currentPosition.y.toFixed(3)} to Y:${newY.toFixed(3)}`)
-          } else {
-            console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
+            // Y 위치가 변경되었을 때만 업데이트
+            if (Math.abs(currentPosition.y - newY) > 0.001) {
+              model.setPosition({
+                x: currentPosition.x,
+                y: newY,
+                z: currentPosition.z
+              })
+              
+              hasChanges = true // 변경이 있었음을 표시
+              console.log(`  -> ✅ Model ${model.getId()} repositioned from Y:${currentPosition.y.toFixed(3)} to Y:${newY.toFixed(3)}`)
+            } else {
+              console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
+            }
+          } catch (error) {
+            console.log(`  -> ⚠️ Cannot calculate surface Y for model ${model.getId()}: No floor available`)
+            // 바닥이 없으면 현재 위치 유지
           }
         } else {
           console.log(`Model ${model.getId()} is not loaded, skipping`)
@@ -540,7 +512,6 @@ export class ModelManager {
     console.log(`=== Position recalculation completed after ${iterations} iterations ===`)
   }
 
-  // 특정 모델을 제외한 다른 모든 모델들의 위치를 재계산하는 메서드
   public recalculateOtherModelPositions(excludeModelId: string): void {
     console.log(`=== Starting position recalculation for models (excluding ${excludeModelId}) ===`)
     
@@ -591,53 +562,108 @@ export class ModelManager {
         
         // 가장 아래에 있는 모델이면서 바닥에 닿아있지 않다면 강제로 바닥에 붙임
         if (i === 0) {
-          const floorY = this.calculateModelFloorY(model)
-          const isOnFloor = Math.abs(currentPosition.y - floorY) < 0.01
-          
-          if (!isOnFloor) {
-            console.log(`  -> 🔧 Forcing lowest model ${model.getId()} to floor Y: ${floorY.toFixed(3)}`)
-            model.setPosition({
-              x: currentPosition.x,
-              y: floorY,
-              z: currentPosition.z
-            })
-            hasChanges = true
-            continue
+          try {
+            const floorY = this.calculateModelFloorY(model)
+            const isOnFloor = Math.abs(currentPosition.y - floorY) < 0.01
+            
+            if (!isOnFloor) {
+              console.log(`  -> 🔧 Forcing lowest model ${model.getId()} to floor Y: ${floorY.toFixed(3)}`)
+              model.setPosition({
+                x: currentPosition.x,
+                y: floorY,
+                z: currentPosition.z
+              })
+              hasChanges = true
+              continue
+            }
+          } catch (error) {
+            console.log(`  -> ⚠️ Cannot calculate floor Y for model ${model.getId()}: No floor available`)
+            // 바닥이 없으면 계속 진행
           }
         }
         
         // 현재 X, Z 위치에서 올바른 표면 Y 위치 계산
-        const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
-        console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
-        
-        // Y 위치가 변경되었을 때만 업데이트
-        if (Math.abs(currentPosition.y - newY) > 0.001) {
-          // 새로운 Y 위치가 현재보다 아래에 있을 때만 이동 (떨어지기만 허용)
-          if (newY <= currentPosition.y + 0.001) {
-            model.setPosition({
-              x: currentPosition.x,
-              y: newY,
-              z: currentPosition.z
-            })
-            
-            hasChanges = true // 변경이 있었음을 표시
-            console.log(`  -> ✅ Model ${model.getId()} repositioned from Y:${currentPosition.y.toFixed(3)} to Y:${newY.toFixed(3)}`)
-            
-            // 위치가 변경된 모델을 다시 정렬에 반영하기 위해 배열 재정렬
-            modelsToRecalculate.sort((a, b) => {
-              const aY = a.getPosition().y
-              const bY = b.getPosition().y
-              return aY - bY
-            })
+        try {
+          const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
+          console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
+          
+          // Y 위치가 변경되었을 때만 업데이트
+          if (Math.abs(currentPosition.y - newY) > 0.001) {
+            // 새로운 Y 위치가 현재보다 아래에 있을 때만 이동 (떨어지기만 허용)
+            if (newY <= currentPosition.y + 0.001) {
+              model.setPosition({
+                x: currentPosition.x,
+                y: newY,
+                z: currentPosition.z
+              })
+              
+              hasChanges = true // 변경이 있었음을 표시
+              console.log(`  -> ✅ Model ${model.getId()} repositioned from Y:${currentPosition.y.toFixed(3)} to Y:${newY.toFixed(3)}`)
+              
+              // 위치가 변경된 모델을 다시 정렬에 반영하기 위해 배열 재정렬
+              modelsToRecalculate.sort((a, b) => {
+                const aY = a.getPosition().y
+                const bY = b.getPosition().y
+                return aY - bY
+              })
+            } else {
+              console.log(`  -> ⚠️ Model ${model.getId()} would move up (from ${currentPosition.y.toFixed(3)} to ${newY.toFixed(3)}), preventing upward movement`)
+            }
           } else {
-            console.log(`  -> ⚠️ Model ${model.getId()} would move up (from ${currentPosition.y.toFixed(3)} to ${newY.toFixed(3)}), preventing upward movement`)
+            console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
           }
-        } else {
-          console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
+        } catch (error) {
+          console.log(`  -> ⚠️ Cannot calculate surface Y for model ${model.getId()}: No floor available`)
+          // 바닥이 없으면 현재 위치 유지
         }
       }
     }
     
     console.log(`=== Position recalculation completed after ${iterations} iterations (excluding ${excludeModelId}) ===`)
+  }
+
+  // 충돌 감지 및 자동 올라가기 기능 (InteractionManager에서 사용)
+  public checkCollisionAndAdjust(targetModel: BaseModel, newX: number, newY: number, newZ: number): { x: number, y: number, z: number } {
+    const targetModelGroup = targetModel.getModel()
+    if (!targetModelGroup) {
+      return { x: newX, y: Math.max(0, newY), z: newZ }
+    }
+
+    // 바닥이 없으면 원래 위치 유지 (단, Y 좌표는 0 이상으로 제한)
+    if (!this.hasFloorMeshes()) {
+      console.log('No floor available - keeping original position')
+      const currentPosition = targetModel.getPosition()
+      return { 
+        x: currentPosition.x, 
+        y: Math.max(0, currentPosition.y), 
+        z: currentPosition.z 
+      }
+    }
+
+    // 먼저 경계 체크를 통해 X, Z 좌표를 바닥 안쪽으로 제한
+    const clampedPosition = this.clampToFloorWithBounds(targetModel, newX, newZ)
+    const adjustedX = clampedPosition.x
+    const adjustedZ = clampedPosition.z
+
+    // 현재 위치에서 올바른 표면 Y 위치 계산
+    try {
+      const surfaceY = this.calculateSurfaceY(targetModel, adjustedX, adjustedZ)
+      // Y 좌표가 바닥 위치(y=0) 아래로 가지 않도록 제한
+      const clampedSurfaceY = Math.max(0, surfaceY)
+      return {
+        x: adjustedX,
+        y: clampedSurfaceY,
+        z: adjustedZ
+      }
+    } catch (error) {
+      // 유효한 표면을 찾을 수 없으면 원래 위치 유지 (단, Y 좌표는 0 이상으로 제한)
+      console.log('Cannot find valid surface - keeping original position')
+      const currentPosition = targetModel.getPosition()
+      return { 
+        x: currentPosition.x, 
+        y: Math.max(0, currentPosition.y), 
+        z: currentPosition.z 
+      }
+    }
   }
 } 

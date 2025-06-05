@@ -1,8 +1,6 @@
 import { Pane } from 'tweakpane'
 
 export interface RoomParams {
-  width: number
-  height: number
   wallHeight: number
   customGrid: boolean[][]  // 5x5 격자 패턴
 }
@@ -12,16 +10,24 @@ export class RoomControls {
   private params: RoomParams
   private onParamsChange: (params: Partial<RoomParams>) => void
   private gridContainer: HTMLDivElement | null = null
+  
+  // 드래그 상태 관리
+  private isDragging: boolean = false
+  private dragMode: 'paint' | 'erase' | null = null
+  private draggedCells: Set<string> = new Set() // 이미 드래그된 셀들 추적
+  private cleanupEventListeners?: () => void // 이벤트 리스너 정리 함수
 
   constructor(
     initialParams: RoomParams,
     onParamsChange: (params: Partial<RoomParams>) => void
   ) {
     this.params = { ...initialParams }
+    // 중앙 타일은 항상 활성화
+    this.ensureCenterTile()
     this.onParamsChange = onParamsChange
 
     this.pane = new Pane({
-      title: 'Room Controls',
+      title: 'Floor Designer',
       expanded: true
     })
 
@@ -29,35 +35,181 @@ export class RoomControls {
     this.setupStyles()
   }
 
+  // 중앙 타일 (2, 2)를 항상 활성화 상태로 유지
+  private ensureCenterTile(): void {
+    if (!Array.isArray(this.params.customGrid)) {
+      this.params.customGrid = this.createEmptyGrid()
+    }
+    
+    // 중앙 타일 (2, 2)는 항상 true
+    this.params.customGrid[2][2] = true
+  }
+
+  // 두 점 사이의 최단 경로를 찾아서 모든 중간 타일을 활성화
+  private connectTiles(startRow: number, startCol: number, endRow: number, endCol: number): void {
+    const grid = this.params.customGrid
+    
+    // 시작점에서 끝점까지의 직선 경로 생성 (Manhattan path)
+    let currentRow = startRow
+    let currentCol = startCol
+    
+    while (currentRow !== endRow || currentCol !== endCol) {
+      // 현재 위치 활성화
+      grid[currentRow][currentCol] = true
+      
+      // 목표 지점으로 한 칸씩 이동
+      if (currentRow < endRow) {
+        currentRow++
+      } else if (currentRow > endRow) {
+        currentRow--
+      } else if (currentCol < endCol) {
+        currentCol++
+      } else if (currentCol > endCol) {
+        currentCol--
+      }
+    }
+    
+    // 마지막 목표 지점도 활성화
+    grid[endRow][endCol] = true
+  }
+
+  // 가장 가까운 활성화된 타일 찾기
+  private findNearestActiveTile(targetRow: number, targetCol: number): { row: number, col: number } | null {
+    const grid = this.params.customGrid
+    let minDistance = Infinity
+    let nearestTile = null
+    
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
+        if (grid[row][col]) {
+          // Manhattan distance 계산
+          const distance = Math.abs(targetRow - row) + Math.abs(targetCol - col)
+          if (distance < minDistance) {
+            minDistance = distance
+            nearestTile = { row, col }
+          }
+        }
+      }
+    }
+    
+    return nearestTile
+  }
+
+  // 드래그 시작
+  private startDrag(row: number, col: number): void {
+    // 중앙 타일은 드래그 불가
+    if (row === 2 && col === 2) {
+      return
+    }
+
+    this.isDragging = true
+    this.draggedCells.clear()
+    
+    const grid = this.params.customGrid
+    // 현재 셀의 상태에 따라 드래그 모드 결정
+    this.dragMode = grid[row][col] ? 'erase' : 'paint'
+    
+    // 첫 번째 셀 처리
+    this.processDragCell(row, col)
+  }
+
+  // 드래그 중 셀 처리
+  private processDragCell(row: number, col: number): void {
+    // 중앙 타일은 처리하지 않음
+    if (row === 2 && col === 2) {
+      return
+    }
+
+    const cellKey = `${row}-${col}`
+    
+    // 이미 드래그한 셀은 건너뜀
+    if (this.draggedCells.has(cellKey)) {
+      return
+    }
+
+    this.draggedCells.add(cellKey)
+    const grid = this.params.customGrid
+
+    if (this.dragMode === 'paint') {
+      // 페인트 모드: 타일 활성화 및 연결
+      if (!grid[row][col]) {
+        const nearestTile = this.findNearestActiveTile(row, col)
+        if (nearestTile) {
+          this.connectTiles(nearestTile.row, nearestTile.col, row, col)
+        } else {
+          grid[row][col] = true
+        }
+      }
+    } else if (this.dragMode === 'erase') {
+      // 지우기 모드: 타일 비활성화
+      grid[row][col] = false
+    }
+
+    // 중앙 타일은 항상 유지
+    this.ensureCenterTile()
+    
+    // 시각적 업데이트
+    this.updateGridVisual()
+  }
+
+  // 드래그 종료
+  private endDrag(): void {
+    if (this.isDragging) {
+      this.isDragging = false
+      this.dragMode = null
+      this.draggedCells.clear()
+      
+      // 최종 변경사항 알림
+      this.onParamsChange({ customGrid: this.params.customGrid })
+    }
+  }
+
+  // 마우스 위치에서 셀 좌표 계산
+  private getCellFromMouseEvent(event: MouseEvent): { row: number, col: number } | null {
+    if (!this.gridContainer) return null
+
+    const rect = this.gridContainer.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const y = event.clientY - rect.top
+
+    // 패딩과 간격을 고려한 셀 크기 계산
+    const padding = 10
+    const gap = 2
+    const cellSize = 30
+    const totalCellWidth = cellSize + gap
+    const totalCellHeight = cellSize + gap
+
+    const col = Math.floor((x - padding) / totalCellWidth)
+    const row = Math.floor((y - padding) / totalCellHeight)
+
+    // 유효한 범위 내에 있는지 확인
+    if (row >= 0 && row < 5 && col >= 0 && col < 5) {
+      return { row, col }
+    }
+
+    return null
+  }
+
   private setupControls() {
-    // 커스텀 격자 모드 토글 버튼
-    this.pane.addButton({
-      title: 'Toggle Custom Floor'
-    }).on('click', () => {
-      this.toggleCustomGridMode()
+    // 안내 메시지
+    const infoFolder = this.pane.addFolder({
+      title: 'ℹ️ 사용 방법',
+      expanded: false
     })
-
-    // 방 가로 크기 조절 (격자 모드가 아닐 때만)
-    this.pane.addBinding(this.params, 'width', {
-      label: 'Room Width',
-      min: 1,
-      max: 20,
-      step: 1,
-      disabled: this.isCustomGridActive()
-    }).on('change', (ev) => {
-      this.onParamsChange({ width: ev.value })
-    })
-
-    // 방 세로 크기 조절 (격자 모드가 아닐 때만)
-    this.pane.addBinding(this.params, 'height', {
-      label: 'Room Height',
-      min: 1,
-      max: 20,
-      step: 1,
-      disabled: this.isCustomGridActive()
-    }).on('change', (ev) => {
-      this.onParamsChange({ height: ev.value })
-    })
+    
+    const infoElement = document.createElement('div')
+    infoElement.style.cssText = `
+      padding: 10px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.4;
+    `
+    infoElement.textContent = '격자를 클릭하여 바닥을 생성하세요. 중앙 타일은 항상 유지되며, 새로운 타일은 자동으로 기존 타일과 연결됩니다.'
+    
+    const infoContainer = infoFolder.element.querySelector('.tp-fldv_c')
+    if (infoContainer) {
+      infoContainer.appendChild(infoElement)
+    }
 
     // 벽 높이 조절
     this.pane.addBinding(this.params, 'wallHeight', {
@@ -69,42 +221,12 @@ export class RoomControls {
       this.onParamsChange({ wallHeight: ev.value })
     })
 
-    // 구분선 추가
-    this.pane.addFolder({
-      title: '─────────────',
-      expanded: false
-    })
-
     // 5x5 격자 편집기 추가
     this.createGridEditor()
 
-    // 프리셋 버튼들
-    const presetFolder = this.pane.addFolder({
-      title: 'Room Presets',
-      expanded: false
-    })
-
-    presetFolder.addButton({
-      title: 'Small Room (3x3)'
-    }).on('click', () => {
-      this.applyPreset({ width: 3, height: 3, wallHeight: 1, customGrid: this.createEmptyGrid() })
-    })
-
-    presetFolder.addButton({
-      title: 'Medium Room (5x5)'
-    }).on('click', () => {
-      this.applyPreset({ width: 5, height: 5, wallHeight: 2, customGrid: this.createEmptyGrid() })
-    })
-
-    presetFolder.addButton({
-      title: 'Large Room (8x8)'
-    }).on('click', () => {
-      this.applyPreset({ width: 8, height: 8, wallHeight: 3, customGrid: this.createEmptyGrid() })
-    })
-
     // 격자 프리셋들
     const gridPresetFolder = this.pane.addFolder({
-      title: 'Grid Presets',
+      title: 'Floor Presets',
       expanded: false
     })
 
@@ -127,21 +249,23 @@ export class RoomControls {
     })
 
     gridPresetFolder.addButton({
-      title: 'Clear Grid'
+      title: 'Reset to Center'
     }).on('click', () => {
-      this.applyClearPattern()
+      this.resetToCenter()
     })
 
-    // 리셋 버튼
+    // 바닥 생성/제거 버튼
     this.pane.addButton({
-      title: 'Reset to Default'
+      title: 'Apply Floor Design'
     }).on('click', () => {
-      this.applyPreset({ width: 5, height: 5, wallHeight: 1, customGrid: this.createEmptyGrid() })
+      this.onParamsChange({ customGrid: this.params.customGrid })
     })
   }
 
   private createEmptyGrid(): boolean[][] {
-    return Array(5).fill(null).map(() => Array(5).fill(false))
+    const grid = Array(5).fill(null).map(() => Array(5).fill(false))
+    grid[2][2] = true // 중앙은 항상 true
+    return grid
   }
 
   private createGridEditor() {
@@ -161,33 +285,75 @@ export class RoomControls {
       background: rgba(255, 255, 255, 0.1);
       border-radius: 4px;
       margin: 10px 0;
+      user-select: none;
     `
+
+    // 전역 마우스 이벤트 리스너 추가
+    const handleGlobalMouseMove = (event: MouseEvent) => {
+      if (this.isDragging) {
+        const cell = this.getCellFromMouseEvent(event)
+        if (cell) {
+          this.processDragCell(cell.row, cell.col)
+        }
+      }
+    }
+
+    const handleGlobalMouseUp = () => {
+      this.endDrag()
+    }
+
+    // 전역 이벤트 리스너 등록
+    document.addEventListener('mousemove', handleGlobalMouseMove)
+    document.addEventListener('mouseup', handleGlobalMouseUp)
 
     // 격자 셀들 생성
     for (let row = 0; row < 5; row++) {
       for (let col = 0; col < 5; col++) {
         const cell = document.createElement('div')
+        const isCenterTile = row === 2 && col === 2
+        
         cell.style.cssText = `
           width: 30px;
           height: 30px;
           background: rgba(255, 255, 255, 0.2);
           border: 1px solid rgba(255, 255, 255, 0.3);
           border-radius: 2px;
-          cursor: pointer;
+          cursor: ${isCenterTile ? 'not-allowed' : 'pointer'};
           transition: all 0.2s;
+          ${isCenterTile ? 'opacity: 0.7;' : ''}
         `
 
-        cell.addEventListener('click', () => {
-          this.toggleGridCell(row, col, cell)
-        })
+        if (!isCenterTile) {
+          // 마우스 다운: 드래그 시작
+          cell.addEventListener('mousedown', (event) => {
+            event.preventDefault()
+            this.startDrag(row, col)
+          })
 
-        cell.addEventListener('mouseenter', () => {
-          cell.style.transform = 'scale(1.1)'
-        })
+          // 마우스 엔터: 드래그 중이면 셀 처리
+          cell.addEventListener('mouseenter', () => {
+            if (this.isDragging) {
+              this.processDragCell(row, col)
+            } else {
+              // 드래그 중이 아닐 때만 호버 효과
+              cell.style.transform = 'scale(1.1)'
+            }
+          })
 
-        cell.addEventListener('mouseleave', () => {
-          cell.style.transform = 'scale(1)'
-        })
+          cell.addEventListener('mouseleave', () => {
+            if (!this.isDragging) {
+              cell.style.transform = 'scale(1)'
+            }
+          })
+
+          // 우클릭 방지
+          cell.addEventListener('contextmenu', (event) => {
+            event.preventDefault()
+          })
+        } else {
+          // 중앙 타일에는 특별한 표시 추가
+          cell.title = '중앙 타일 (항상 활성화)'
+        }
 
         this.gridContainer.appendChild(cell)
       }
@@ -198,38 +364,14 @@ export class RoomControls {
     if (gridElement) {
       gridElement.appendChild(this.gridContainer)
     }
-  }
 
-  private toggleGridCell(row: number, col: number, cellElement: HTMLDivElement) {
-    if (!Array.isArray(this.params.customGrid)) {
-      this.params.customGrid = this.createEmptyGrid()
-    }
+    // 초기 격자 상태 업데이트
+    this.updateGridVisual()
 
-    // 셀 상태 토글
-    this.params.customGrid[row][col] = !this.params.customGrid[row][col]
-    
-    // 시각적 업데이트
-    if (this.params.customGrid[row][col]) {
-      cellElement.style.background = '#ff6b6b'
-      cellElement.style.borderColor = '#ff5252'
-    } else {
-      cellElement.style.background = 'rgba(255, 255, 255, 0.2)'
-      cellElement.style.borderColor = 'rgba(255, 255, 255, 0.3)'
-    }
-
-    // 변경사항 알림
-    this.onParamsChange({ customGrid: this.params.customGrid })
-  }
-
-  private showGridEditor() {
-    if (this.gridContainer) {
-      this.gridContainer.style.display = 'grid'
-    }
-  }
-
-  private hideGridEditor() {
-    if (this.gridContainer) {
-      this.gridContainer.style.display = 'none'
+    // cleanup 함수를 저장하여 나중에 제거할 수 있도록 함
+    this.cleanupEventListeners = () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove)
+      document.removeEventListener('mouseup', handleGlobalMouseUp)
     }
   }
 
@@ -247,10 +389,10 @@ export class RoomControls {
 
   private applyLPattern() {
     const grid = this.createEmptyGrid()
-    // L 패턴 생성
-    for (let i = 1; i < 4; i++) {
-      grid[i][1] = true  // 세로줄
-      grid[3][i] = true  // 가로줄
+    // L 패턴 생성 (중앙에서 시작)
+    for (let i = 2; i < 5; i++) {
+      grid[i][2] = true  // 세로줄 (중앙에서 아래로)
+      grid[2][i] = true  // 가로줄 (중앙에서 오른쪽으로)
     }
     this.params.customGrid = grid
     this.updateGridVisual()
@@ -264,7 +406,7 @@ export class RoomControls {
     this.onParamsChange({ customGrid: grid })
   }
 
-  private applyClearPattern() {
+  private resetToCenter() {
     this.params.customGrid = this.createEmptyGrid()
     this.updateGridVisual()
     this.onParamsChange({ customGrid: this.params.customGrid })
@@ -278,10 +420,17 @@ export class RoomControls {
       for (let col = 0; col < 5; col++) {
         const cellIndex = row * 5 + col
         const cell = cells[cellIndex] as HTMLDivElement
+        const isCenterTile = row === 2 && col === 2
         
         if (this.params.customGrid[row][col]) {
-          cell.style.background = '#ff6b6b'
-          cell.style.borderColor = '#ff5252'
+          if (isCenterTile) {
+            // 중앙 타일은 특별한 색상
+            cell.style.background = '#4CAF50'
+            cell.style.borderColor = '#45a049'
+          } else {
+            cell.style.background = '#ff6b6b'
+            cell.style.borderColor = '#ff5252'
+          }
         } else {
           cell.style.background = 'rgba(255, 255, 255, 0.2)'
           cell.style.borderColor = 'rgba(255, 255, 255, 0.3)'
@@ -303,25 +452,12 @@ export class RoomControls {
     paneElement.style.border = '1px solid rgba(255, 255, 255, 0.1)'
   }
 
-  private applyPreset(preset: Partial<RoomParams>) {
-    // 파라미터 업데이트
-    Object.assign(this.params, preset)
-    
-    // UI 새로고침
-    this.pane.refresh()
-    
-    // 격자 시각 업데이트
-    if (preset.customGrid) {
-      this.updateGridVisual()
-    }
-    
-    // 콜백 호출
-    this.onParamsChange(preset)
-  }
-
   public updateParams(params: Partial<RoomParams>) {
     Object.assign(this.params, params)
     this.pane.refresh()
+    if (params.customGrid) {
+      this.updateGridVisual()
+    }
   }
 
   public getParams(): RoomParams {
@@ -329,18 +465,11 @@ export class RoomControls {
   }
 
   public dispose() {
-    this.pane.dispose()
-  }
-
-  private toggleCustomGridMode() {
-    if (this.isCustomGridActive()) {
-      this.hideGridEditor()
-    } else {
-      this.showGridEditor()
+    // 이벤트 리스너 정리
+    if (this.cleanupEventListeners) {
+      this.cleanupEventListeners()
     }
-  }
-
-  private isCustomGridActive(): boolean {
-    return Array.isArray(this.params.customGrid)
+    
+    this.pane.dispose()
   }
 } 

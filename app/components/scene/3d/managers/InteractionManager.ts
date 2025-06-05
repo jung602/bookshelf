@@ -378,20 +378,27 @@ export class InteractionManager {
     const newY = dragIntersection.y + this.dragState.dragOffset.y
     const newZ = dragIntersection.z + this.dragState.dragOffset.z
 
+    // Y 좌표가 바닥 위치(y=0) 아래로 가지 않도록 제한
+    const clampedY = Math.max(0, newY)
+
     // 충돌 감지 throttling - 성능 최적화
     const currentTime = Date.now()
     const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
 
-    let adjustedPosition = { x: newX, y: newY, z: newZ }
+    let adjustedPosition = { x: newX, y: clampedY, z: newZ }
 
     if (shouldCheckCollision) {
       // 충돌 감지 및 자동 올라가기 적용
       adjustedPosition = this.modelManager.checkCollisionAndAdjust(
         this.dragState.selectedModel, 
         newX, 
-        newY, 
+        clampedY, 
         newZ
       )
+      
+      // 충돌 감지 후에도 Y 좌표가 바닥 아래로 가지 않도록 다시 한 번 확인
+      adjustedPosition.y = Math.max(0, adjustedPosition.y)
+      
       this.lastCollisionCheckTime = currentTime
     }
 

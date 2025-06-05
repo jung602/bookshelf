@@ -27,10 +27,12 @@ export class SceneManager {
   private animationId: number | null = null
   private pixelationEnabled: boolean = true
   private roomParams: RoomParams = { 
-    width: 5, 
-    height: 5, 
     wallHeight: 1,
-    customGrid: Array(5).fill(null).map(() => Array(5).fill(false))  // 초기값은 빈 격자
+    customGrid: (() => {
+      const grid = Array(5).fill(null).map(() => Array(5).fill(false))
+      grid[2][2] = true // 중앙 타일은 항상 활성화
+      return grid
+    })()
   }
   private colorParams: ColorParams = ColorControls.getDefaultParams()
   private isInitialized: boolean = false
@@ -107,18 +109,18 @@ export class SceneManager {
     this.controls.update()
 
     // ModelManager 초기화
-    this.modelManager = new ModelManager(this.scene, this.roomParams.width, this.roomParams.height)
+    this.modelManager = new ModelManager(this.scene)
   }
 
   private async setupScene() {
     // 조명 추가
     createLights(this.scene)
 
-    // 바닥 추가
-    createFloor(this.scene, this.roomParams.width, this.roomParams.height, this.colorParams.floorColor, this.roomParams.customGrid)
+    // 바닥 추가 (격자 기반)
+    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid)
 
-    // 벽들 추가
-    createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    // 벽들 추가 (격자 기반)
+    createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
 
     // 초기 모델 로드 제거 - 이제 UI에서 추가할 예정
     console.log('Scene setup completed without initial models')
@@ -219,15 +221,12 @@ export class SceneManager {
     // 방 파라미터 업데이트
     Object.assign(this.roomParams, params)
     
-    // ModelManager에 새로운 바닥 크기 알림
-    this.modelManager.updateFloorBounds(this.roomParams.width, this.roomParams.height)
+    // 바닥과 벽 다시 생성 (격자 기반)
+    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid)
+    createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
-    // 바닥과 벽 다시 생성
-    createFloor(this.scene, this.roomParams.width, this.roomParams.height, this.colorParams.floorColor, this.roomParams.customGrid)
-    createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
-    
-    // 카메라 위치 조정 (방 크기와 벽 높이에 맞게)
-    const maxSize = Math.max(this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight)
+    // 카메라 위치 조정 (격자 크기 기반)
+    const maxSize = Math.max(5, this.roomParams.wallHeight) // 5x5 격자 고정
     const cameraDistance = maxSize * 2
     this.camera.position.set(cameraDistance, cameraDistance, cameraDistance)
     this.controls.update()
@@ -237,9 +236,9 @@ export class SceneManager {
     // 색상 파라미터 업데이트
     Object.assign(this.colorParams, params)
     
-    // 바닥과 벽 다시 생성
-    createFloor(this.scene, this.roomParams.width, this.roomParams.height, this.colorParams.floorColor, this.roomParams.customGrid)
-    createWalls(this.scene, this.roomParams.width, this.roomParams.height, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    // 바닥과 벽 다시 생성 (격자 기반)
+    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid)
+    createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
   }
 
   public getColorControls(): ColorControls {

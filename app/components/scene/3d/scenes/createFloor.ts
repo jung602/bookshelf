@@ -4,12 +4,27 @@ export function createFloor(
   scene: THREE.Scene, 
   width: number = 1, 
   height: number = 1,
-  color: string = '#ffffff'
+  color: string = '#ffffff',
+  customGrid?: boolean[][]  // 5x5 격자 패턴
 ) {
   // 기존 바닥 제거
   const existingFloors = scene.children.filter(child => child.userData.isFloor)
   existingFloors.forEach(floor => scene.remove(floor))
 
+  // 커스텀 격자가 있는 경우 격자별로 타일 생성
+  if (customGrid && Array.isArray(customGrid)) {
+    createCustomGridFloor(scene, customGrid, color)
+  } else {
+    createRegularFloor(scene, width, height, color)
+  }
+}
+
+function createRegularFloor(
+  scene: THREE.Scene,
+  width: number,
+  height: number, 
+  color: string
+) {
   // 텍스처 로더
   const textureLoader = new THREE.TextureLoader()
   
@@ -44,4 +59,57 @@ export function createFloor(
   floor.userData.isFloor = true // 식별용 플래그
 
   scene.add(floor)
+}
+
+function createCustomGridFloor(
+  scene: THREE.Scene,
+  customGrid: boolean[][],
+  color: string
+) {
+  // 텍스처 로더
+  const textureLoader = new THREE.TextureLoader()
+  
+  // 체커보드 텍스처 로드
+  const checkerTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png')
+
+  // 텍스처 반복 설정
+  checkerTexture.wrapS = checkerTexture.wrapT = THREE.RepeatWrapping
+  checkerTexture.minFilter = THREE.NearestFilter
+  checkerTexture.magFilter = THREE.NearestFilter
+  checkerTexture.generateMipmaps = false
+  checkerTexture.repeat.set(1, 1) // 각 타일마다 하나의 체커 패턴
+
+  const gridSize = customGrid.length
+  const tileSize = 1 // 각 타일의 크기
+  const offset = (gridSize - 1) * tileSize / 2 // 중앙 정렬을 위한 오프셋
+
+  // 격자의 각 셀에 대해 타일 생성
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (customGrid[row][col]) {
+        // 지오메트리와 머티리얼 생성
+        const geometry = new THREE.PlaneGeometry(tileSize, tileSize)
+        const material = new THREE.MeshStandardMaterial({
+          map: checkerTexture.clone(),
+          color: new THREE.Color(color),
+          side: THREE.DoubleSide
+        })
+
+        // 메시 생성
+        const tile = new THREE.Mesh(geometry, material)
+        
+        // 타일 위치 설정 (격자 좌표를 3D 좌표로 변환)
+        const x = col * tileSize - offset
+        const z = row * tileSize - offset
+        
+        tile.position.set(x, 0, z)
+        tile.rotation.set(-Math.PI / 2, 0, 0)
+        tile.receiveShadow = true
+        tile.userData.isFloor = true
+        tile.userData.gridPosition = { row, col } // 격자 위치 정보 저장
+
+        scene.add(tile)
+      }
+    }
+  }
 } 

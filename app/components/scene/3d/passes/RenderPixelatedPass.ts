@@ -46,6 +46,11 @@ export class RenderPixelatedPass extends Pass {
     this.rgbRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBAFormat)
     this.normalRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBFormat)
     this.normalMaterial = new THREE.MeshNormalMaterial()
+    
+    // RGB 렌더 타겟에 depth texture 추가
+    this.rgbRenderTarget.depthTexture = new THREE.DepthTexture(resolution.x, resolution.y)
+    this.rgbRenderTarget.depthTexture.format = THREE.DepthFormat
+    this.rgbRenderTarget.depthTexture.type = THREE.UnsignedShortType
   }
 
   render(
@@ -69,6 +74,7 @@ export class RenderPixelatedPass extends Pass {
     const uniforms = (this.fsQuad.material as THREE.ShaderMaterial).uniforms
     uniforms.tDiffuse.value = this.rgbRenderTarget.texture
     uniforms.tNormal.value = this.normalRenderTarget.texture
+    uniforms.tDepth.value = this.rgbRenderTarget.depthTexture
     uniforms.normalEdgeStrength.value = this.params.normalEdgeStrength
     uniforms.ditherStrength.value = this.params.ditherStrength
     uniforms.ditherScale.value = this.params.ditherScale
@@ -105,6 +111,11 @@ export class RenderPixelatedPass extends Pass {
       this.rgbRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBAFormat)
       this.normalRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBFormat)
       
+      // RGB 렌더 타겟에 depth texture 재추가
+      this.rgbRenderTarget.depthTexture = new THREE.DepthTexture(this.resolution.x, this.resolution.y)
+      this.rgbRenderTarget.depthTexture.format = THREE.DepthFormat
+      this.rgbRenderTarget.depthTexture.type = THREE.UnsignedShortType
+      
       // 해상도 유니폼 업데이트
       const uniforms = (this.fsQuad.material as THREE.ShaderMaterial).uniforms
       uniforms.resolution.value.set(
@@ -121,6 +132,7 @@ export class RenderPixelatedPass extends Pass {
     const baseUniforms = {
       tDiffuse: { value: null },
       tNormal: { value: null },
+      tDepth: { value: null },
       resolution: {
         value: new THREE.Vector4(
           this.resolution.x,
@@ -157,6 +169,7 @@ export class RenderPixelatedPass extends Pass {
       fragmentShader: `
         uniform sampler2D tDiffuse;
         uniform sampler2D tNormal;
+        uniform sampler2D tDepth;
         uniform vec4 resolution;
         uniform float normalEdgeStrength;
         uniform float ditherStrength;
@@ -192,22 +205,39 @@ export class RenderPixelatedPass extends Pass {
           return texture2D(tNormal, vUv + vec2(x, y) * resolution.zw).rgb * 2.0 - 1.0;
         }
 
+        // 깊이 값을 가져오는 함수
+        float getDepth(int x, int y) {
+          return texture2D(tDepth, vUv + vec2(x, y) * resolution.zw).r;
+        }
+
         // 주변 픽셀의 실제 RGB 색상을 가져오는 함수 추가
         vec3 getRGBColor(int x, int y) {
           return texture2D(tDiffuse, vUv + vec2(x, y) * resolution.zw).rgb;
         }
 
-        // 가장 간단한 엣지 감지
+        // Normal과 Depth를 모두 고려한 엣지 감지
         float simpleEdge() {
-          vec3 center = getNormal(0, 0);
+          vec3 centerNormal = getNormal(0, 0);
+          float centerDepth = getDepth(0, 0);
           
-          // 오른쪽과 아래쪽 방향 확인 (대각선 포함)
-          float rightDiff = distance(center, getNormal(1, 0));
-          float downDiff = distance(center, getNormal(0, 1));
+          // Normal 차이 계산
+          float normalRightDiff = distance(centerNormal, getNormal(1, 0));
+          float normalDownDiff = distance(centerNormal, getNormal(0, 1));
+          float maxNormalDiff = max(normalRightDiff, normalDownDiff);
           
-          // 둘 중 하나라도 임계값을 넘으면 엣지
-          float maxDiff = max(rightDiff, downDiff);
-          return maxDiff > 0.5 ? 1.0 : 0.0;
+          // Depth 차이 계산 (더 민감하게 설정)
+          float depthRightDiff = abs(centerDepth - getDepth(1, 0));
+          float depthDownDiff = abs(centerDepth - getDepth(0, 1));
+          float maxDepthDiff = max(depthRightDiff, depthDownDiff);
+          
+          // Normal 엣지 (기존 로직)
+          float normalEdge = maxNormalDiff > 0.5 ? 1.0 : 0.0;
+          
+          // Depth 엣지 (깊이 차이가 0.001 이상이면 엣지로 판정)
+          float depthEdge = maxDepthDiff > 0.001 ? 1.0 : 0.0;
+          
+          // 둘 중 하나라도 엣지면 최종 엣지로 판정
+          return max(normalEdge, depthEdge);
         }
 
         void main() {

@@ -17,15 +17,15 @@ export class PixelationControls {
   public static getDefaultParams(): PixelationParams {
     const baseParams = {
       pixelSize: PixelationControls.calculatePixelSize(),
-      normalEdgeStrength: 0.20,
-      ditherStrength: 0.02,
+      ditherStrength: 0.05,
       ditherScale: 1.0
     }
 
     // 팔레트 파라미터 자동 추가
     const paletteParams: Record<string, number> = {}
     ColorPalettes.PALETTE_METADATA.forEach(palette => {
-      paletteParams[palette.key] = 0.0
+      // Windows 16 팔레트는 기본값을 0.3으로 설정
+      paletteParams[palette.key] = palette.key === 'useMSPaintPalette' ? 0.3 : 0.0
     })
 
     return { ...baseParams, ...paletteParams } as PixelationParams
@@ -70,16 +70,6 @@ export class PixelationControls {
   private resizeHandler?: () => void
 
   private setupControls() {
-    // 노멀 엣지 강도
-    this.pane.addBinding(this.params, 'normalEdgeStrength', {
-      label: 'Normal Edge Strength',
-      min: 0,
-      max: 1,
-      step: 0.01
-    }).on('change', (ev) => {
-      this.onParamsChange({ normalEdgeStrength: ev.value })
-    })
-
     // 디더링 강도
     this.pane.addBinding(this.params, 'ditherStrength', {
       label: 'Dither Strength',

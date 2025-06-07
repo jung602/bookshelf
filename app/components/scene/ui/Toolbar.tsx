@@ -19,8 +19,8 @@ export default function Toolbar({
   onFloorColorChange,
   onModelAdd,
   onBookCreate,
-  initialWallColor = '#cccccc',
-  initialFloorColor = '#ffffff'
+  initialWallColor = '#DCDCDC',
+  initialFloorColor = '#f0f0f0'
 }: ToolbarProps) {
   const [showBookCreator, setShowBookCreator] = useState(false)
 

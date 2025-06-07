@@ -12,8 +12,8 @@ interface ColorToolsProps {
 export default function ColorTools({
   onWallColorChange,
   onFloorColorChange,
-  initialWallColor = '#cccccc',
-  initialFloorColor = '#ffffff'
+  initialWallColor = '#DCDCDC',
+  initialFloorColor = '#f0f0f0'
 }: ColorToolsProps) {
   const [wallColor, setWallColor] = useState(initialWallColor)
   const [floorColor, setFloorColor] = useState(initialFloorColor)

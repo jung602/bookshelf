@@ -153,11 +153,11 @@ export class SceneManager {
 
   private setupControls() {
     // 픽셀화 컨트롤 패널 설정 (초기값은 컨트롤에서 관리)
-    this.pixelationControls = new PixelationControls(
-      (params) => {
-        this.pixelatedPass.updateParams(params)
-      }
-    )
+    // this.pixelationControls = new PixelationControls(
+    //   (params) => {
+    //     this.pixelatedPass.updateParams(params)
+    //   }
+    // )
 
     // 방 크기 컨트롤 패널 설정
     this.roomControls = new RoomControls(
@@ -296,7 +296,7 @@ export class SceneManager {
     }
     
     this.controls.dispose()
-    this.pixelationControls.dispose()
+    // this.pixelationControls.dispose()
     this.roomControls.dispose()
     this.colorControls.dispose()
     this.pixelatedPass.dispose()
@@ -361,7 +361,7 @@ export class SceneManager {
 
     // 픽셀화 패스의 해상도 업데이트
     if (this.pixelatedPass) {
-      const currentParams = this.pixelationControls.getParams()
+      const currentParams = PixelationControls.getDefaultParams()
       // 픽셀 사이즈 변경으로 해상도 업데이트 트리거
       this.pixelatedPass.updateParams({ pixelSize: currentParams.pixelSize })
     }
@@ -443,7 +443,7 @@ export class SceneManager {
 
     // 픽셀화 패스의 해상도 업데이트
     if (this.pixelatedPass) {
-      const currentParams = this.pixelationControls.getParams()
+      const currentParams = PixelationControls.getDefaultParams()
       this.pixelatedPass.updateParams({ pixelSize: currentParams.pixelSize })
     }
   }

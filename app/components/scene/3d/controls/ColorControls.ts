@@ -35,7 +35,7 @@ export class ColorControls {
 
   public static getDefaultParams(): ColorParams {
     return {
-      wallColor: '#cccccc',
+      wallColor: '#DCDCDC',
       floorColor: '#ffffff'
     }
   }

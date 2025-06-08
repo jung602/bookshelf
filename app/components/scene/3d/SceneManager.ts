@@ -6,7 +6,7 @@ import { createFloor } from './scenes/createFloor'
 import { createWalls } from './scenes/createWalls'
 import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
 import { PixelationControls } from './controls/PixelationControls'
-import { RoomControls, RoomParams } from './controls/RoomControls'
+import { RoomParams } from './controls/RoomControls'
 import { ColorControls, ColorParams } from './controls/ColorControls'
 import { ModelManager } from './managers/ModelManager'
 import { InteractionManager, GizmoState } from './managers/InteractionManager'
@@ -20,7 +20,6 @@ export class SceneManager {
   private composer!: EffectComposer
   private pixelatedPass!: RenderPixelatedPass
   private pixelationControls!: PixelationControls
-  private roomControls!: RoomControls
   private colorControls!: ColorControls
   private modelManager!: ModelManager
   private interactionManager!: InteractionManager
@@ -159,15 +158,7 @@ export class SceneManager {
     //   }
     // )
 
-    // 방 크기 컨트롤 패널 설정
-    this.roomControls = new RoomControls(
-      this.roomParams,
-      (params) => {
-        this.updateRoom(params)
-      }
-    )
-
-    // 색상 컨트롤 패널 설정
+    // 색상 컨트롤 패널 설정 (Room Controls는 이제 ControlsContainer에서 관리)
     this.colorControls = new ColorControls(
       this.colorParams,
       (params) => {
@@ -217,7 +208,7 @@ export class SceneManager {
     setInterval(checkDragState, 16) // 60fps
   }
 
-  private updateRoom(params: Partial<RoomParams>) {
+  public updateRoom(params: Partial<RoomParams>) {
     // 방 파라미터 업데이트
     Object.assign(this.roomParams, params)
     
@@ -297,7 +288,6 @@ export class SceneManager {
     
     this.controls.dispose()
     // this.pixelationControls.dispose()
-    this.roomControls.dispose()
     this.colorControls.dispose()
     this.pixelatedPass.dispose()
     this.renderer.dispose()

@@ -1,26 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import ColorTools from './tools/ColorTools'
 import ModelTools from './tools/ModelTools'
 import BookCreator from './tools/BookCreator'
 
 interface ToolbarProps {
-  onWallColorChange: (color: string) => void
-  onFloorColorChange: (color: string) => void
   onModelAdd: (modelType: string) => void
   onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
-  initialWallColor?: string
-  initialFloorColor?: string
 }
 
 export default function Toolbar({
-  onWallColorChange,
-  onFloorColorChange,
   onModelAdd,
-  onBookCreate,
-  initialWallColor = '#DCDCDC',
-  initialFloorColor = '#f0f0f0'
+  onBookCreate
 }: ToolbarProps) {
   const [showBookCreator, setShowBookCreator] = useState(false)
 
@@ -61,21 +52,6 @@ export default function Toolbar({
             alignItems: 'center',
             gap: '24px'
           }}>
-            {/* 색상 도구 */}
-            <ColorTools
-              onWallColorChange={onWallColorChange}
-              onFloorColorChange={onFloorColorChange}
-              initialWallColor={initialWallColor}
-              initialFloorColor={initialFloorColor}
-            />
-
-            {/* 구분선 */}
-            <div style={{
-              width: '1px',
-              height: '40px',
-              backgroundColor: '#d1d5db'
-            }}></div>
-
             {/* 모델 도구 */}
             <ModelTools 
               onModelAdd={onModelAdd} 

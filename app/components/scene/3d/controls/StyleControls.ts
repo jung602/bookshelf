@@ -1,45 +1,44 @@
-import { ROOM_CONTROL_STYLES, ROOM_CONTROL_CONSTANTS, SLIDER_THUMB_CSS } from './styles/RoomControlsStyles'
-import { GridPatterns } from './patterns/GridPatterns'
-import { GridComponent } from './components/GridComponent'
-import type { RoomParams } from './types/RoomControlTypes'
+import { ROOM_CONTROL_STYLES, ROOM_CONTROL_CONSTANTS } from './styles/RoomControlsStyles'
 
-export type { RoomParams }
+export interface StyleParams {
+  wallColor: string
+  floorColor: string
+}
 
-export class RoomControls {
-  private params: RoomParams
-  private onParamsChange: (params: Partial<RoomParams>) => void
+export class StyleControls {
+  private params: StyleParams
+  private onParamsChange: (params: Partial<StyleParams>) => void
   private container: HTMLDivElement | null = null
   private headerContainer: HTMLDivElement | null = null
   private buttonIcon: HTMLDivElement | null = null
   private titleText: HTMLDivElement | null = null
   private closeButton: HTMLDivElement | null = null
   private panelContent: HTMLDivElement | null = null
-  private gridComponent: GridComponent | null = null
-  private heightSlider: HTMLInputElement | null = null
+  private wallColorInput: HTMLInputElement | null = null
+  private floorColorInput: HTMLInputElement | null = null
   private isOpen: boolean = false
   
   constructor(
-    initialParams: RoomParams,
-    onParamsChange: (params: Partial<RoomParams>) => void,
+    initialParams: StyleParams,
+    onParamsChange: (params: Partial<StyleParams>) => void,
     addToDOM: boolean = true
   ) {
     this.params = { ...initialParams }
-    this.ensureCenterTile()
     this.onParamsChange = onParamsChange
     this.createContainer(addToDOM)
-  }
-
-  private ensureCenterTile(): void {
-    if (!Array.isArray(this.params.customGrid)) {
-      this.params.customGrid = GridPatterns.createEmptyGrid()
-    }
-    GridPatterns.ensureCenterTile(this.params.customGrid)
   }
 
   private createContainer(addToDOM: boolean = true): void {
     // 통합 컨테이너 생성
     this.container = document.createElement('div')
     Object.assign(this.container.style, ROOM_CONTROL_STYLES.CONTAINER_BUTTON)
+    
+    // 위치를 툴바 아래로 조정
+    this.container.style.bottom = '80px'
+    this.container.style.left = '50%'
+    this.container.style.transform = 'translateX(-50%)'
+    this.container.style.right = 'auto'
+    this.container.style.top = 'auto'
     
     // 헤더 컨테이너 생성 (아이콘과 제목)
     this.createHeaderContainer()
@@ -104,7 +103,7 @@ export class RoomControls {
     Object.assign(this.buttonIcon.style, ROOM_CONTROL_STYLES.BUTTON_ICON)
     
     const iconImg = document.createElement('img')
-    iconImg.src = '/icons/grid.svg'
+    iconImg.src = '/icons/Question.svg'
     Object.assign(iconImg.style, ROOM_CONTROL_STYLES.BUTTON_ICON_IMAGE)
     
     this.buttonIcon.appendChild(iconImg)
@@ -112,7 +111,7 @@ export class RoomControls {
 
   private createTitleText(): void {
     this.titleText = document.createElement('div')
-    this.titleText.textContent = 'Room'
+    this.titleText.textContent = 'Style'
     Object.assign(this.titleText.style, ROOM_CONTROL_STYLES.TITLE_TEXT)
   }
 
@@ -120,9 +119,7 @@ export class RoomControls {
     this.panelContent = document.createElement('div')
     Object.assign(this.panelContent.style, ROOM_CONTROL_STYLES.PANEL_CONTENT)
     
-    this.createHeightSlider()
-    this.createGrid()
-    this.createPresetButtons()
+    this.createColorInputs()
   }
 
   private setupContainerEvents(): void {
@@ -133,8 +130,8 @@ export class RoomControls {
       // 패널 내부의 인터랙티브 요소들은 이벤트 버블링을 막도록 처리
       if (this.isOpen) {
         const target = e.target as HTMLElement
-        // 슬라이더, 버튼, 그리드 등의 인터랙티브 요소가 아닌 경우에만 패널 토글
-        if (!target.closest('input, button, .grid-cell')) {
+        // 컬러 인풋 등의 인터랙티브 요소가 아닌 경우에만 패널 토글
+        if (!target.closest('input, button')) {
           this.togglePanel()
         }
       } else {
@@ -167,6 +164,13 @@ export class RoomControls {
     // 컨테이너를 패널 스타일로 변경
     Object.assign(this.container.style, ROOM_CONTROL_STYLES.CONTAINER_PANEL)
     
+    // 위치 재설정
+    this.container.style.bottom = '80px'
+    this.container.style.left = '50%'
+    this.container.style.transform = 'translateX(-50%)'
+    this.container.style.right = 'auto'
+    this.container.style.top = 'auto'
+    
     // 닫기 버튼 아이콘 업데이트
     this.updateCloseButtonIcon()
     
@@ -194,6 +198,12 @@ export class RoomControls {
       if (this.container) {
         this.container.style.cssText = ''
         Object.assign(this.container.style, ROOM_CONTROL_STYLES.CONTAINER_BUTTON)
+        // 위치 재설정
+        this.container.style.bottom = '80px'
+        this.container.style.left = '50%'
+        this.container.style.transform = 'translateX(-50%)'
+        this.container.style.right = 'auto'
+        this.container.style.top = 'auto'
       }
     }, ROOM_CONTROL_CONSTANTS.CONTENT_HIDE_DELAY)
   }
@@ -240,199 +250,115 @@ export class RoomControls {
     }
   }
 
-  private createHeightSlider(): void {
+  private createColorInputs(): void {
     if (!this.panelContent) return
     
-    // Walls 섹션 컨테이너 생성
-    const wallsContainer = document.createElement('div')
-    Object.assign(wallsContainer.style, {
+    // Wall Color 섹션 컨테이너 생성
+    const wallColorContainer = document.createElement('div')
+    Object.assign(wallColorContainer.style, {
       ...ROOM_CONTROL_STYLES.SECTION_CONTAINER,
       ...ROOM_CONTROL_STYLES.SECTION_CONTAINER_FIRST
     })
     
-    // Walls 타이틀 추가
-    const wallsTitle = document.createElement('div')
-    wallsTitle.textContent = 'Walls'
-    Object.assign(wallsTitle.style, {
+    // Wall Color 타이틀 추가
+    const wallColorTitle = document.createElement('div')
+    wallColorTitle.textContent = 'Wall Color'
+    Object.assign(wallColorTitle.style, {
       ...ROOM_CONTROL_STYLES.SECTION_TITLE,
       marginTop: '0px'
     })
-    wallsContainer.appendChild(wallsTitle)
+    wallColorContainer.appendChild(wallColorTitle)
     
-    this.heightSlider = document.createElement('input')
-    this.heightSlider.type = 'range'
-    this.heightSlider.min = '1'
-    this.heightSlider.max = '5'
-    this.heightSlider.step = '1'
-    this.heightSlider.value = this.params.wallHeight.toString()
-    Object.assign(this.heightSlider.style, ROOM_CONTROL_STYLES.SLIDER)
+    // 벽 색상 인풋 생성
+    this.wallColorInput = document.createElement('input')
+    this.wallColorInput.type = 'color'
+    this.wallColorInput.value = this.params.wallColor
+    Object.assign(this.wallColorInput.style, {
+      width: '100%',
+      height: '28px',
+      border: 'none',
+      borderRadius: '0px',
+      cursor: 'pointer',
+      margin: '0',
+      padding: '2px',
+      boxShadow: 'inset -1px -1px rgba(38, 38, 38, 1), inset 1px 1px rgba(255, 255, 255, 0.8), inset -2px -2px rgba(126, 126, 126, 1)',
+      backgroundColor: '#ffffff'
+    })
     
-    // 슬라이더 핸들 스타일 적용
-    this.addSliderThumbStyles()
-    
-    this.heightSlider.addEventListener('input', (e) => {
-      e.stopPropagation()  // 이벤트 전파 방지
+    this.wallColorInput.addEventListener('change', (e) => {
+      e.stopPropagation()
       const target = e.target as HTMLInputElement
-      const value = parseInt(target.value)
-      this.onParamsChange({ wallHeight: value })
+      this.onParamsChange({ wallColor: target.value })
     })
 
-    this.heightSlider.addEventListener('click', (e) => {
-      e.stopPropagation()  // 클릭 이벤트 전파 방지
+    this.wallColorInput.addEventListener('click', (e) => {
+      e.stopPropagation()
     })
     
-    wallsContainer.appendChild(this.heightSlider)
-    this.panelContent.appendChild(wallsContainer)
-  }
-
-  private addSliderThumbStyles(): void {
-    if (document.getElementById('slider-thumb-styles')) return
+    wallColorContainer.appendChild(this.wallColorInput)
+    this.panelContent.appendChild(wallColorContainer)
     
-    const style = document.createElement('style')
-    style.id = 'slider-thumb-styles'
-    style.textContent = SLIDER_THUMB_CSS
-    document.head.appendChild(style)
-  }
-
-  private createGrid(): void {
-    if (!this.panelContent) return
+    // Floor Color 섹션 컨테이너 생성
+    const floorColorContainer = document.createElement('div')
+    Object.assign(floorColorContainer.style, ROOM_CONTROL_STYLES.SECTION_CONTAINER)
     
-    // Floors 섹션 컨테이너 생성
-    const floorsContainer = document.createElement('div')
-    Object.assign(floorsContainer.style, ROOM_CONTROL_STYLES.SECTION_CONTAINER)
-    
-    // Floors 타이틀 추가
-    const floorsTitle = document.createElement('div')
-    floorsTitle.textContent = 'Floors'
-    Object.assign(floorsTitle.style, {
+    // Floor Color 타이틀 추가
+    const floorColorTitle = document.createElement('div')
+    floorColorTitle.textContent = 'Floor Color'
+    Object.assign(floorColorTitle.style, {
       ...ROOM_CONTROL_STYLES.SECTION_TITLE,
       marginTop: '0px'
     })
-    floorsContainer.appendChild(floorsTitle)
+    floorColorContainer.appendChild(floorColorTitle)
     
-    this.gridComponent = new GridComponent(
-      floorsContainer,
-      this.params.customGrid,
-      (newGrid) => {
-        this.params.customGrid = newGrid
-        this.onParamsChange({ customGrid: newGrid })
-      }
-    )
+    // 바닥 색상 인풋 생성
+    this.floorColorInput = document.createElement('input')
+    this.floorColorInput.type = 'color'
+    this.floorColorInput.value = this.params.floorColor
+    Object.assign(this.floorColorInput.style, {
+      width: '100%',
+      height: '28px',
+      border: 'none',
+      borderRadius: '0px',
+      cursor: 'pointer',
+      margin: '0',
+      padding: '2px',
+      boxShadow: 'inset -1px -1px rgba(38, 38, 38, 1), inset 1px 1px rgba(255, 255, 255, 0.8), inset -2px -2px rgba(126, 126, 126, 1)',
+      backgroundColor: '#ffffff'
+    })
     
-    const gridContainer = this.gridComponent.create()
-    floorsContainer.appendChild(gridContainer)
-    this.panelContent.appendChild(floorsContainer)
-  }
+    this.floorColorInput.addEventListener('change', (e) => {
+      e.stopPropagation()
+      const target = e.target as HTMLInputElement
+      this.onParamsChange({ floorColor: target.value })
+    })
 
-  private createPresetButtons(): void {
-    if (!this.panelContent) return
-    
-    // Shapes 섹션 컨테이너 생성
-    const shapesContainer = document.createElement('div')
-    Object.assign(shapesContainer.style, ROOM_CONTROL_STYLES.SECTION_CONTAINER)
-    
-    // Shapes 타이틀 추가
-    const shapesTitle = document.createElement('div')
-    shapesTitle.textContent = 'Shapes'
-    Object.assign(shapesTitle.style, {
-      ...ROOM_CONTROL_STYLES.SECTION_TITLE,
-      marginTop: '0px'
-    })
-    shapesContainer.appendChild(shapesTitle)
-    
-    // 프리셋 버튼 컨테이너 생성
-    const presetsContainer = document.createElement('div')
-    Object.assign(presetsContainer.style, ROOM_CONTROL_STYLES.PRESETS_CONTAINER)
-    
-    const presets = [
-      { icon: 'preA.svg', action: () => this.applyPattern(GridPatterns.createFullPattern()) },
-      { icon: 'preB.svg', action: () => this.applyPattern(GridPatterns.createLPattern()) },
-      { icon: 'preC.svg', action: () => this.applyPattern(GridPatterns.createReverseLPattern()) },
-      { icon: 'PreD.svg', action: () => this.applyPattern(GridPatterns.createTPattern()) },
-      { icon: 'preE.svg', action: () => this.applyPattern(GridPatterns.createCompactCrossPattern()) }
-    ]
-    
-    presets.forEach(preset => {
-      const button = this.createIconPresetButton(preset.icon, preset.action)
-      presetsContainer.appendChild(button)
+    this.floorColorInput.addEventListener('click', (e) => {
+      e.stopPropagation()
     })
     
-    shapesContainer.appendChild(presetsContainer)
-    this.panelContent.appendChild(shapesContainer)
-  }
-
-  private createIconPresetButton(iconFileName: string, action: () => void): HTMLButtonElement {
-    const button = document.createElement('button')
-    Object.assign(button.style, ROOM_CONTROL_STYLES.PRESET_ICON_BUTTON)
-    
-    // SVG 아이콘 로드
-    const iconImg = document.createElement('img')
-    iconImg.src = `/icons/presets/${iconFileName}`
-    Object.assign(iconImg.style, ROOM_CONTROL_STYLES.PRESET_ICON_IMAGE)
-    
-    button.appendChild(iconImg)
-    
-    button.addEventListener('mouseenter', () => {
-      Object.assign(button.style, ROOM_CONTROL_STYLES.PRESET_ICON_BUTTON_HOVER)
-    })
-    
-    button.addEventListener('mouseleave', () => {
-      Object.assign(button.style, ROOM_CONTROL_STYLES.PRESET_ICON_BUTTON)
-    })
-    
-    button.addEventListener('click', (e) => {
-      e.stopPropagation()  // 이벤트 전파 방지
-      action()
-    })
-    return button
-  }
-
-  private createPresetButton(title: string, action: () => void): HTMLButtonElement {
-    const button = document.createElement('button')
-    button.textContent = title
-    Object.assign(button.style, ROOM_CONTROL_STYLES.BUTTON)
-    
-    button.addEventListener('mouseenter', () => {
-      Object.assign(button.style, ROOM_CONTROL_STYLES.BUTTON_HOVER)
-    })
-    
-    button.addEventListener('mouseleave', () => {
-      Object.assign(button.style, ROOM_CONTROL_STYLES.BUTTON)
-    })
-    
-    button.addEventListener('click', (e) => {
-      e.stopPropagation()  // 이벤트 전파 방지
-      action()
-    })
-    return button
-  }
-
-  private applyPattern(pattern: boolean[][]): void {
-    this.params.customGrid = pattern
-    this.gridComponent?.updateGrid(pattern)
-    this.onParamsChange({ customGrid: pattern })
+    floorColorContainer.appendChild(this.floorColorInput)
+    this.panelContent.appendChild(floorColorContainer)
   }
 
   // 공개 메서드들
-  public updateParams(params: Partial<RoomParams>): void {
+  public updateParams(params: Partial<StyleParams>): void {
     Object.assign(this.params, params)
     
-    if (params.wallHeight && this.heightSlider) {
-      this.heightSlider.value = params.wallHeight.toString()
+    if (params.wallColor && this.wallColorInput) {
+      this.wallColorInput.value = params.wallColor
     }
     
-    if (params.customGrid) {
-      this.gridComponent?.updateGrid(params.customGrid)
+    if (params.floorColor && this.floorColorInput) {
+      this.floorColorInput.value = params.floorColor
     }
   }
 
-  public getParams(): RoomParams {
+  public getParams(): StyleParams {
     return { ...this.params }
   }
 
   public dispose(): void {
-    this.gridComponent?.dispose()
-    
     if (this.container) {
       this.container.remove()
       this.container = null
@@ -441,6 +367,8 @@ export class RoomControls {
       this.titleText = null
       this.closeButton = null
       this.panelContent = null
+      this.wallColorInput = null
+      this.floorColorInput = null
     }
   }
 } 

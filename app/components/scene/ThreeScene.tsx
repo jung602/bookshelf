@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { SceneManager } from './3d/SceneManager'
+import { ControlsContainer } from './3d/controls/ControlsContainer'
+import { StyleParams } from './3d/controls/StyleControls'
+import { RoomParams } from './3d/controls/RoomControls'
 import { GizmoState } from './3d/managers/InteractionManager'
 import { getModelClass } from './3d/objects'
 import { Book } from './3d/objects/book'
@@ -14,6 +17,7 @@ export default function ThreeScene() {
   const sceneManagerRef = useRef<SceneManager | null>(null)
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null)
   const [gizmoState, setGizmoState] = useState<GizmoState>({ selectedModelId: null, screenPosition: null })
+  const controlsContainerRef = useRef<ControlsContainer | null>(null)
 
   // 반응형 씬 설정 (frustumSize 기반)
   const responsiveConfig = {
@@ -51,11 +55,42 @@ export default function ThreeScene() {
     sceneManagerRef.current = newSceneManager
     setSceneManager(newSceneManager)
 
+    // ControlsContainer 초기화
+    const roomParams: RoomParams = { 
+      wallHeight: 1,
+      customGrid: (() => {
+        const grid = Array(5).fill(null).map(() => Array(5).fill(false))
+        grid[2][2] = true // 중앙 타일은 항상 활성화
+        return grid
+      })()
+    }
+    
+    const styleParams: StyleParams = { wallColor: '#DCDCDC', floorColor: '#f0f0f0' }
+    
+    const controlsContainer = new ControlsContainer(
+      roomParams,
+      styleParams,
+      (params: Partial<RoomParams>) => {
+        newSceneManager.updateRoom(params)
+      },
+      (params: Partial<StyleParams>) => {
+        if (params.wallColor) {
+          newSceneManager.getColorControls().updateWallColor(params.wallColor)
+        }
+        if (params.floorColor) {
+          newSceneManager.getColorControls().updateFloorColor(params.floorColor)
+        }
+      }
+    )
+    controlsContainerRef.current = controlsContainer
+
     console.log('ThreeScene: SceneManager initialized')
     
     return () => {
       // 정리
       console.log('ThreeScene: Disposing SceneManager...')
+      controlsContainerRef.current?.dispose()
+      controlsContainerRef.current = null
       sceneManagerRef.current?.dispose()
       sceneManagerRef.current = null
       setSceneManager(null)
@@ -72,17 +107,7 @@ export default function ThreeScene() {
     }
   }, [sceneManager, forceUpdate])
 
-  const handleWallColorChange = (color: string) => {
-    if (sceneManagerRef.current) {
-      sceneManagerRef.current.getColorControls().updateWallColor(color)
-    }
-  }
 
-  const handleFloorColorChange = (color: string) => {
-    if (sceneManagerRef.current) {
-      sceneManagerRef.current.getColorControls().updateFloorColor(color)
-    }
-  }
 
   const handleModelAdd = async (modelType: string) => {
     if (!sceneManagerRef.current) return
@@ -143,8 +168,6 @@ export default function ThreeScene() {
     <>
       <div ref={containerRef} className="w-full h-full" />
       <Toolbar
-        onWallColorChange={handleWallColorChange}
-        onFloorColorChange={handleFloorColorChange}
         onModelAdd={handleModelAdd}
         onBookCreate={handleBookCreate}
       />

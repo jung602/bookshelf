@@ -301,8 +301,8 @@ export const ROOM_CONTROL_STYLES = {
 
   // 버튼 아이콘 이미지 스타일
   BUTTON_ICON_IMAGE: {
-    width: '16px',
-    height: '16px',
+    width: '20px',
+    height: '20px',
     opacity: '1'
   },
 

@@ -1,4 +1,4 @@
-import { ROOM_CONTROL_STYLES, ROOM_CONTROL_CONSTANTS, ROOM_CONTROL_ICON } from './styles/RoomControlsStyles'
+import { ROOM_CONTROL_STYLES, ROOM_CONTROL_CONSTANTS, SLIDER_THUMB_CSS } from './styles/RoomControlsStyles'
 import { GridPatterns } from './patterns/GridPatterns'
 import { GridComponent } from './components/GridComponent'
 import type { RoomParams } from './types/RoomControlTypes'
@@ -9,7 +9,10 @@ export class RoomControls {
   private params: RoomParams
   private onParamsChange: (params: Partial<RoomParams>) => void
   private container: HTMLDivElement | null = null
+  private headerContainer: HTMLDivElement | null = null
   private buttonIcon: HTMLDivElement | null = null
+  private titleText: HTMLDivElement | null = null
+  private closeButton: HTMLDivElement | null = null
   private panelContent: HTMLDivElement | null = null
   private gridComponent: GridComponent | null = null
   private heightSlider: HTMLInputElement | null = null
@@ -37,15 +40,15 @@ export class RoomControls {
     this.container = document.createElement('div')
     Object.assign(this.container.style, ROOM_CONTROL_STYLES.CONTAINER_BUTTON)
     
-    // 버튼 아이콘 생성
-    this.createButtonIcon()
+    // 헤더 컨테이너 생성 (아이콘과 제목)
+    this.createHeaderContainer()
     
     // 패널 콘텐츠 생성
     this.createPanelContent()
     
     // 컨테이너에 요소들 추가
+    if (this.headerContainer) this.container.appendChild(this.headerContainer)
     if (this.panelContent) this.container.appendChild(this.panelContent)
-    if (this.buttonIcon) this.container.appendChild(this.buttonIcon)
     
     // 이벤트 설정
     this.setupContainerEvents()
@@ -54,24 +57,66 @@ export class RoomControls {
     document.body.appendChild(this.container)
   }
 
+  private createHeaderContainer(): void {
+    this.headerContainer = document.createElement('div')
+    Object.assign(this.headerContainer.style, ROOM_CONTROL_STYLES.HEADER_CONTAINER)
+    
+    // 헤더 왼쪽 부분 (아이콘 + 제목)
+    const headerLeft = document.createElement('div')
+    Object.assign(headerLeft.style, ROOM_CONTROL_STYLES.HEADER_LEFT)
+    
+    // 헤더 오른쪽 부분 (닫기 버튼)
+    const headerRight = document.createElement('div')
+    Object.assign(headerRight.style, ROOM_CONTROL_STYLES.HEADER_RIGHT)
+    
+    // 버튼 아이콘 생성
+    this.createButtonIcon()
+    
+    // 제목 텍스트 생성
+    this.createTitleText()
+    
+    // 닫기 버튼 생성
+    this.createCloseButton()
+    
+    // 헤더 왼쪽에 아이콘과 제목 추가
+    if (this.buttonIcon) headerLeft.appendChild(this.buttonIcon)
+    if (this.titleText) headerLeft.appendChild(this.titleText)
+    
+    // 헤더 오른쪽에 닫기 버튼 추가
+    if (this.closeButton) headerRight.appendChild(this.closeButton)
+    
+    // 헤더에 왼쪽 부분과 오른쪽 부분 추가
+    this.headerContainer.appendChild(headerLeft)
+    this.headerContainer.appendChild(headerRight)
+    
+    // 헤더 클릭 이벤트 (닫기 버튼은 제외)
+    headerLeft.addEventListener('click', (e) => {
+      e.stopPropagation()
+      this.togglePanel()
+    })
+  }
+
   private createButtonIcon(): void {
     this.buttonIcon = document.createElement('div')
     Object.assign(this.buttonIcon.style, ROOM_CONTROL_STYLES.BUTTON_ICON)
-    this.buttonIcon.innerHTML = ROOM_CONTROL_ICON
     
-    this.buttonIcon.addEventListener('click', (e) => {
-      e.stopPropagation()
-      if (!this.isOpen) {
-        this.togglePanel()
-      }
-    })
+    const iconImg = document.createElement('img')
+    iconImg.src = '/icons/grid.svg'
+    Object.assign(iconImg.style, ROOM_CONTROL_STYLES.BUTTON_ICON_IMAGE)
+    
+    this.buttonIcon.appendChild(iconImg)
+  }
+
+  private createTitleText(): void {
+    this.titleText = document.createElement('div')
+    this.titleText.textContent = 'Room'
+    Object.assign(this.titleText.style, ROOM_CONTROL_STYLES.TITLE_TEXT)
   }
 
   private createPanelContent(): void {
     this.panelContent = document.createElement('div')
     Object.assign(this.panelContent.style, ROOM_CONTROL_STYLES.PANEL_CONTENT)
     
-    this.createCloseButton()
     this.createHeightSlider()
     this.createGrid()
     this.createPresetButtons()
@@ -80,25 +125,29 @@ export class RoomControls {
   private setupContainerEvents(): void {
     if (!this.container) return
 
-    this.container.addEventListener('mouseenter', () => {
-      if (!this.isOpen && this.container) {
-        this.container.style.backgroundColor = 'rgba(248, 250, 252, 0.8)'
-        this.container.style.border = '1px solid rgba(200, 200, 200, 0.3)'
-        this.container.style.transform = 'translateX(-50%) scale(1.05)'
+    // 전체 컨테이너 클릭 이벤트 (패널 토글)
+    this.container.addEventListener('click', (e) => {
+      // 패널 내부의 인터랙티브 요소들은 이벤트 버블링을 막도록 처리
+      if (this.isOpen) {
+        const target = e.target as HTMLElement
+        // 슬라이더, 버튼, 그리드 등의 인터랙티브 요소가 아닌 경우에만 패널 토글
+        if (!target.closest('input, button, .grid-cell')) {
+          this.togglePanel()
+        }
+      } else {
+        this.togglePanel()
       }
     })
     
     this.container.addEventListener('mouseleave', () => {
       if (!this.isOpen && this.container) {
-        this.container.style.backgroundColor = 'rgba(253, 254, 255, 0)'
-        this.container.style.border = '1px solid rgba(200, 200, 200, 0)'
-        this.container.style.transform = 'translateX(-50%) scale(1)'
+        Object.assign(this.container.style, ROOM_CONTROL_STYLES.CONTAINER_BUTTON)
       }
     })
   }
 
   private togglePanel(): void {
-    if (!this.container || !this.buttonIcon || !this.panelContent) return
+    if (!this.container || !this.panelContent) return
     
     this.isOpen = !this.isOpen
     
@@ -110,123 +159,156 @@ export class RoomControls {
   }
 
   private openPanel(): void {
-    if (!this.container || !this.buttonIcon || !this.panelContent) return
+    if (!this.container || !this.panelContent) return
 
-    // 1단계: 아이콘 사라짐
-    this.buttonIcon.style.opacity = '0'
-    this.buttonIcon.style.transform = 'scale(0.8)'
-    this.buttonIcon.style.pointerEvents = 'none'
+    // 컨테이너를 패널 스타일로 변경
+    Object.assign(this.container.style, ROOM_CONTROL_STYLES.CONTAINER_PANEL)
     
-    // 2단계: 컨테이너 확장
-    setTimeout(() => {
-      if (this.container) {
-        this.container.style.cursor = 'default'
-        Object.assign(this.container.style, ROOM_CONTROL_STYLES.CONTAINER_PANEL)
-      }
-    }, ROOM_CONTROL_CONSTANTS.ICON_FADE_DELAY)
+    // 닫기 버튼 아이콘 업데이트
+    this.updateCloseButtonIcon()
     
-    // 3단계: 패널 콘텐츠 나타남
+    // 패널 콘텐츠 나타남 (아이콘과 제목은 유지)
     setTimeout(() => {
       if (this.panelContent) {
         this.panelContent.style.opacity = '1'
         this.panelContent.style.pointerEvents = 'auto'
       }
-    }, ROOM_CONTROL_CONSTANTS.CONTENT_SHOW_DELAY)
+    }, 100)
   }
 
   private closePanel(): void {
-    if (!this.container || !this.buttonIcon || !this.panelContent) return
+    if (!this.container || !this.panelContent) return
 
-    // 1단계: 패널 콘텐츠 사라짐
+    // 패널 콘텐츠 사라짐
     this.panelContent.style.opacity = '0'
     this.panelContent.style.pointerEvents = 'none'
     
-    // 2단계: 컨테이너 축소
+    // 닫기 버튼 아이콘 업데이트
+    this.updateCloseButtonIcon()
+    
+    // 컨테이너를 버튼 스타일로 되돌림
     setTimeout(() => {
       if (this.container) {
-        // 기존 스타일을 완전히 초기화하고 버튼 스타일 적용
         this.container.style.cssText = ''
         Object.assign(this.container.style, ROOM_CONTROL_STYLES.CONTAINER_BUTTON)
       }
     }, ROOM_CONTROL_CONSTANTS.CONTENT_HIDE_DELAY)
-    
-    // 3단계: 아이콘 나타남
-    setTimeout(() => {
-      if (this.buttonIcon) {
-        this.buttonIcon.style.opacity = '1'
-        this.buttonIcon.style.transform = 'scale(1)'
-        this.buttonIcon.style.pointerEvents = 'auto'
-      }
-    }, ROOM_CONTROL_CONSTANTS.ICON_SHOW_DELAY)
   }
 
   private createCloseButton(): void {
-    if (!this.panelContent) return
+    this.closeButton = document.createElement('div')
+    Object.assign(this.closeButton.style, ROOM_CONTROL_STYLES.CLOSE_BUTTON)
     
-    const closeButton = document.createElement('div')
-    closeButton.innerHTML = '×'
-    closeButton.style.cssText = `
-      position: absolute;
-      top: 8px;
-      right: 12px;
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      font-weight: bold;
-      color: #666;
-      border-radius: 4px;
-      transition: all 0.2s;
-      z-index: 10;
-    `
+    // 초기 아이콘 설정 (닫힌 상태이므로 Maximize.svg)
+    const closeIcon = document.createElement('img')
+    closeIcon.src = '/icons/Maximize.svg'
+    Object.assign(closeIcon.style, ROOM_CONTROL_STYLES.CLOSE_BUTTON_IMAGE)
     
-    closeButton.addEventListener('mouseenter', () => {
-      closeButton.style.backgroundColor = 'rgba(255, 0, 0, 0.1)'
-      closeButton.style.color = '#ff0000'
+    this.closeButton.appendChild(closeIcon)
+    
+    this.closeButton.addEventListener('mouseenter', () => {
+      if (this.closeButton) {
+        Object.assign(this.closeButton.style, ROOM_CONTROL_STYLES.CLOSE_BUTTON_HOVER)
+      }
     })
     
-    closeButton.addEventListener('mouseleave', () => {
-      closeButton.style.backgroundColor = 'transparent'
-      closeButton.style.color = '#666'
+    this.closeButton.addEventListener('mouseleave', () => {
+      if (this.closeButton) {
+        Object.assign(this.closeButton.style, ROOM_CONTROL_STYLES.CLOSE_BUTTON)
+      }
     })
     
-    closeButton.addEventListener('click', (e) => {
+    this.closeButton.addEventListener('click', (e) => {
       e.stopPropagation()
       this.togglePanel()
     })
+  }
+
+  private updateCloseButtonIcon(): void {
+    if (!this.closeButton) return
     
-    this.panelContent.appendChild(closeButton)
+    const iconImg = this.closeButton.querySelector('img')
+    if (iconImg) {
+      if (this.isOpen) {
+        iconImg.src = '/icons/Minimize.png'
+      } else {
+        iconImg.src = '/icons/Maximize.svg'
+      }
+    }
   }
 
   private createHeightSlider(): void {
     if (!this.panelContent) return
     
+    // Walls 섹션 컨테이너 생성
+    const wallsContainer = document.createElement('div')
+    Object.assign(wallsContainer.style, {
+      ...ROOM_CONTROL_STYLES.SECTION_CONTAINER,
+      ...ROOM_CONTROL_STYLES.SECTION_CONTAINER_FIRST
+    })
+    
+    // Walls 타이틀 추가
+    const wallsTitle = document.createElement('div')
+    wallsTitle.textContent = 'Walls'
+    Object.assign(wallsTitle.style, {
+      ...ROOM_CONTROL_STYLES.SECTION_TITLE,
+      marginTop: '0px'
+    })
+    wallsContainer.appendChild(wallsTitle)
     
     this.heightSlider = document.createElement('input')
     this.heightSlider.type = 'range'
     this.heightSlider.min = '1'
-    this.heightSlider.max = '10'
+    this.heightSlider.max = '5'
     this.heightSlider.step = '1'
     this.heightSlider.value = this.params.wallHeight.toString()
     Object.assign(this.heightSlider.style, ROOM_CONTROL_STYLES.SLIDER)
     
+    // 슬라이더 핸들 스타일 적용
+    this.addSliderThumbStyles()
+    
     this.heightSlider.addEventListener('input', (e) => {
+      e.stopPropagation()  // 이벤트 전파 방지
       const target = e.target as HTMLInputElement
       const value = parseInt(target.value)
       this.onParamsChange({ wallHeight: value })
     })
+
+    this.heightSlider.addEventListener('click', (e) => {
+      e.stopPropagation()  // 클릭 이벤트 전파 방지
+    })
     
-    this.panelContent.appendChild(this.heightSlider)
+    wallsContainer.appendChild(this.heightSlider)
+    this.panelContent.appendChild(wallsContainer)
+  }
+
+  private addSliderThumbStyles(): void {
+    if (document.getElementById('slider-thumb-styles')) return
+    
+    const style = document.createElement('style')
+    style.id = 'slider-thumb-styles'
+    style.textContent = SLIDER_THUMB_CSS
+    document.head.appendChild(style)
   }
 
   private createGrid(): void {
     if (!this.panelContent) return
     
+    // Floors 섹션 컨테이너 생성
+    const floorsContainer = document.createElement('div')
+    Object.assign(floorsContainer.style, ROOM_CONTROL_STYLES.SECTION_CONTAINER)
+    
+    // Floors 타이틀 추가
+    const floorsTitle = document.createElement('div')
+    floorsTitle.textContent = 'Floors'
+    Object.assign(floorsTitle.style, {
+      ...ROOM_CONTROL_STYLES.SECTION_TITLE,
+      marginTop: '0px'
+    })
+    floorsContainer.appendChild(floorsTitle)
+    
     this.gridComponent = new GridComponent(
-      this.panelContent,
+      floorsContainer,
       this.params.customGrid,
       (newGrid) => {
         this.params.customGrid = newGrid
@@ -235,23 +317,71 @@ export class RoomControls {
     )
     
     const gridContainer = this.gridComponent.create()
-    this.panelContent.appendChild(gridContainer)
+    floorsContainer.appendChild(gridContainer)
+    this.panelContent.appendChild(floorsContainer)
   }
 
   private createPresetButtons(): void {
     if (!this.panelContent) return
     
+    // Shapes 섹션 컨테이너 생성
+    const shapesContainer = document.createElement('div')
+    Object.assign(shapesContainer.style, ROOM_CONTROL_STYLES.SECTION_CONTAINER)
+    
+    // Shapes 타이틀 추가
+    const shapesTitle = document.createElement('div')
+    shapesTitle.textContent = 'Shapes'
+    Object.assign(shapesTitle.style, {
+      ...ROOM_CONTROL_STYLES.SECTION_TITLE,
+      marginTop: '0px'
+    })
+    shapesContainer.appendChild(shapesTitle)
+    
+    // 프리셋 버튼 컨테이너 생성
+    const presetsContainer = document.createElement('div')
+    Object.assign(presetsContainer.style, ROOM_CONTROL_STYLES.PRESETS_CONTAINER)
+    
     const presets = [
-      { title: 'Cross Shape', action: () => this.applyPattern(GridPatterns.createCrossPattern()) },
-      { title: 'L Shape', action: () => this.applyPattern(GridPatterns.createLPattern()) },
-      { title: 'Full 5x5', action: () => this.applyPattern(GridPatterns.createFullPattern()) },
-      { title: 'Reset to Center', action: () => this.applyPattern(GridPatterns.createEmptyGrid()) }
+      { icon: 'preA.svg', action: () => this.applyPattern(GridPatterns.createFullPattern()) },
+      { icon: 'preB.svg', action: () => this.applyPattern(GridPatterns.createLPattern()) },
+      { icon: 'preC.svg', action: () => this.applyPattern(GridPatterns.createReverseLPattern()) },
+      { icon: 'PreD.svg', action: () => this.applyPattern(GridPatterns.createTPattern()) },
+      { icon: 'preE.svg', action: () => this.applyPattern(GridPatterns.createCompactCrossPattern()) }
     ]
     
     presets.forEach(preset => {
-      const button = this.createPresetButton(preset.title, preset.action)
-      this.panelContent!.appendChild(button)
+      const button = this.createIconPresetButton(preset.icon, preset.action)
+      presetsContainer.appendChild(button)
     })
+    
+    shapesContainer.appendChild(presetsContainer)
+    this.panelContent.appendChild(shapesContainer)
+  }
+
+  private createIconPresetButton(iconFileName: string, action: () => void): HTMLButtonElement {
+    const button = document.createElement('button')
+    Object.assign(button.style, ROOM_CONTROL_STYLES.PRESET_ICON_BUTTON)
+    
+    // SVG 아이콘 로드
+    const iconImg = document.createElement('img')
+    iconImg.src = `/icons/presets/${iconFileName}`
+    Object.assign(iconImg.style, ROOM_CONTROL_STYLES.PRESET_ICON_IMAGE)
+    
+    button.appendChild(iconImg)
+    
+    button.addEventListener('mouseenter', () => {
+      Object.assign(button.style, ROOM_CONTROL_STYLES.PRESET_ICON_BUTTON_HOVER)
+    })
+    
+    button.addEventListener('mouseleave', () => {
+      Object.assign(button.style, ROOM_CONTROL_STYLES.PRESET_ICON_BUTTON)
+    })
+    
+    button.addEventListener('click', (e) => {
+      e.stopPropagation()  // 이벤트 전파 방지
+      action()
+    })
+    return button
   }
 
   private createPresetButton(title: string, action: () => void): HTMLButtonElement {
@@ -260,16 +390,17 @@ export class RoomControls {
     Object.assign(button.style, ROOM_CONTROL_STYLES.BUTTON)
     
     button.addEventListener('mouseenter', () => {
-      button.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
-      button.style.transform = 'translateY(-1px)'
+      Object.assign(button.style, ROOM_CONTROL_STYLES.BUTTON_HOVER)
     })
     
     button.addEventListener('mouseleave', () => {
-      button.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
-      button.style.transform = 'translateY(0)'
+      Object.assign(button.style, ROOM_CONTROL_STYLES.BUTTON)
     })
     
-    button.addEventListener('click', action)
+    button.addEventListener('click', (e) => {
+      e.stopPropagation()  // 이벤트 전파 방지
+      action()
+    })
     return button
   }
 
@@ -302,7 +433,10 @@ export class RoomControls {
     if (this.container) {
       this.container.remove()
       this.container = null
+      this.headerContainer = null
       this.buttonIcon = null
+      this.titleText = null
+      this.closeButton = null
       this.panelContent = null
     }
   }

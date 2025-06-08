@@ -1,6 +1,7 @@
 import { Pane } from 'tweakpane'
 import { PixelationParams } from '../passes/RenderPixelatedPass'
 import { ColorPalettes } from '../passes/ColorPalettes'
+import { ROOM_CONTROL_STYLES } from './styles/RoomControlsStyles'
 
 export class PixelationControls {
   private pane: Pane
@@ -17,7 +18,7 @@ export class PixelationControls {
   public static getDefaultParams(): PixelationParams {
     const baseParams = {
       pixelSize: PixelationControls.calculatePixelSize(),
-      ditherStrength: 0.05,
+      ditherStrength: 0,
       ditherScale: 1.0
     }
 
@@ -119,14 +120,7 @@ export class PixelationControls {
   private setupStyles() {
     // 컨트롤 패널 스타일링
     const paneElement = this.pane.element
-    paneElement.style.position = 'fixed'
-    paneElement.style.top = '20px'
-    paneElement.style.right = '20px'
-    paneElement.style.zIndex = '1000'
-    paneElement.style.backgroundColor = 'rgba(0, 0, 0, 0.8)'
-    paneElement.style.backdropFilter = 'blur(10px)'
-    paneElement.style.borderRadius = '8px'
-    paneElement.style.border = '1px solid rgba(255, 255, 255, 0.1)'
+    Object.assign(paneElement.style, ROOM_CONTROL_STYLES.PIXELATION_PANEL)
   }
 
   private applyPreset(preset: PixelationParams) {

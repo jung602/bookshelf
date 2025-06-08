@@ -45,6 +45,9 @@ export class GridComponent {
         const cell = document.createElement('div')
         const isCenterTile = row === centerIndex && col === centerIndex
         
+        // 그리드 셀 클래스 추가 (이벤트 전파 방지용)
+        cell.classList.add('grid-cell')
+        
         Object.assign(cell.style, ROOM_CONTROL_STYLES.GRID_CELL)
         
         if (isCenterTile) {
@@ -62,7 +65,12 @@ export class GridComponent {
   private setupCellEvents(cell: HTMLDivElement, row: number, col: number): void {
     cell.addEventListener('mousedown', (event) => {
       event.preventDefault()
+      event.stopPropagation()  // 이벤트 전파 방지
       this.dragHandler?.startDrag(row, col)
+    })
+
+    cell.addEventListener('click', (event) => {
+      event.stopPropagation()  // 클릭 이벤트 전파 방지
     })
 
     cell.addEventListener('mouseenter', () => {
@@ -75,6 +83,7 @@ export class GridComponent {
 
     cell.addEventListener('contextmenu', (event) => {
       event.preventDefault()
+      event.stopPropagation()  // 우클릭 이벤트 전파 방지
     })
   }
 

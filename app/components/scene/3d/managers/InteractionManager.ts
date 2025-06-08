@@ -331,75 +331,68 @@ export class InteractionManager {
     this.dragState.isDragging = true
     this.dragState.selectedModel = model
     
-    // 모델의 현재 위치와 클릭 지점 간의 오프셋 계산
+    // 모델의 현재 위치와 클릭 지점 간의 오프셋 계산 (X, Z축만)
     const modelPosition = model.getPosition()
     this.dragState.dragOffset.set(
       modelPosition.x - intersectionPoint.x,
-      modelPosition.y - intersectionPoint.y, // Y축 오프셋도 계산
+      0, // Y축 오프셋 제거
       modelPosition.z - intersectionPoint.z
     )
 
-    // 드래그 평면을 카메라 방향에 수직으로 설정 (모델 위치를 지나는 평면)
-    const cameraDirection = new THREE.Vector3()
-    this.camera.getWorldDirection(cameraDirection)
-    this.dragState.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, new THREE.Vector3(modelPosition.x, modelPosition.y, modelPosition.z))
+    // 드래그 평면을 바닥 평면(Y=0)으로 고정
+    this.dragState.dragPlane = this.floorPlane.clone()
 
-    console.log(`Started dragging model ${model.getId()}`)
+    console.log(`Started dragging model ${model.getId()} on horizontal plane`)
   }
 
   private prepareForDrag(model: BaseModel, intersectionPoint: THREE.Vector3): void {
     this.dragState.selectedModel = model
     
-    // 모델의 현재 위치와 클릭 지점 간의 오프셋 계산
+    // 모델의 현재 위치와 클릭 지점 간의 오프셋 계산 (X, Z축만)
     const modelPosition = model.getPosition()
     this.dragState.dragOffset.set(
       modelPosition.x - intersectionPoint.x,
-      modelPosition.y - intersectionPoint.y, // Y축 오프셋도 계산
+      0, // Y축 오프셋 제거
       modelPosition.z - intersectionPoint.z
     )
 
-    // 드래그 평면을 카메라 방향에 수직으로 설정 (모델 위치를 지나는 평면)
-    const cameraDirection = new THREE.Vector3()
-    this.camera.getWorldDirection(cameraDirection)
-    this.dragState.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, new THREE.Vector3(modelPosition.x, modelPosition.y, modelPosition.z))
+    // 드래그 평면을 바닥 평면(Y=0)으로 고정
+    this.dragState.dragPlane = this.floorPlane.clone()
 
-    console.log(`Prepared for dragging model ${model.getId()}`)
+    console.log(`Prepared for dragging model ${model.getId()} on horizontal plane`)
   }
 
   private updateDrag(): void {
     if (!this.dragState.selectedModel) return
 
-    // 카메라 방향에 수직인 평면과의 교차점 계산
+    // 바닥 평면과의 교차점 계산
     const dragIntersection = this.getDragPlaneIntersection()
     if (!dragIntersection) return
 
-    // 드래그 오프셋을 적용한 새로운 위치 계산
+    // 드래그 오프셋을 적용한 새로운 X, Z 위치 계산 (Y축 제외)
     const newX = dragIntersection.x + this.dragState.dragOffset.x
-    const newY = dragIntersection.y + this.dragState.dragOffset.y
     const newZ = dragIntersection.z + this.dragState.dragOffset.z
-
-    // Y 좌표가 바닥 위치(y=0) 아래로 가지 않도록 제한
-    const clampedY = Math.max(0, newY)
 
     // 충돌 감지 throttling - 성능 최적화
     const currentTime = Date.now()
     const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
 
-    let adjustedPosition = { x: newX, y: clampedY, z: newZ }
+    let adjustedPosition = { x: newX, y: 0, z: newZ } // Y는 임시값
 
     if (shouldCheckCollision) {
-      // 충돌 감지 및 자동 올라가기 적용
+      // 충돌 감지 및 자동 올라가기 적용 (Y축은 ModelManager에서 자동 계산)
       adjustedPosition = this.modelManager.checkCollisionAndAdjust(
         this.dragState.selectedModel, 
         newX, 
-        clampedY, 
+        0, // Y값은 ModelManager에서 자동 계산되므로 임시값
         newZ
       )
       
-      // 충돌 감지 후에도 Y 좌표가 바닥 아래로 가지 않도록 다시 한 번 확인
-      adjustedPosition.y = Math.max(0, adjustedPosition.y)
-      
       this.lastCollisionCheckTime = currentTime
+    } else {
+      // 충돌 검사를 하지 않을 때는 현재 Y 위치 유지하고 X, Z만 업데이트
+      const currentPosition = this.dragState.selectedModel.getPosition()
+      adjustedPosition.y = currentPosition.y
     }
 
     // 조정된 위치로 모델 이동

@@ -333,7 +333,7 @@ export class ModelManager {
 
     console.log(`    📍 Calculating surface Y for ${targetModel.getId()} at (${x.toFixed(3)}, ${z.toFixed(3)})`)
 
-    // 다른 모든 모든 모델의 콜라이더 수집 (자기 자신 제외)
+    // 다른 모든 모델의 콜라이더 수집 (자기 자신 제외)
     const colliders: THREE.Mesh[] = []
     const otherModels: BaseModel[] = []
     this.models.forEach((model) => {
@@ -361,49 +361,67 @@ export class ModelManager {
     console.log(`      -> Raycast found ${intersections.length} intersections`)
     
     if (intersections.length > 0) {
-      // 모든 교차점을 검사하여 실제로 지지할 수 있는 표면 찾기
-      let validSurfaceY = null
+      // 모든 교차점을 지지 가능성과 표면 Y값으로 평가
+      const validSurfaces: { y: number; modelId: string | null; isFloor: boolean; supportQuality: number }[] = []
       
       for (const intersection of intersections) {
         const surfaceY = intersection.point.y
-        
-        // 바닥 메시인지 확인
         const isFloorMesh = intersection.object.userData.isFloor
         
         if (isFloorMesh) {
-          // 바닥이면 항상 유효한 표면
-          if (validSurfaceY === null || surfaceY > validSurfaceY) {
-            validSurfaceY = surfaceY
-            console.log(`      -> Found floor surface at Y: ${surfaceY.toFixed(3)}`)
-          }
+          // 바닥이면 항상 유효한 표면 (최고 품질)
+          validSurfaces.push({
+            y: surfaceY,
+            modelId: null,
+            isFloor: true,
+            supportQuality: 1.0
+          })
+          console.log(`      -> Found floor surface at Y: ${surfaceY.toFixed(3)} (quality: 1.0)`)
         } else {
-          // 다른 모델의 표면인 경우, 실제로 그 위에 올라갈 수 있는지 확인
+          // 다른 모델의 표면인 경우, 지지 품질 평가
           const surfaceModelId = intersection.object.userData.modelId
           const surfaceModel = this.models.get(surfaceModelId)
           
           if (surfaceModel && this.canModelSupportAnother(surfaceModel, targetModel, x, z)) {
-            if (validSurfaceY === null || surfaceY > validSurfaceY) {
-              validSurfaceY = surfaceY
-              console.log(`      -> Found valid model surface at Y: ${surfaceY.toFixed(3)} from model ${surfaceModelId}`)
-            }
+            // 지지 품질 계산 (면적 비율과 겹침 정도에 따라)
+            const supportQuality = this.calculateSupportQuality(surfaceModel, targetModel, x, z)
+            
+            validSurfaces.push({
+              y: surfaceY,
+              modelId: surfaceModelId,
+              isFloor: false,
+              supportQuality: supportQuality
+            })
+            console.log(`      -> Found model surface at Y: ${surfaceY.toFixed(3)} from ${surfaceModelId} (quality: ${supportQuality.toFixed(2)})`)
           } else {
-            console.log(`      -> Rejected surface at Y: ${surfaceY.toFixed(3)} from model ${surfaceModelId} (not supportable)`)
+            console.log(`      -> Rejected surface at Y: ${surfaceY.toFixed(3)} from model ${surfaceModelId} (cannot support)`)
           }
         }
       }
       
-      if (validSurfaceY !== null) {
+      if (validSurfaces.length > 0) {
+        // 가장 높은 위치에 있는 유효한 표면 선택
+        // 높이가 같다면 지지 품질이 더 좋은 것 선택
+        validSurfaces.sort((a, b) => {
+          if (Math.abs(a.y - b.y) < 0.001) {
+            return b.supportQuality - a.supportQuality // 품질 높은 순
+          }
+          return b.y - a.y // 높이 높은 순
+        })
+        
+        const bestSurface = validSurfaces[0]
+        
         // 타겟 모델의 바운딩 박스를 고려하여 Y 위치 계산
         const modelBottomOffset = this.getModelBottomOffset(targetModel)
         
         // 표면 Y 위치에서 모델의 바닥 오프셋을 빼서 모델의 중심 위치 계산
-        // bottomOffset이 음수이므로 빼기를 하면 실제로는 더해짐
-        const finalY = validSurfaceY - modelBottomOffset
+        const finalY = bestSurface.y - modelBottomOffset
         
         // 부동소수점 정밀도 문제 해결을 위해 소수점 4자리에서 반올림
         const roundedY = Math.round(finalY * 10000) / 10000
         
-        console.log(`      -> Valid surface found at Y: ${validSurfaceY.toFixed(3)}, model bottom offset: ${modelBottomOffset.toFixed(3)}, final Y: ${finalY.toFixed(3)}, rounded Y: ${roundedY.toFixed(3)}`)
+        console.log(`      -> Best surface: ${bestSurface.isFloor ? 'floor' : bestSurface.modelId} at Y: ${bestSurface.y.toFixed(3)} (quality: ${bestSurface.supportQuality.toFixed(2)})`)
+        console.log(`      -> Model bottom offset: ${modelBottomOffset.toFixed(3)}, final Y: ${finalY.toFixed(3)}, rounded Y: ${roundedY.toFixed(3)}`)
         return roundedY
       }
     }
@@ -428,20 +446,59 @@ export class ModelManager {
     const targetBox = new THREE.Box3().setFromObject(targetModelGroup)
     targetModelGroup.position.copy(originalTargetPosition)
     
-    // X, Z 축에서 충분한 겹침이 있는지 확인 (최소 50% 겹침)
-    const xOverlap = Math.min(targetBox.max.x, supportBox.max.x) - Math.max(targetBox.min.x, supportBox.min.x)
-    const zOverlap = Math.min(targetBox.max.z, supportBox.max.z) - Math.max(targetBox.min.z, supportBox.min.z)
+    // 각 모델의 크기 계산
+    const supportWidth = supportBox.max.x - supportBox.min.x
+    const supportDepth = supportBox.max.z - supportBox.min.z
+    const supportArea = supportWidth * supportDepth
     
     const targetWidth = targetBox.max.x - targetBox.min.x
     const targetDepth = targetBox.max.z - targetBox.min.z
+    const targetArea = targetWidth * targetDepth
     
-    const xOverlapRatio = xOverlap / targetWidth
-    const zOverlapRatio = zOverlap / targetDepth
+    // X, Z 축에서의 겹침 계산
+    const xOverlap = Math.min(targetBox.max.x, supportBox.max.x) - Math.max(targetBox.min.x, supportBox.min.x)
+    const zOverlap = Math.min(targetBox.max.z, supportBox.max.z) - Math.max(targetBox.min.z, supportBox.min.z)
     
-    // 최소 50% 이상 겹쳐야 지지할 수 있음
-    const canSupport = xOverlapRatio >= 0.5 && zOverlapRatio >= 0.5 && xOverlap > 0 && zOverlap > 0
+    // 겹침이 없으면 지지할 수 없음
+    if (xOverlap <= 0 || zOverlap <= 0) {
+      console.log(`      -> Support check FAILED: No overlap (xOverlap=${xOverlap.toFixed(3)}, zOverlap=${zOverlap.toFixed(3)})`)
+      return false
+    }
     
-    console.log(`      -> Support check: ${supportModel.getId()} -> ${targetModel.getId()}: xOverlap=${xOverlapRatio.toFixed(2)}, zOverlap=${zOverlapRatio.toFixed(2)}, canSupport=${canSupport}`)
+    // 겹치는 영역의 크기
+    const overlapArea = xOverlap * zOverlap
+    
+    // 타겟 모델 대비 겹침 비율
+    const targetOverlapRatio = overlapArea / targetArea
+    
+    // 지지 모델 대비 겹침 비율
+    const supportOverlapRatio = overlapArea / supportArea
+    
+    // 개선된 지지 조건:
+    // 1. 타겟이 더 작고 (면적 기준), 충분히 겹치는 경우
+    // 2. 또는 타겟이 크더라도 지지 모델에 충분히 안착하는 경우
+    let canSupport = false
+    
+    if (targetArea <= supportArea) {
+      // 타겟이 더 작거나 같은 경우: 30% 이상 겹치면 지지 가능
+      canSupport = targetOverlapRatio >= 0.3
+      console.log(`      -> Target is smaller/equal: targetArea=${targetArea.toFixed(2)}, supportArea=${supportArea.toFixed(2)}, targetOverlapRatio=${targetOverlapRatio.toFixed(2)}`)
+    } else {
+      // 타겟이 더 큰 경우: 지지 모델의 80% 이상을 덮어야 지지 가능
+      canSupport = supportOverlapRatio >= 0.8
+      console.log(`      -> Target is larger: targetArea=${targetArea.toFixed(2)}, supportArea=${supportArea.toFixed(2)}, supportOverlapRatio=${supportOverlapRatio.toFixed(2)}`)
+    }
+    
+    // 추가 조건: 너무 작은 겹침은 불안정하므로 최소 겹침 크기 확보
+    const minOverlapSize = Math.min(targetWidth, targetDepth) * 0.2 // 타겟의 최소 변의 20%
+    const actualMinOverlap = Math.min(xOverlap, zOverlap)
+    
+    if (actualMinOverlap < minOverlapSize) {
+      console.log(`      -> Support check FAILED: Insufficient minimum overlap (${actualMinOverlap.toFixed(3)} < ${minOverlapSize.toFixed(3)})`)
+      canSupport = false
+    }
+    
+    console.log(`      -> Support check: ${supportModel.getId()} -> ${targetModel.getId()}: overlapArea=${overlapArea.toFixed(2)}, targetRatio=${targetOverlapRatio.toFixed(2)}, supportRatio=${supportOverlapRatio.toFixed(2)}, canSupport=${canSupport}`)
     
     return canSupport
   }
@@ -665,5 +722,36 @@ export class ModelManager {
         z: currentPosition.z 
       }
     }
+  }
+
+  // 지지 품질을 계산하는 새로운 메서드
+  private calculateSupportQuality(supportModel: BaseModel, targetModel: BaseModel, targetX: number, targetZ: number): number {
+    const supportModelGroup = supportModel.getModel()
+    const targetModelGroup = targetModel.getModel()
+    
+    if (!supportModelGroup || !targetModelGroup) return 0
+
+    // 바운딩 박스 계산
+    const supportBox = new THREE.Box3().setFromObject(supportModelGroup)
+    const originalTargetPosition = targetModelGroup.position.clone()
+    targetModelGroup.position.set(targetX, 0, targetZ)
+    const targetBox = new THREE.Box3().setFromObject(targetModelGroup)
+    targetModelGroup.position.copy(originalTargetPosition)
+    
+    // 겹침 계산
+    const xOverlap = Math.min(targetBox.max.x, supportBox.max.x) - Math.max(targetBox.min.x, supportBox.min.x)
+    const zOverlap = Math.min(targetBox.max.z, supportBox.max.z) - Math.max(targetBox.min.z, supportBox.min.z)
+    
+    if (xOverlap <= 0 || zOverlap <= 0) return 0
+    
+    const overlapArea = xOverlap * zOverlap
+    const targetArea = (targetBox.max.x - targetBox.min.x) * (targetBox.max.z - targetBox.min.z)
+    const supportArea = (supportBox.max.x - supportBox.min.x) * (supportBox.max.z - supportBox.min.z)
+    
+    // 품질 점수 계산 (0.0 ~ 1.0)
+    const overlapRatio = overlapArea / targetArea
+    const stabilityBonus = Math.min(supportArea / targetArea, 1.0) * 0.2 // 큰 지지대에 보너스
+    
+    return Math.min(overlapRatio + stabilityBonus, 1.0)
   }
 } 

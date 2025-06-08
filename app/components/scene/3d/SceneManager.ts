@@ -86,12 +86,12 @@ export class SceneManager {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    this.renderer.setClearColor(0x121212)
+    this.renderer.setClearColor(0xFAFAFA)
     this.container.appendChild(this.renderer.domElement)
 
     // 씬 설정
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0xffffff)
+    this.scene.background = new THREE.Color(0xF5F5F5)
 
     // 카메라 초기 설정
     this.updateCamera(width, height, 10)

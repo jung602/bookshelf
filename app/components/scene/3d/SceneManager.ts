@@ -37,6 +37,7 @@ export class SceneManager {
   private isInitialized: boolean = false
   private gizmoState: GizmoState = { selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
+  private customFloorTexture?: string
 
   // 크기 애니메이션 관련 변수들
   private currentSize: { width: number; height: number } = { width: 0, height: 0 }
@@ -54,6 +55,7 @@ export class SceneManager {
     this.setupPostProcessing()
     this.setupControls()
     this.setupInteraction()
+    this.setupCustomTextureListener()
     this.animate()
   }
 
@@ -116,7 +118,7 @@ export class SceneManager {
     createLights(this.scene)
 
     // 바닥 추가 (격자 기반)
-    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid)
+    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
 
     // 벽들 추가 (격자 기반)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
@@ -190,6 +192,54 @@ export class SceneManager {
     this.setupControlsInteraction()
   }
 
+  private setupCustomTextureListener() {
+    // 커스텀 텍스처 적용 이벤트 리스너
+    window.addEventListener('applyCustomTexture', (event: Event) => {
+      const customEvent = event as CustomEvent<{ textureDataURL: string }>
+      const { textureDataURL } = customEvent.detail
+      this.customFloorTexture = textureDataURL
+      
+      // 바닥 재생성
+      createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+      
+      console.log('Custom texture applied to floor')
+    })
+    
+    // 커스텀 텍스처 리셋 이벤트 리스너
+    window.addEventListener('resetCustomTexture', () => {
+      this.customFloorTexture = undefined
+      
+      // 기본 텍스처로 바닥 재생성
+      createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+      
+      console.log('Floor texture reset to default')
+    })
+    
+    // 색상 리셋 이벤트 리스너
+    window.addEventListener('resetColors', (event: Event) => {
+      const customEvent = event as CustomEvent<{ wallColor: string; floorColor: string }>
+      const { wallColor, floorColor } = customEvent.detail
+      
+      // 색상 파라미터 업데이트
+      this.colorParams.wallColor = wallColor
+      this.colorParams.floorColor = floorColor
+      
+      // updateColors 메서드 호출하여 3D 씬 업데이트
+      this.updateColors(this.colorParams)
+      
+      console.log('Colors reset to default:', { wallColor, floorColor })
+    })
+  }
+
+  public applyCustomFloorTexture(textureDataURL: string) {
+    this.customFloorTexture = textureDataURL
+    
+    // 바닥 재생성
+    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+    
+    console.log('Custom texture applied to floor')
+  }
+
   private setupControlsInteraction() {
     // 드래그 상태 확인을 위한 인터벌 설정
     const checkDragState = () => {
@@ -213,7 +263,7 @@ export class SceneManager {
     Object.assign(this.roomParams, params)
     
     // 바닥과 벽 다시 생성 (격자 기반)
-    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid)
+    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
     // 카메라 위치 조정 (격자 크기 기반)
@@ -228,7 +278,7 @@ export class SceneManager {
     Object.assign(this.colorParams, params)
     
     // 바닥과 벽 다시 생성 (격자 기반)
-    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid)
+    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
   }
 

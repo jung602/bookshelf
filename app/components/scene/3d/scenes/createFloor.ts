@@ -5,7 +5,8 @@ export function createFloor(
   width: number = 1, 
   height: number = 1,
   color: string = '#ffffff',
-  customGrid?: boolean[][]  // 5x5 격자 패턴
+  customGrid?: boolean[][],  // 5x5 격자 패턴
+  customTexture?: string     // 사용자 정의 텍스처 (data URL)
 ) {
   // 기존 바닥 제거
   const existingFloors = scene.children.filter(child => child.userData.isFloor)
@@ -13,9 +14,9 @@ export function createFloor(
 
   // 커스텀 격자가 있는 경우 격자별로 타일 생성
   if (customGrid && Array.isArray(customGrid)) {
-    createCustomGridFloor(scene, customGrid, color)
+    createCustomGridFloor(scene, customGrid, color, customTexture)
   } else {
-    createRegularFloor(scene, width, height, color)
+    createRegularFloor(scene, width, height, color, customTexture)
   }
 }
 
@@ -23,27 +24,35 @@ function createRegularFloor(
   scene: THREE.Scene,
   width: number,
   height: number, 
-  color: string
+  color: string,
+  customTexture?: string
 ) {
   // 텍스처 로더
   const textureLoader = new THREE.TextureLoader()
   
-  // 체커보드 텍스처 로드
-  const checkerTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png')
+  let floorTexture: THREE.Texture
+  
+  if (customTexture) {
+    // 사용자 정의 텍스처 사용
+    floorTexture = textureLoader.load(customTexture)
+  } else {
+    // 기본 체커보드 텍스처 로드
+    floorTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png')
+  }
 
   // 텍스처 반복 설정
-  checkerTexture.wrapS = checkerTexture.wrapT = THREE.RepeatWrapping
-  checkerTexture.minFilter = THREE.NearestFilter
-  checkerTexture.magFilter = THREE.NearestFilter
-  checkerTexture.generateMipmaps = false
+  floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping
+  floorTexture.minFilter = THREE.NearestFilter
+  floorTexture.magFilter = THREE.NearestFilter
+  floorTexture.generateMipmaps = false
   
-  // 텍스처 반복 횟수 (각 타일마다 체커보드 패턴이 보이도록)
-  checkerTexture.repeat.set(width, height)
+  // 텍스처 반복 횟수 (각 타일마다 패턴이 보이도록)
+  floorTexture.repeat.set(width, height)
 
   // 지오메트리와 머티리얼 생성
   const geometry = new THREE.PlaneGeometry(width, height)
   const material = new THREE.MeshStandardMaterial({
-    map: checkerTexture,
+    map: floorTexture,
     color: new THREE.Color(color), // 색상을 오버레이로 적용
     side: THREE.DoubleSide
   })
@@ -64,20 +73,28 @@ function createRegularFloor(
 function createCustomGridFloor(
   scene: THREE.Scene,
   customGrid: boolean[][],
-  color: string
+  color: string,
+  customTexture?: string
 ) {
   // 텍스처 로더
   const textureLoader = new THREE.TextureLoader()
   
-  // 체커보드 텍스처 로드
-  const checkerTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png')
+  let baseTexture: THREE.Texture
+  
+  if (customTexture) {
+    // 사용자 정의 텍스처 사용
+    baseTexture = textureLoader.load(customTexture)
+  } else {
+    // 기본 체커보드 텍스처 로드
+    baseTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png')
+  }
 
   // 텍스처 반복 설정
-  checkerTexture.wrapS = checkerTexture.wrapT = THREE.RepeatWrapping
-  checkerTexture.minFilter = THREE.NearestFilter
-  checkerTexture.magFilter = THREE.NearestFilter
-  checkerTexture.generateMipmaps = false
-  checkerTexture.repeat.set(1, 1) // 각 타일마다 하나의 체커 패턴
+  baseTexture.wrapS = baseTexture.wrapT = THREE.RepeatWrapping
+  baseTexture.minFilter = THREE.NearestFilter
+  baseTexture.magFilter = THREE.NearestFilter
+  baseTexture.generateMipmaps = false
+  baseTexture.repeat.set(1, 1) // 각 타일마다 하나의 패턴
 
   const gridSize = customGrid.length
   const tileSize = 1 // 각 타일의 크기
@@ -90,7 +107,7 @@ function createCustomGridFloor(
         // 지오메트리와 머티리얼 생성
         const geometry = new THREE.PlaneGeometry(tileSize, tileSize)
         const material = new THREE.MeshStandardMaterial({
-          map: checkerTexture.clone(),
+          map: baseTexture.clone(),
           color: new THREE.Color(color),
           side: THREE.DoubleSide
         })

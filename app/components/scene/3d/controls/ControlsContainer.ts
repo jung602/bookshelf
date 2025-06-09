@@ -26,13 +26,17 @@ export class ControlsContainer {
   private roomControls: RoomControls | null = null
   private styleControls: StyleControls | null = null
   private gridComponent: GridComponent | null = null
-  
+  private tileCanvas: boolean[][] = []
+    private selectedTool: 'pen' | 'eraser' = 'pen'
+  private onStyleParamsChange: (params: Partial<StyleParams>) => void
+
   constructor(
     roomParams: RoomParams,
     styleParams: StyleParams,
     onRoomParamsChange: (params: Partial<RoomParams>) => void,
     onStyleParamsChange: (params: Partial<StyleParams>) => void
   ) {
+    this.onStyleParamsChange = onStyleParamsChange
     this.createContainer()
     this.initializePanels(roomParams, styleParams, onRoomParamsChange, onStyleParamsChange)
   }
@@ -190,31 +194,86 @@ export class ControlsContainer {
   private createStyleContent(styleControls: StyleControls): HTMLElement {
     const content = document.createElement('div')
     Object.assign(content.style, {
-      backgroundColor: ROOM_CONTROL_STYLES.PANEL_CONTENT.background
+      backgroundColor: ROOM_CONTROL_STYLES.PANEL_CONTENT.background,
     })
+
+    // 10x10 빈 캔버스 초기화
+    this.initializeTileCanvas()
 
     const styleParams = styleControls.getParams()
 
-    // Wall Color 섹션
-    const wallColorSection = this.createColorSection('Wall Color', styleParams.wallColor, (color) => {
-      // 직접 onParamsChange 콜백 호출
+    // 5x2 그리드 레이아웃
+    const mainGrid = document.createElement('div')
+    Object.assign(mainGrid.style, ROOM_CONTROL_STYLES.STYLE_GRID_CONTAINER)
+
+    // 1. 캔버스 (2x2)
+    const canvasContainer = this.createTileCanvas()
+    Object.assign(canvasContainer.style, {
+      gridColumn: '1 / 3',
+      gridRow: '1 / 3'
+    })
+
+    // 2. 펜 (1x1)
+    const penButton = this.createToolButton('Pen', 'pen')
+    Object.assign(penButton.style, {
+      gridColumn: '3',
+      gridRow: '1'
+    })
+
+    // 3. Wall Color (1x1)
+    const wallColorSection = this.createCompactColorSection('Wall', styleParams.wallColor, (color) => {
       const onParamsChange = (styleControls as any).onParamsChange
       if (onParamsChange) {
         onParamsChange({ wallColor: color })
       }
+    }, 'wall')
+    Object.assign(wallColorSection.style, {
+      gridColumn: '4',
+      gridRow: '1'
     })
-    content.appendChild(wallColorSection)
 
-    // Floor Color 섹션  
-    const floorColorSection = this.createColorSection('Floor Color', styleParams.floorColor, (color) => {
-      // 직접 onParamsChange 콜백 호출
+    // 4. Reset (1x1)
+    const resetButton = this.createActionButton('Reset', () => this.resetCanvas())
+    Object.assign(resetButton.style, {
+      gridColumn: '5',
+      gridRow: '1'
+    })
+
+    // 5. 지우개 (1x1)
+    const eraserButton = this.createToolButton('Eraser', 'eraser')
+    Object.assign(eraserButton.style, {
+      gridColumn: '3',
+      gridRow: '2'
+    })
+
+    // 6. Floor Color (1x1)
+    const floorColorSection = this.createCompactColorSection('Floor', styleParams.floorColor, (color) => {
       const onParamsChange = (styleControls as any).onParamsChange
       if (onParamsChange) {
         onParamsChange({ floorColor: color })
       }
+    }, 'floor')
+    Object.assign(floorColorSection.style, {
+      gridColumn: '4',
+      gridRow: '2'
     })
-    content.appendChild(floorColorSection)
 
+    // 7. Save (1x1)
+    const saveButton = this.createActionButton('Save', () => this.saveTilePattern())
+    Object.assign(saveButton.style, {
+      gridColumn: '5',
+      gridRow: '2'
+    })
+
+    mainGrid.appendChild(canvasContainer)
+    mainGrid.appendChild(penButton)
+    mainGrid.appendChild(wallColorSection)
+    mainGrid.appendChild(resetButton)
+    mainGrid.appendChild(eraserButton)
+    mainGrid.appendChild(floorColorSection)
+    mainGrid.appendChild(saveButton)
+
+    content.appendChild(mainGrid)
     return content
   }
 
@@ -243,44 +302,34 @@ export class ControlsContainer {
 
     // 컬러 팔레트 (처음에는 숨김)
     const colorPalette = document.createElement('div')
-    Object.assign(colorPalette.style, {
-      display: 'none',
-      position: 'absolute',
-      zIndex: '1001',
-      backgroundColor: ROOM_CONTROL_STYLES.PANEL_CONTENT.background,
-      border: '2px solid #000000',
-      padding: '4px',
-      gridTemplateColumns: 'repeat(4, 1fr)',
-      gridTemplateRows: 'repeat(4, 1fr)',
-      gap: '2px',
-      width: '120px',
-      height: '120px'
-    })
+    Object.assign(colorPalette.style, ROOM_CONTROL_STYLES.COLOR_PALETTE_CONTAINER)
 
     // 4x4 컬러 그리드 생성
     WINDOWS_PALETTE.forEach((color) => {
       const colorCell = document.createElement('div')
       Object.assign(colorCell.style, {
-        width: '24px',
-        height: '24px',
-        backgroundColor: color,
-        border: '1px solid #000000',
-        cursor: 'pointer',
-        boxShadow: 'inset -1px -1px rgba(0, 0, 0, 0.5), inset 1px 1px rgba(255, 255, 255, 0.8)'
+        ...ROOM_CONTROL_STYLES.COLOR_PALETTE_CELL,
+        backgroundColor: color
+      })
+
+      colorCell.addEventListener('mouseenter', () => {
+        Object.assign(colorCell.style, {
+          ...ROOM_CONTROL_STYLES.COLOR_PALETTE_CELL_HOVER,
+          backgroundColor: color
+        })
+      })
+
+      colorCell.addEventListener('mouseleave', () => {
+        Object.assign(colorCell.style, {
+          ...ROOM_CONTROL_STYLES.COLOR_PALETTE_CELL,
+          backgroundColor: color
+        })
       })
 
       colorCell.addEventListener('click', () => {
         currentColorDisplay.style.backgroundColor = color
         colorPalette.style.display = 'none'
         onChange(color)
-      })
-
-      colorCell.addEventListener('mouseenter', () => {
-        colorCell.style.boxShadow = 'inset 1px 1px rgba(0, 0, 0, 0.5), inset -1px -1px rgba(255, 255, 255, 0.8)'
-      })
-
-      colorCell.addEventListener('mouseleave', () => {
-        colorCell.style.boxShadow = 'inset -1px -1px rgba(0, 0, 0, 0.5), inset 1px 1px rgba(255, 255, 255, 0.8)'
       })
 
       colorPalette.appendChild(colorCell)
@@ -484,6 +533,340 @@ export class ControlsContainer {
   private applyPattern(pattern: boolean[][], onChange: (grid: boolean[][]) => void): void {
     this.gridComponent?.updateGrid(pattern)
     onChange(pattern)
+  }
+
+  // 타일 에디터 관련 메서드들
+  private initializeTileCanvas(): void {
+    this.tileCanvas = Array(10).fill(null).map(() => Array(10).fill(false))
+  }
+
+  private createTileCanvas(): HTMLElement {
+    const container = document.createElement('div')
+    Object.assign(container.style, ROOM_CONTROL_STYLES.TILE_CANVAS_CONTAINER)
+
+    for (let row = 0; row < 10; row++) {
+      for (let col = 0; col < 10; col++) {
+        const cell = document.createElement('div')
+        Object.assign(cell.style, ROOM_CONTROL_STYLES.TILE_CANVAS_CELL)
+
+        cell.addEventListener('mousedown', () => this.paintCell(row, col, cell))
+        cell.addEventListener('mouseenter', (e) => {
+          if ((e as MouseEvent).buttons === 1) { // 마우스 버튼이 눌린 상태에서 드래그
+            this.paintCell(row, col, cell)
+          }
+        })
+
+        container.appendChild(cell)
+      }
+    }
+
+    return container
+  }
+
+  private paintCell(row: number, col: number, cellElement: HTMLElement): void {
+    if (this.selectedTool === 'pen') {
+      this.tileCanvas[row][col] = true
+      cellElement.style.backgroundColor = ROOM_CONTROL_STYLES.TILE_CANVAS_CELL_PAINTED.backgroundColor
+    } else if (this.selectedTool === 'eraser') {
+      this.tileCanvas[row][col] = false
+      cellElement.style.backgroundColor = ROOM_CONTROL_STYLES.TILE_CANVAS_CELL.backgroundColor
+    }
+  }
+
+  private createToolButton(text: string, tool: 'pen' | 'eraser'): HTMLElement {
+    const button = document.createElement('button')
+    
+    // 기본 스타일 적용
+    if (this.selectedTool === tool) {
+      Object.assign(button.style, {
+        ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER,
+        ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER_SELECTED
+      })
+    } else {
+      Object.assign(button.style, ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER)
+    }
+
+    // 아이콘 컨테이너 생성
+    const iconContainer = document.createElement('div')
+    Object.assign(iconContainer.style, ROOM_CONTROL_STYLES.ICON_BUTTON_ICON_CONTAINER)
+
+    // 아이콘 이미지 생성 (도구에 따라 적절한 아이콘 사용)
+    const icon = document.createElement('img')
+    if (tool === 'pen') {
+      icon.src = '/icons/pen.png'
+    } else if (tool === 'eraser') {
+      icon.src = '/icons/eraser.png'
+    } else {
+      icon.src = '/icons/room.png' // 기본값
+    }
+    Object.assign(icon.style, ROOM_CONTROL_STYLES.ICON_BUTTON_ICON_IMAGE)
+    iconContainer.appendChild(icon)
+
+    // 텍스트 생성
+    const textElement = document.createElement('div')
+    textElement.textContent = text
+    Object.assign(textElement.style, ROOM_CONTROL_STYLES.ICON_BUTTON_TEXT)
+
+    // 버튼에 아이콘과 텍스트 추가
+    button.appendChild(iconContainer)
+    button.appendChild(textElement)
+
+    button.addEventListener('click', () => {
+      this.selectedTool = tool
+      this.updateToolButtons()
+    })
+
+    return button
+  }
+
+  private createCompactColorSection(title: string, initialColor: string, onChange: (color: string) => void, colorType?: string): HTMLElement {
+    const container = document.createElement('div')
+    Object.assign(container.style, ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER)
+
+    // 색상 표시 컨테이너 (아이콘 역할)
+    const colorContainer = document.createElement('div')
+    Object.assign(colorContainer.style, ROOM_CONTROL_STYLES.ICON_BUTTON_ICON_CONTAINER)
+
+    const colorDisplay = document.createElement('div')
+    Object.assign(colorDisplay.style, {
+      width: '100%',
+      height: '100%',
+      backgroundColor: initialColor,
+      cursor: 'pointer'
+    })
+    
+    // 색상 타입에 따라 데이터 속성 추가
+    if (colorType) {
+      colorDisplay.setAttribute('data-color-type', colorType)
+    }
+
+    colorContainer.appendChild(colorDisplay)
+
+    // 텍스트 생성 (아래쪽)
+    const textElement = document.createElement('div')
+    textElement.textContent = title
+    Object.assign(textElement.style, ROOM_CONTROL_STYLES.ICON_BUTTON_TEXT)
+
+    // 컨테이너에 색상 표시와 텍스트 추가
+    container.appendChild(colorContainer)
+    container.appendChild(textElement)
+
+    // 기존 createColorSection과 동일한 팔레트 로직 적용
+    const colorPalette = document.createElement('div')
+    Object.assign(colorPalette.style, ROOM_CONTROL_STYLES.COLOR_PALETTE_CONTAINER)
+
+    WINDOWS_PALETTE.forEach((color) => {
+      const colorCell = document.createElement('div')
+      Object.assign(colorCell.style, {
+        ...ROOM_CONTROL_STYLES.COLOR_PALETTE_CELL,
+        backgroundColor: color
+      })
+
+      colorCell.addEventListener('mouseenter', () => {
+        Object.assign(colorCell.style, {
+          ...ROOM_CONTROL_STYLES.COLOR_PALETTE_CELL_HOVER,
+          backgroundColor: color
+        })
+      })
+
+      colorCell.addEventListener('mouseleave', () => {
+        Object.assign(colorCell.style, {
+          ...ROOM_CONTROL_STYLES.COLOR_PALETTE_CELL,
+          backgroundColor: color
+        })
+      })
+
+      colorCell.addEventListener('click', () => {
+        colorDisplay.style.backgroundColor = color
+        colorPalette.style.display = 'none'
+        onChange(color)
+      })
+
+      colorPalette.appendChild(colorCell)
+    })
+
+    document.body.appendChild(colorPalette)
+
+    colorDisplay.addEventListener('click', (e) => {
+      e.stopPropagation()
+      if (colorPalette.style.display === 'none') {
+        const rect = colorDisplay.getBoundingClientRect()
+        colorPalette.style.left = `${rect.left}px`
+        colorPalette.style.top = `${rect.bottom + 4}px`
+        colorPalette.style.display = 'grid'
+      } else {
+        colorPalette.style.display = 'none'
+      }
+    })
+
+    return container
+  }
+
+  private createActionButton(text: string, action: () => void): HTMLElement {
+    const button = document.createElement('button')
+    Object.assign(button.style, ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER)
+
+    // 아이콘 컨테이너 생성
+    const iconContainer = document.createElement('div')
+    Object.assign(iconContainer.style, ROOM_CONTROL_STYLES.ICON_BUTTON_ICON_CONTAINER)
+
+    // 아이콘 이미지 생성 (텍스트에 따라 적절한 아이콘 사용)
+    const icon = document.createElement('img')
+    if (text === 'Save') {
+      icon.src = '/icons/save.svg'
+    } else if (text === 'Reset') {
+      icon.src = '/icons/reset.png'
+    } else {
+      icon.src = '/icons/room.png' // 기본값
+    }
+    Object.assign(icon.style, ROOM_CONTROL_STYLES.ICON_BUTTON_ICON_IMAGE)
+    iconContainer.appendChild(icon)
+
+    // 텍스트 생성
+    const textElement = document.createElement('div')
+    textElement.textContent = text
+    Object.assign(textElement.style, ROOM_CONTROL_STYLES.ICON_BUTTON_TEXT)
+
+    // 버튼에 아이콘과 텍스트 추가
+    button.appendChild(iconContainer)
+    button.appendChild(textElement)
+
+    button.addEventListener('mouseenter', () => {
+      Object.assign(button.style, {
+        ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER,
+        ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER_HOVER
+      })
+    })
+
+    button.addEventListener('mouseleave', () => {
+      Object.assign(button.style, ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER)
+    })
+
+    button.addEventListener('click', action)
+    return button
+  }
+
+  private resetCanvas(): void {
+    // 1. 타일 캔버스 초기화
+    this.initializeTileCanvas()
+    
+    // 2. 캔버스 셀들을 다시 흰색으로 초기화
+    const canvasCells = document.querySelectorAll('[style*="crosshair"]')
+    canvasCells.forEach(cell => {
+      (cell as HTMLElement).style.backgroundColor = ROOM_CONTROL_STYLES.TILE_CANVAS_CELL.backgroundColor
+    })
+    
+    // 3. 커스텀 텍스처 제거 (기본 체커보드로 되돌리기)
+    const resetTextureEvent = new CustomEvent('resetCustomTexture')
+    window.dispatchEvent(resetTextureEvent)
+    
+    // 4. 색상을 기본값으로 초기화 (createWalls.ts, createFloor.ts와 동일한 기본값 사용)
+    const defaultWallColor = '#cccccc'  // createWalls.ts의 기본값
+    const defaultFloorColor = '#ffffff' // createFloor.ts의 기본값
+    
+    // Wall Color 섹션의 색상 표시 업데이트
+    const wallColorDisplays = document.querySelectorAll('[data-color-type="wall"]')
+    wallColorDisplays.forEach(display => {
+      (display as HTMLElement).style.backgroundColor = defaultWallColor
+    })
+    
+    // Floor Color 섹션의 색상 표시 업데이트
+    const floorColorDisplays = document.querySelectorAll('[data-color-type="floor"]')
+    floorColorDisplays.forEach(display => {
+      (display as HTMLElement).style.backgroundColor = defaultFloorColor
+    })
+    
+    // 5. 색상 리셋 이벤트 발생시켜 3D 씬에서 실제 색상 업데이트
+    const resetColorsEvent = new CustomEvent('resetColors', {
+      detail: {
+        wallColor: defaultWallColor,
+        floorColor: defaultFloorColor
+      }
+    })
+    window.dispatchEvent(resetColorsEvent)
+    
+    // 6. styleControls를 통해 실제 색상 파라미터 업데이트
+    if (this.styleControls) {
+      (this.styleControls as any).updateParams({
+        wallColor: defaultWallColor,
+        floorColor: defaultFloorColor
+      })
+    }
+    
+    // 7. 직접 onStyleParamsChange 콜백 호출하여 3D 씬 업데이트 확실히 하기
+    this.onStyleParamsChange({
+      wallColor: defaultWallColor,
+      floorColor: defaultFloorColor
+    })
+    
+    console.log('Canvas, texture, and colors reset to default values')
+  }
+
+  private saveTilePattern(): void {
+    // 10x10 패턴을 Canvas 텍스처로 변환
+    const canvas = document.createElement('canvas')
+    canvas.width = 64  // 64x64 픽셀 텍스처
+    canvas.height = 64
+    const ctx = canvas.getContext('2d')!
+    
+    // 배경을 흰색으로 설정
+    ctx.fillStyle = ROOM_CONTROL_STYLES.TILE_CANVAS_CELL.backgroundColor
+    ctx.fillRect(0, 0, 64, 64)
+    
+    // 사용자가 그린 패턴을 그리기 (각 픽셀을 6.4x6.4 크기로 확대)
+    const pixelSize = 6.4 // 64 / 10 = 6.4
+    ctx.fillStyle = ROOM_CONTROL_STYLES.TILE_CANVAS_CELL_PAINTED.backgroundColor
+    
+    for (let row = 0; row < 10; row++) {
+      for (let col = 0; col < 10; col++) {
+        if (this.tileCanvas[row][col]) {
+          ctx.fillRect(
+            col * pixelSize, 
+            row * pixelSize, 
+            pixelSize, 
+            pixelSize
+          )
+        }
+      }
+    }
+    
+    // Canvas를 데이터 URL로 변환
+    const textureDataURL = canvas.toDataURL()
+    
+    // 3D 씬에 적용하기 위해 이벤트 발생시키기
+    const customEvent = new CustomEvent('applyCustomTexture', {
+      detail: { textureDataURL }
+    })
+    window.dispatchEvent(customEvent)
+    
+    console.log('Tile pattern saved and applied to 3D scene')
+  }
+
+  private updateToolButtons(): void {
+    // 도구 버튼들의 선택 상태 업데이트
+    const toolButtons = document.querySelectorAll('button')
+    toolButtons.forEach(button => {
+      const textElement = button.querySelector('div:last-child') as HTMLElement
+      if (textElement && textElement.textContent === '펜') {
+        if (this.selectedTool === 'pen') {
+          Object.assign(button.style, {
+            ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER,
+            ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER_SELECTED
+          })
+        } else {
+          Object.assign(button.style, ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER)
+        }
+      } else if (textElement && textElement.textContent === '지우개') {
+        if (this.selectedTool === 'eraser') {
+          Object.assign(button.style, {
+            ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER,
+            ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER_SELECTED
+          })
+        } else {
+          Object.assign(button.style, ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER)
+        }
+      }
+    })
   }
 
 

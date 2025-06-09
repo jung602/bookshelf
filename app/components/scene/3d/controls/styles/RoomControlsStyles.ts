@@ -330,6 +330,178 @@ export const ROOM_CONTROL_STYLES = {
   // 첫 번째 섹션 (여백 조정)
   SECTION_CONTAINER_FIRST: {
     marginTop: '0px'
+  },
+
+  // Style 패널 전용 스타일들
+  STYLE_GRID_CONTAINER: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(5, 1fr)',
+    gridTemplateRows: 'repeat(2, 1fr)',
+    gap: '4px',
+    width: '100%',
+    height: '120px'
+  },
+
+  // 타일 캔버스 스타일들
+  TILE_CANVAS_CONTAINER: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(10, 1fr)',
+    gridTemplateRows: 'repeat(10, 1fr)',
+    gap: '1px',
+    width: '100%',
+    height: '100%',
+    backgroundColor: WIN95_COLORS.BLACK,
+    border: '2px inset #C0C0C0'
+  },
+
+  TILE_CANVAS_CELL: {
+    backgroundColor: WIN95_COLORS.WHITE,
+    cursor: 'crosshair'
+  },
+
+  TILE_CANVAS_CELL_PAINTED: {
+    backgroundColor: WIN95_COLORS.DARK_GRAY
+  },
+
+  // 컴팩트 컬러 섹션 스타일들
+  COMPACT_COLOR_CONTAINER: {
+    display: COMMON_STYLES.DISPLAY_FLEX,
+    flexDirection: 'column',
+    alignItems: COMMON_STYLES.ALIGN_CENTER,
+    height: '100%',
+    fontSize: '8px'
+  },
+
+  COMPACT_COLOR_LABEL: {
+    fontSize: '8px',
+    marginBottom: '2px',
+    color: WIN95_COLORS.BLACK,
+    fontFamily: COMMON_STYLES.FONT_FAMILY
+  },
+
+  COMPACT_COLOR_DISPLAY: {
+    width: '20px',
+    height: '20px',
+    border: '1px solid #000000',
+    cursor: 'pointer'
+  },
+
+  // 컬러 팔레트 스타일들
+  COLOR_PALETTE_CONTAINER: {
+    display: 'none',
+    position: COMMON_STYLES.POSITION_FIXED,
+    zIndex: '1001',
+    backgroundColor: WIN95_COLORS.LIGHT_GRAY,
+    border: '2px solid #000000',
+    padding: '4px',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gridTemplateRows: 'repeat(4, 1fr)',
+    gap: '2px',
+    width: '120px',
+    height: '120px'
+  },
+
+  COLOR_PALETTE_CELL: {
+    width: '24px',
+    height: '24px',
+    border: '1px solid #000000',
+    cursor: 'pointer',
+    boxShadow: 'inset -1px -1px rgba(0, 0, 0, 0.5), inset 1px 1px rgba(255, 255, 255, 0.8)'
+  },
+
+  COLOR_PALETTE_CELL_HOVER: {
+    boxShadow: 'inset 1px 1px rgba(0, 0, 0, 0.5), inset -1px -1px rgba(255, 255, 255, 0.8)'
+  },
+
+  // 도구 버튼 스타일들
+  TOOL_BUTTON: {
+    width: '100%',
+    height: '100%',
+    fontSize: '14px',
+    backgroundColor: WIN95_COLORS.LIGHT_GRAY,
+    color: WIN95_COLORS.BLACK,
+    border: COMMON_STYLES.BORDER_NONE,
+    borderRadius: COMMON_STYLES.BORDER_RADIUS_NONE,
+    cursor: 'pointer',
+    fontFamily: COMMON_STYLES.FONT_FAMILY,
+    boxShadow: COMMON_STYLES.BOXSHADOW_RAISED
+  },
+
+  TOOL_BUTTON_SELECTED: {
+    backgroundColor: WIN95_COLORS.DARK_BLUE,
+    color: WIN95_COLORS.WHITE,
+    boxShadow: COMMON_STYLES.BOXSHADOW_INSET
+  },
+
+  // 액션 버튼 스타일들
+  ACTION_BUTTON: {
+    width: '100%',
+    height: '100%',
+    fontSize: '10px',
+    backgroundColor: WIN95_COLORS.LIGHT_GRAY,
+    color: WIN95_COLORS.BLACK,
+    border: COMMON_STYLES.BORDER_NONE,
+    borderRadius: COMMON_STYLES.BORDER_RADIUS_NONE,
+    cursor: 'pointer',
+    fontFamily: COMMON_STYLES.FONT_FAMILY,
+    boxShadow: COMMON_STYLES.BOXSHADOW_RAISED
+  },
+
+  ACTION_BUTTON_HOVER: {
+    boxShadow: COMMON_STYLES.BOXSHADOW_INSET_RAISED
+  },
+
+  // 아이콘이 포함된 버튼 스타일들
+  ICON_BUTTON_CONTAINER: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: WIN95_COLORS.LIGHT_GRAY,
+    color: WIN95_COLORS.BLACK,
+    border: COMMON_STYLES.BORDER_NONE,
+    borderRadius: COMMON_STYLES.BORDER_RADIUS_NONE,
+    cursor: 'pointer',
+    fontFamily: COMMON_STYLES.FONT_FAMILY,
+    boxShadow: COMMON_STYLES.BOXSHADOW_RAISED,
+    display: COMMON_STYLES.DISPLAY_FLEX,
+    flexDirection: 'column',
+    alignItems: COMMON_STYLES.ALIGN_CENTER,
+    justifyContent: COMMON_STYLES.JUSTIFY_CENTER,
+    padding: '2px',
+    gap: '2px'
+  },
+
+  ICON_BUTTON_CONTAINER_SELECTED: {
+    backgroundColor: WIN95_COLORS.DARK_BLUE,
+    color: WIN95_COLORS.WHITE,
+    boxShadow: COMMON_STYLES.BOXSHADOW_INSET
+  },
+
+  ICON_BUTTON_CONTAINER_HOVER: {
+    boxShadow: COMMON_STYLES.BOXSHADOW_INSET_RAISED
+  },
+
+  ICON_BUTTON_ICON_CONTAINER: {
+    width: '20px',
+    height: '20px',
+    display: COMMON_STYLES.DISPLAY_FLEX,
+    alignItems: COMMON_STYLES.ALIGN_CENTER,
+    justifyContent: COMMON_STYLES.JUSTIFY_CENTER,
+    backgroundColor: WIN95_COLORS.WHITE,
+  },
+
+  ICON_BUTTON_ICON_IMAGE: {
+    width: '20px',
+    height: '20px',
+    opacity: '1'
+  },
+
+  ICON_BUTTON_TEXT: {
+    fontSize: '14px',
+    fontWeight: 'normal',
+    textAlign: COMMON_STYLES.ALIGN_CENTER,
+    margin: '0',
+    padding: '0',
+    lineHeight: '1'
   }
 } as const
 

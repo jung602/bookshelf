@@ -25,7 +25,7 @@ const COMMON_STYLES = {
   BORDER_RADIUS_NONE: '0px',
   TRANSITION_NONE: 'none',
   BORDER_NONE: 'none',
-  BORDER_SOLID: '0px solid rgba(0, 0, 0, 0.5)',
+  BORDER_SOLID: '1px solid rgba(0, 0, 0, 1)',
   BOXSHADOW_NONE: 'none',
   BOXSHADOW_OUTERBOX: 'inset -2px -2px rgba(126, 126, 126, 1), inset 2px 2px rgba(240, 240, 240, 1), inset -4px -4px #C0C0C0, inset 4px 4px #C0C0C0',
   BOXSHADOW_RAISED: 'inset -2px -2px rgba(126, 126, 126, 1), inset 2px 2px rgba(240, 240, 240, 1), inset 2px 2px rgba(179, 179, 179, 1)',
@@ -335,11 +335,12 @@ export const ROOM_CONTROL_STYLES = {
   // Style 패널 전용 스타일들
   STYLE_GRID_CONTAINER: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(5, 1fr)',
-    gridTemplateRows: 'repeat(2, 1fr)',
+    gridTemplateColumns: 'repeat(5, 50px)',
+    gridTemplateRows: 'repeat(2, 50px)',
     gap: '4px',
-    width: '100%',
-    height: '120px'
+    width: 'fit-content',
+    height: 'fit-content',
+    justifyContent: 'center'
   },
 
   // 타일 캔버스 스타일들
@@ -382,7 +383,7 @@ export const ROOM_CONTROL_STYLES = {
   COMPACT_COLOR_DISPLAY: {
     width: '20px',
     height: '20px',
-    border: '1px solid #000000',
+    boxShadow: COMMON_STYLES.BOXSHADOW_INSET,
     cursor: 'pointer'
   },
 
@@ -487,6 +488,7 @@ export const ROOM_CONTROL_STYLES = {
     alignItems: COMMON_STYLES.ALIGN_CENTER,
     justifyContent: COMMON_STYLES.JUSTIFY_CENTER,
     backgroundColor: WIN95_COLORS.WHITE,
+    border: COMMON_STYLES.BORDER_SOLID
   },
 
   ICON_BUTTON_ICON_IMAGE: {

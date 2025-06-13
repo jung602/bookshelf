@@ -30,3 +30,34 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* 커스텀 커서 설정 */
+html, body, * {
+  cursor: url('/cursors/default.svg') 2 2, auto !important;
+}
+
+/* 클릭 가능한 요소들에 포인터 커서 적용 */
+a, 
+button, 
+input[type="button"], 
+input[type="submit"], 
+input[type="reset"], 
+select, 
+[onclick], 
+[role="button"], 
+.cursor-pointer {
+  cursor: url('/cursors/pointer.svg') 12 2, pointer !important;
+}
+
+/* Controls 관련 모든 요소에 포인터 커서 적용 */
+[id*="panel-container"], 
+[id*="panel-content"], 
+.grid-cell,
+input[type="range"],
+[class*="preset"],
+[class*="button"],
+[class*="icon"],
+[data-color-type],
+[style*="cursor: pointer"] {
+  cursor: url('/cursors/pointer.svg') 12 2, pointer !important;
+}

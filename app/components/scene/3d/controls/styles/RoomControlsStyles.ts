@@ -224,18 +224,18 @@ export const ROOM_CONTROL_STYLES = {
   PRESETS_CONTAINER: {
     display: COMMON_STYLES.DISPLAY_FLEX,
     gap: '4px',
-    marginTop: '8px',
+    margin: '8px 0',
     justifyContent: COMMON_STYLES.JUSTIFY_CENTER
   },
 
   PRESET_ICON_BUTTON: {
+    cursor: 'pointer',
     width: '32px',
     height: '32px',
     borderRadius: COMMON_STYLES.BORDER_RADIUS_NONE,
     border: COMMON_STYLES.BORDER_NONE,
     background: WIN95_COLORS.LIGHT_GRAY,
     outline: 'none',
-    cursor: 'pointer',
     display: COMMON_STYLES.DISPLAY_FLEX,
     alignItems: COMMON_STYLES.ALIGN_CENTER,
     justifyContent: COMMON_STYLES.JUSTIFY_CENTER,
@@ -245,12 +245,14 @@ export const ROOM_CONTROL_STYLES = {
   },
 
   PRESET_ICON_IMAGE: {
+    cursor: 'pointer',
     width: '16px',
     height: '16px',
     opacity: '1'
   },
 
   PRESET_ICON_BUTTON_HOVER: {
+    boxShadow: COMMON_STYLES.BOXSHADOW_INSET,
     backgroundColor: WIN95_COLORS.LIGHT_GRAY
   },
 
@@ -345,6 +347,7 @@ export const ROOM_CONTROL_STYLES = {
 
   // 타일 캔버스 스타일들
   TILE_CANVAS_CONTAINER: {
+    cursor: 'pointer',
     display: 'grid',
     gridTemplateColumns: 'repeat(10, 1fr)',
     gridTemplateRows: 'repeat(10, 1fr)',
@@ -357,7 +360,7 @@ export const ROOM_CONTROL_STYLES = {
 
   TILE_CANVAS_CELL: {
     backgroundColor: WIN95_COLORS.WHITE,
-    cursor: 'crosshair'
+    cursor: 'pointer',
   },
 
   TILE_CANVAS_CELL_PAINTED: {

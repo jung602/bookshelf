@@ -27,6 +27,7 @@ export class ControlsContainer {
   private styleControls: StyleControls | null = null
   private gridComponent: GridComponent | null = null
   private tileCanvas: boolean[][] = []
+  private tileCanvasContainer: HTMLElement | null = null
     private selectedTool: 'pen' | 'eraser' = 'pen'
   private onStyleParamsChange: (params: Partial<StyleParams>) => void
 
@@ -543,6 +544,9 @@ export class ControlsContainer {
   private createTileCanvas(): HTMLElement {
     const container = document.createElement('div')
     Object.assign(container.style, ROOM_CONTROL_STYLES.TILE_CANVAS_CONTAINER)
+    
+    // 참조 저장
+    this.tileCanvasContainer = container
 
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < 10; col++) {
@@ -751,10 +755,12 @@ export class ControlsContainer {
     this.initializeTileCanvas()
     
     // 2. 캔버스 셀들을 다시 흰색으로 초기화
-    const canvasCells = document.querySelectorAll('[style*="crosshair"]')
-    canvasCells.forEach(cell => {
-      (cell as HTMLElement).style.backgroundColor = ROOM_CONTROL_STYLES.TILE_CANVAS_CELL.backgroundColor
-    })
+    if (this.tileCanvasContainer) {
+      const canvasCells = this.tileCanvasContainer.querySelectorAll('div')
+      canvasCells.forEach(cell => {
+        (cell as HTMLElement).style.backgroundColor = ROOM_CONTROL_STYLES.TILE_CANVAS_CELL.backgroundColor
+      })
+    }
     
     // 3. 커스텀 텍스처 제거 (기본 체커보드로 되돌리기)
     const resetTextureEvent = new CustomEvent('resetCustomTexture')
@@ -847,7 +853,7 @@ export class ControlsContainer {
     const toolButtons = document.querySelectorAll('button')
     toolButtons.forEach(button => {
       const textElement = button.querySelector('div:last-child') as HTMLElement
-      if (textElement && textElement.textContent === '펜') {
+      if (textElement && textElement.textContent === 'Pen') {
         if (this.selectedTool === 'pen') {
           Object.assign(button.style, {
             ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER,
@@ -856,7 +862,7 @@ export class ControlsContainer {
         } else {
           Object.assign(button.style, ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER)
         }
-      } else if (textElement && textElement.textContent === '지우개') {
+      } else if (textElement && textElement.textContent === 'Eraser') {
         if (this.selectedTool === 'eraser') {
           Object.assign(button.style, {
             ...ROOM_CONTROL_STYLES.ICON_BUTTON_CONTAINER,

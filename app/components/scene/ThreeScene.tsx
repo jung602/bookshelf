@@ -5,10 +5,11 @@ import { SceneManager } from './3d/SceneManager'
 import { ControlsContainer } from './3d/controls/ControlsContainer'
 import { StyleParams } from './3d/controls/StyleControls'
 import { RoomParams } from './3d/controls/RoomControls'
+import { ToolsParams } from './3d/controls/ToolsControls'
 import { GizmoState } from './3d/managers/InteractionManager'
 import { getModelClass } from './3d/objects'
 import { Book } from './3d/objects/book'
-import Toolbar from './ui/Toolbar'
+
 import ModelGizmo from './ui/ModelGizmo'
 import { useResponsiveScene } from '../../hooks/useResponsiveScene'
 
@@ -66,6 +67,7 @@ export default function ThreeScene() {
     }
     
     const styleParams: StyleParams = { wallColor: '#DCDCDC', floorColor: '#f0f0f0' }
+    const toolsParams: ToolsParams = {} // 빈 객체로도 충분함
     
     const controlsContainer = new ControlsContainer(
       roomParams,
@@ -80,7 +82,14 @@ export default function ThreeScene() {
         if (params.floorColor) {
           newSceneManager.getColorControls().updateFloorColor(params.floorColor)
         }
-      }
+      },
+      toolsParams,
+      (params: Partial<ToolsParams>) => {
+        // Tools 파라미터 변경 핸들러 (현재는 빈 객체이므로 특별한 로직 불필요)
+        console.log('Tools params updated:', params)
+      },
+      handleModelAdd,
+      handleBookCreate
     )
     controlsContainerRef.current = controlsContainer
 
@@ -167,10 +176,7 @@ export default function ThreeScene() {
   return (
     <>
       <div ref={containerRef} className="w-full h-full" />
-      <Toolbar
-        onModelAdd={handleModelAdd}
-        onBookCreate={handleBookCreate}
-      />
+
       <ModelGizmo
         modelId={gizmoState.selectedModelId}
         position={gizmoState.screenPosition}

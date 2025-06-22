@@ -1,6 +1,7 @@
 import { ROOM_CONTROL_STYLES, ROOM_CONTROL_CONSTANTS, SLIDER_THUMB_CSS } from './styles/RoomControlsStyles'
 import { RoomControls, RoomParams } from './RoomControls'
 import { StyleControls, StyleParams } from './StyleControls'
+import { ToolsControls, ToolsParams } from './ToolsControls'
 import { GridPatterns } from './patterns/GridPatterns'
 import { GridComponent } from './components/GridComponent'
 
@@ -16,7 +17,7 @@ interface PanelConfig {
   id: string
   title: string
   iconSrc: string
-  component: RoomControls | StyleControls
+  component: RoomControls | StyleControls | ToolsControls
   isOpen: boolean
 }
 
@@ -25,21 +26,30 @@ export class ControlsContainer {
   private panels: Map<string, PanelConfig> = new Map()
   private roomControls: RoomControls | null = null
   private styleControls: StyleControls | null = null
+  private toolsControls: ToolsControls | null = null
   private gridComponent: GridComponent | null = null
   private tileCanvas: boolean[][] = []
   private tileCanvasContainer: HTMLElement | null = null
-    private selectedTool: 'pen' | 'eraser' = 'pen'
+  private selectedTool: 'pen' | 'eraser' = 'pen'
   private onStyleParamsChange: (params: Partial<StyleParams>) => void
+  private onModelAdd: (modelType: string) => void
+  private onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
 
   constructor(
     roomParams: RoomParams,
     styleParams: StyleParams,
     onRoomParamsChange: (params: Partial<RoomParams>) => void,
-    onStyleParamsChange: (params: Partial<StyleParams>) => void
+    onStyleParamsChange: (params: Partial<StyleParams>) => void,
+    toolsParams?: ToolsParams,
+    onToolsParamsChange?: (params: Partial<ToolsParams>) => void,
+    onModelAdd?: (modelType: string) => void,
+    onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
   ) {
     this.onStyleParamsChange = onStyleParamsChange
+    this.onModelAdd = onModelAdd || (() => {})
+    this.onBookCreate = onBookCreate || (() => {})
     this.createContainer()
-    this.initializePanels(roomParams, styleParams, onRoomParamsChange, onStyleParamsChange)
+    this.initializePanels(roomParams, styleParams, toolsParams, onRoomParamsChange, onStyleParamsChange, onToolsParamsChange)
   }
 
   private createContainer(): void {
@@ -60,11 +70,13 @@ export class ControlsContainer {
   private initializePanels(
     roomParams: RoomParams,
     styleParams: StyleParams,
-    onRoomParamsChange: (params: Partial<RoomParams>) => void,
-    onStyleParamsChange: (params: Partial<StyleParams>) => void
+    toolsParams?: ToolsParams,
+    onRoomParamsChange?: (params: Partial<RoomParams>) => void,
+    onStyleParamsChange?: (params: Partial<StyleParams>) => void,
+    onToolsParamsChange?: (params: Partial<ToolsParams>) => void
   ): void {
     // Room Controls 패널 (DOM에 추가하지 않음)
-    this.roomControls = new RoomControls(roomParams, onRoomParamsChange, false)
+    this.roomControls = new RoomControls(roomParams, onRoomParamsChange || (() => {}), false)
     this.addPanel({
       id: 'room',
       title: 'Room',
@@ -74,7 +86,7 @@ export class ControlsContainer {
     })
 
     // Style Controls 패널 (DOM에 추가하지 않음)
-    this.styleControls = new StyleControls(styleParams, onStyleParamsChange, false)
+    this.styleControls = new StyleControls(styleParams, onStyleParamsChange || (() => {}), false)
     this.addPanel({
       id: 'style',
       title: 'Style',
@@ -82,6 +94,18 @@ export class ControlsContainer {
       component: this.styleControls,
       isOpen: true
     })
+
+    // Tools Controls 패널 (선택적으로 추가)
+    if (toolsParams && onToolsParamsChange) {
+      this.toolsControls = new ToolsControls(toolsParams, onToolsParamsChange, this.onModelAdd, this.onBookCreate, false)
+      this.addPanel({
+        id: 'tools',
+        title: 'Tools',
+        iconSrc: '/icons/room.png',
+        component: this.toolsControls,
+        isOpen: true
+      })
+    }
   }
 
   private addPanel(config: PanelConfig): void {
@@ -183,10 +207,12 @@ export class ControlsContainer {
     return header
   }
 
-  private extractComponentContent(component: RoomControls | StyleControls): HTMLElement | null {
+  private extractComponentContent(component: RoomControls | StyleControls | ToolsControls): HTMLElement | null {
     // 각 컴포넌트 타입별로 적절한 콘텐츠를 직접 생성
     if (component instanceof StyleControls) {
       return this.createStyleContent(component)
+    } else if (component instanceof ToolsControls) {
+      return this.createToolsContent(component)
     } else {
       return this.createRoomContent(component as RoomControls)
     }
@@ -275,6 +301,27 @@ export class ControlsContainer {
     mainGrid.appendChild(saveButton)
 
     content.appendChild(mainGrid)
+    return content
+  }
+
+  private createToolsContent(toolsControls: ToolsControls): HTMLElement {
+    const content = document.createElement('div')
+    Object.assign(content.style, {
+      backgroundColor: ROOM_CONTROL_STYLES.PANEL_CONTENT.background,
+    })
+
+    // ToolsControls에서 이미 생성된 컨테이너를 가져와서 사용
+    const toolsContainer = toolsControls.getContainer()
+    if (toolsContainer) {
+      // 기존 스타일을 제거하고 패널 내부 스타일 적용
+      toolsContainer.style.position = 'static'
+      toolsContainer.style.padding = '0'
+      toolsContainer.style.backgroundColor = 'transparent'
+      toolsContainer.style.border = 'none'
+      
+      content.appendChild(toolsContainer)
+    }
+
     return content
   }
 
@@ -930,6 +977,10 @@ export class ControlsContainer {
     return this.styleControls
   }
 
+  public getToolsControls(): ToolsControls | null {
+    return this.toolsControls
+  }
+
   public updateRoomParams(params: Partial<RoomParams>): void {
     this.roomControls?.updateParams(params)
   }
@@ -938,9 +989,14 @@ export class ControlsContainer {
     this.styleControls?.updateParams(params)
   }
 
+  public updateToolsParams(params: Partial<ToolsParams>): void {
+    this.toolsControls?.updateParams(params)
+  }
+
   public dispose(): void {
     this.roomControls?.dispose()
     this.styleControls?.dispose()
+    this.toolsControls?.dispose()
     this.gridComponent?.dispose()
     
     // 컬러 섹션 정리 함수 호출

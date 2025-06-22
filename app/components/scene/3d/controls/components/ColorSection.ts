@@ -49,7 +49,7 @@ export class ColorSection {
 
     // 정리 함수 추가 (메모리 누수 방지)
     this.section.setAttribute('data-cleanup', 'true')
-    ;(this.section as any).cleanup = () => this.dispose()
+    ;(this.section as HTMLElement & { cleanup?: () => void }).cleanup = () => this.dispose()
 
     this.section.appendChild(this.currentColorDisplay)
     return this.section

@@ -3,6 +3,7 @@ import { availableModels } from '../objects'
 
 export interface ToolsParams {
   // 툴바 관련 파라미터가 필요하면 여기에 추가
+  [key: string]: unknown
 }
 
 export class ToolsControls {

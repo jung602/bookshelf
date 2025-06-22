@@ -4,7 +4,7 @@ import { TILE_CANVAS_CONFIG, DEFAULT_COLORS, type ToolType } from '../constants/
 export interface TileCanvasConfig {
   selectedTool: ToolType
   onStyleParamsChange: (params: { wallColor?: string; floorColor?: string }) => void
-  styleControls?: any // TODO: 타입 개선 필요
+  styleControls?: { updateParams: (params: Record<string, unknown>) => void }
 }
 
 export class TileCanvas {

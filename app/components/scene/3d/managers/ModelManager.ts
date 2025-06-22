@@ -236,8 +236,8 @@ export class ModelManager {
     // 일부 모서리가 유효하지 않으면 가장 가까운 유효한 위치로 이동
     const centerX = (box.min.x + box.max.x) / 2
     const centerZ = (box.min.z + box.max.z) / 2
-    const modelWidth = box.max.x - box.min.x
-    const modelDepth = box.max.z - box.min.z
+    // const modelWidth = box.max.x - box.min.x
+    // const modelDepth = box.max.z - box.min.z
     
     // 가장 가까운 유효한 타일 찾기
     const nearestTile = this.findNearestFloorTile(centerX, centerZ)
@@ -246,8 +246,8 @@ export class ModelManager {
     }
 
     // 모델의 중심이 해당 타일에 오도록 조정
-    let adjustedX = nearestTile.x
-    let adjustedZ = nearestTile.z
+    const adjustedX = nearestTile.x
+    const adjustedZ = nearestTile.z
 
     // 조정된 위치에서 모델의 모든 모서리가 유효한지 다시 확인
     threeModel.position.set(adjustedX, 0, adjustedZ)
@@ -556,7 +556,7 @@ export class ModelManager {
             } else {
               console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
             }
-          } catch (error) {
+          } catch {
             console.log(`  -> ⚠️ Cannot calculate surface Y for model ${model.getId()}: No floor available`)
             // 바닥이 없으면 현재 위치 유지
           }
@@ -633,7 +633,7 @@ export class ModelManager {
               hasChanges = true
               continue
             }
-          } catch (error) {
+          } catch {
             console.log(`  -> ⚠️ Cannot calculate floor Y for model ${model.getId()}: No floor available`)
             // 바닥이 없으면 계속 진행
           }
@@ -669,7 +669,7 @@ export class ModelManager {
           } else {
             console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
           }
-        } catch (error) {
+        } catch {
           console.log(`  -> ⚠️ Cannot calculate surface Y for model ${model.getId()}: No floor available`)
           // 바닥이 없으면 현재 위치 유지
         }
@@ -712,7 +712,7 @@ export class ModelManager {
         y: clampedSurfaceY,
         z: adjustedZ
       }
-    } catch (error) {
+    } catch {
       // 유효한 표면을 찾을 수 없으면 원래 위치 유지 (단, Y 좌표는 0 이상으로 제한)
       console.log('Cannot find valid surface - keeping original position')
       const currentPosition = targetModel.getPosition()

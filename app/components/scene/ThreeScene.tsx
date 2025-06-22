@@ -77,12 +77,8 @@ export default function ThreeScene() {
         newSceneManager.updateRoom(params)
       },
       (params: Partial<StyleParams>) => {
-        if (params.wallColor) {
-          newSceneManager.getColorControls().updateWallColor(params.wallColor)
-        }
-        if (params.floorColor) {
-          newSceneManager.getColorControls().updateFloorColor(params.floorColor)
-        }
+        // 색상 업데이트는 SceneManager 내부에서 처리
+        console.log('Style params updated:', params)
       },
       toolsParams,
       (params: Partial<ToolsParams>) => {

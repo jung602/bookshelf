@@ -17,7 +17,7 @@ export interface PanelConfig {
   isOpen: boolean
 }
 
-export type PanelChangeHandler = (params: any) => void
+export type PanelChangeHandler = (params: Record<string, unknown>) => void
 
 export class PanelManager {
   private panels: Map<string, PanelConfig> = new Map()
@@ -199,9 +199,9 @@ export class PanelManager {
       initialColor: styleParams.wallColor,
       colorType: 'wall',
       onChange: (color) => {
-        const onParamsChange = (styleControls as any).onParamsChange
-        if (onParamsChange) {
-          onParamsChange({ wallColor: color })
+        const controlsWithParams = styleControls as unknown as { onParamsChange?: (params: Record<string, unknown>) => void }
+        if (controlsWithParams.onParamsChange) {
+          controlsWithParams.onParamsChange({ wallColor: color })
         }
       }
     })
@@ -242,9 +242,9 @@ export class PanelManager {
       initialColor: styleParams.floorColor,
       colorType: 'floor',
       onChange: (color) => {
-        const onParamsChange = (styleControls as any).onParamsChange
-        if (onParamsChange) {
-          onParamsChange({ floorColor: color })
+        const controlsWithParams = styleControls as unknown as { onParamsChange?: (params: Record<string, unknown>) => void }
+        if (controlsWithParams.onParamsChange) {
+          controlsWithParams.onParamsChange({ floorColor: color })
         }
       }
     })
@@ -307,27 +307,27 @@ export class PanelManager {
 
     // Walls 섹션
     const wallsSection = this.createWallsSection(roomParams.wallHeight, (height) => {
-      const onParamsChange = (roomControls as any).onParamsChange
-      if (onParamsChange) {
-        onParamsChange({ wallHeight: height })
+      const controlsWithParams = roomControls as unknown as { onParamsChange?: (params: Record<string, unknown>) => void }
+      if (controlsWithParams.onParamsChange) {
+        controlsWithParams.onParamsChange({ wallHeight: height })
       }
     })
     content.appendChild(wallsSection)
 
     // Floors 섹션 
     const floorsSection = this.createFloorsSection(roomParams.customGrid, (newGrid) => {
-      const onParamsChange = (roomControls as any).onParamsChange
-      if (onParamsChange) {
-        onParamsChange({ customGrid: newGrid })
+      const controlsWithParams = roomControls as unknown as { onParamsChange?: (params: Record<string, unknown>) => void }
+      if (controlsWithParams.onParamsChange) {
+        controlsWithParams.onParamsChange({ customGrid: newGrid })
       }
     })
     content.appendChild(floorsSection)
 
     // Shapes 섹션
     const shapesSection = this.createShapesSection((newGrid) => {
-      const onParamsChange = (roomControls as any).onParamsChange
-      if (onParamsChange) {
-        onParamsChange({ customGrid: newGrid })
+      const controlsWithParams = roomControls as unknown as { onParamsChange?: (params: Record<string, unknown>) => void }
+      if (controlsWithParams.onParamsChange) {
+        controlsWithParams.onParamsChange({ customGrid: newGrid })
       }
     })
     content.appendChild(shapesSection)

@@ -5,11 +5,14 @@ import { createLights } from './scenes/createLights'
 import { createFloor } from './scenes/createFloor'
 import { createWalls } from './scenes/createWalls'
 import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
-import { PixelationControls } from './controls/PixelationControls'
 import { RoomParams } from './controls/RoomControls'
-import { ColorControls, ColorParams } from './controls/ColorControls'
 import { ModelManager } from './managers/ModelManager'
 import { InteractionManager, GizmoState } from './managers/InteractionManager'
+
+export interface ColorParams {
+  wallColor: string
+  floorColor: string
+}
 
 export class SceneManager {
   private container: HTMLElement
@@ -19,8 +22,6 @@ export class SceneManager {
   private controls!: OrbitControls
   private composer!: EffectComposer
   private pixelatedPass!: RenderPixelatedPass
-  private pixelationControls!: PixelationControls
-  private colorControls!: ColorControls
   private modelManager!: ModelManager
   private interactionManager!: InteractionManager
   private animationId: number | null = null
@@ -33,7 +34,7 @@ export class SceneManager {
       return grid
     })()
   }
-  private colorParams: ColorParams = ColorControls.getDefaultParams()
+  private colorParams: ColorParams = { wallColor: '#DCDCDC', floorColor: '#ffffff' }
   private isInitialized: boolean = false
   private gizmoState: GizmoState = { selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
@@ -131,8 +132,14 @@ export class SceneManager {
     // EffectComposer 설정
     this.composer = new EffectComposer(this.renderer)
     
-    // 픽셀화 해상도 계산 (컨트롤의 기본값 사용)
-    const defaultParams = PixelationControls.getDefaultParams()
+    // 픽셀화 해상도 계산 (기본값 사용)
+    const defaultParams = { 
+      pixelSize: 3.5, 
+      ditherStrength: 0, 
+      ditherScale: 1.0, 
+      normalEdgeStrength: 0.5,
+      useMSPaintPalette: 0.3
+    } as PixelationParams
     
     // 컨테이너 크기 가져오기
     const containerRect = this.container.getBoundingClientRect()
@@ -153,20 +160,8 @@ export class SceneManager {
   }
 
   private setupControls() {
-    // 픽셀화 컨트롤 패널 설정 (초기값은 컨트롤에서 관리)
-    // this.pixelationControls = new PixelationControls(
-    //   (params) => {
-    //     this.pixelatedPass.updateParams(params)
-    //   }
-    // )
-
-    // 색상 컨트롤 패널 설정 (Room Controls는 이제 ControlsContainer에서 관리)
-    this.colorControls = new ColorControls(
-      this.colorParams,
-      (params) => {
-        this.updateColors(params)
-      }
-    )
+    // 컨트롤 설정은 이제 ControlsContainer에서 관리됩니다
+    // 필요한 초기화만 여기서 수행
   }
 
   private setupInteraction() {
@@ -282,9 +277,7 @@ export class SceneManager {
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
   }
 
-  public getColorControls(): ColorControls {
-    return this.colorControls
-  }
+
 
   public getModelManager(): ModelManager {
     return this.modelManager
@@ -337,8 +330,6 @@ export class SceneManager {
     }
     
     this.controls.dispose()
-    // this.pixelationControls.dispose()
-    this.colorControls.dispose()
     this.pixelatedPass.dispose()
     this.renderer.dispose()
     
@@ -401,9 +392,8 @@ export class SceneManager {
 
     // 픽셀화 패스의 해상도 업데이트
     if (this.pixelatedPass) {
-      const currentParams = PixelationControls.getDefaultParams()
       // 픽셀 사이즈 변경으로 해상도 업데이트 트리거
-      this.pixelatedPass.updateParams({ pixelSize: currentParams.pixelSize })
+      this.pixelatedPass.updateParams({ pixelSize: 3.5 })
     }
   }
 
@@ -483,8 +473,7 @@ export class SceneManager {
 
     // 픽셀화 패스의 해상도 업데이트
     if (this.pixelatedPass) {
-      const currentParams = PixelationControls.getDefaultParams()
-      this.pixelatedPass.updateParams({ pixelSize: currentParams.pixelSize })
+      this.pixelatedPass.updateParams({ pixelSize: 3.5 })
     }
   }
 

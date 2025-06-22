@@ -10,7 +10,7 @@ import { GizmoState } from './3d/managers/InteractionManager'
 import { getModelClass } from './3d/objects'
 import { Book } from './3d/objects/book'
 
-import ModelGizmo from './ui/ModelGizmo'
+import { ModelGizmo } from './3d/controls/components/ModelGizmo'
 import { useResponsiveScene } from '../../hooks/useResponsiveScene'
 
 export default function ThreeScene() {
@@ -19,6 +19,7 @@ export default function ThreeScene() {
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null)
   const [gizmoState, setGizmoState] = useState<GizmoState>({ selectedModelId: null, screenPosition: null })
   const controlsContainerRef = useRef<ControlsContainer | null>(null)
+  const modelGizmoRef = useRef<ModelGizmo | null>(null)
 
   // 반응형 씬 설정 (frustumSize 기반)
   const responsiveConfig = {
@@ -116,6 +117,38 @@ export default function ThreeScene() {
     }
   }, [sceneManager, forceUpdate])
 
+  // ModelGizmo 초기화 (컴포넌트 마운트 시 한 번만)
+  useEffect(() => {
+    modelGizmoRef.current = new ModelGizmo({
+      modelId: null,
+      position: null,
+      onRotate: handleModelRotate,
+      onDelete: handleModelDelete,
+      onClose: handleGizmoClose
+    })
+
+    // 컴포넌트 언마운트 시 기즈모 정리
+    return () => {
+      if (modelGizmoRef.current) {
+        modelGizmoRef.current.dispose()
+        modelGizmoRef.current = null
+      }
+    }
+  }, [])
+
+  // ModelGizmo 상태 업데이트 (gizmoState 변경 시)
+  useEffect(() => {
+    if (modelGizmoRef.current) {
+      modelGizmoRef.current.updateProps({
+        modelId: gizmoState.selectedModelId,
+        position: gizmoState.screenPosition,
+        onRotate: handleModelRotate,
+        onDelete: handleModelDelete,
+        onClose: handleGizmoClose
+      })
+    }
+  }, [gizmoState])
+
 
 
   const handleModelAdd = async (modelType: string) => {
@@ -174,16 +207,6 @@ export default function ThreeScene() {
   }
 
   return (
-    <>
-      <div ref={containerRef} className="w-full h-full" />
-
-      <ModelGizmo
-        modelId={gizmoState.selectedModelId}
-        position={gizmoState.screenPosition}
-        onRotate={handleModelRotate}
-        onDelete={handleModelDelete}
-        onClose={handleGizmoClose}
-      />
-    </>
+    <div ref={containerRef} className="w-full h-full" />
   )
 } 

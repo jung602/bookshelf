@@ -1,6 +1,5 @@
 export { ModelGizmo } from './ModelGizmo'
 export { BookCreator } from './BookCreator'
-export { ModelSelector, type ModelType } from './ModelSelector'
 export { GridComponent } from './GridComponent'
 export { ColorSection, type ColorSectionConfig } from './ColorSection'
 export { RangeSlider, type RangeSliderConfig } from './RangeSlider'

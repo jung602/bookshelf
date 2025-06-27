@@ -1,2 +1,6 @@
 export { PanelManager } from './PanelManager'
+export { StyleContentManager } from './StyleContentManager'
+export { ToolsContentManager } from './ToolsContentManager'
+export { RoomContentManager } from './RoomContentManager'
+export type { PanelChangeHandler } from './StyleContentManager'
 export type { PanelConfig } from './PanelManager' 

@@ -1,7 +1,6 @@
 import { ROOM_CONTROL_STYLES } from './styles/RoomControlsStyles'
 import { RoomControls, RoomParams } from './RoomControls'
 import { StyleControls, StyleParams } from './StyleControls'
-import { ToolsControls, ToolsParams } from './ToolsControls'
 import { PanelManager } from './managers/PanelManager'
 
 export class ControlsContainer {
@@ -9,15 +8,12 @@ export class ControlsContainer {
   private panelManager: PanelManager | null = null
   private roomControls: RoomControls | null = null
   private styleControls: StyleControls | null = null
-  private toolsControls: ToolsControls | null = null
 
   constructor(
     roomParams: RoomParams,
     styleParams: StyleParams,
     onRoomParamsChange: (params: Partial<RoomParams>) => void,
     onStyleParamsChange: (params: Partial<StyleParams>) => void,
-    toolsParams?: ToolsParams,
-    onToolsParamsChange?: (params: Partial<ToolsParams>) => void,
     onModelAdd?: (modelType: string) => void,
     onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
   ) {
@@ -27,8 +23,6 @@ export class ControlsContainer {
       styleParams, 
       onRoomParamsChange, 
       onStyleParamsChange,
-      toolsParams, 
-      onToolsParamsChange,
       onModelAdd || (() => {}),
       onBookCreate || (() => {})
     )
@@ -54,10 +48,8 @@ export class ControlsContainer {
     styleParams: StyleParams,
     onRoomParamsChange: (params: Partial<RoomParams>) => void,
     onStyleParamsChange: (params: Partial<StyleParams>) => void,
-    toolsParams?: ToolsParams,
-    onToolsParamsChange?: (params: Partial<ToolsParams>) => void,
-    onModelAdd?: (modelType: string) => void,
-    onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
+    onModelAdd: (modelType: string) => void,
+    onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
   ): void {
     if (!this.container) return
 
@@ -65,8 +57,8 @@ export class ControlsContainer {
     this.panelManager = new PanelManager(
       this.container,
       onStyleParamsChange,
-      onModelAdd || (() => {}),
-      onBookCreate || (() => {})
+      onModelAdd,
+      onBookCreate
     )
 
     // Room Controls 패널 (DOM에 추가하지 않음)
@@ -89,17 +81,15 @@ export class ControlsContainer {
       isOpen: true
     })
 
-    // Tools Controls 패널 (선택적으로 추가)
-    if (toolsParams && onToolsParamsChange && onModelAdd && onBookCreate) {
-      this.toolsControls = new ToolsControls(toolsParams, onToolsParamsChange, onModelAdd, onBookCreate, false)
-      this.panelManager.addPanel({
-        id: 'tools',
-        title: 'Tools',
-        iconSrc: '/icons/room.png',
-        component: this.toolsControls,
-        isOpen: true
-      })
-    }
+    // Tools 패널 (PanelManager에서 직접 처리하므로 더미 객체 전달)
+    const dummyToolsControls = {} // Tools 패널은 PanelManager에서 직접 처리
+    this.panelManager.addPanel({
+      id: 'tools',
+      title: 'Tools',
+      iconSrc: '/icons/room.png',
+      component: dummyToolsControls,
+      isOpen: true
+    })
   }
 
   // 공개 메서드들
@@ -111,10 +101,6 @@ export class ControlsContainer {
     return this.styleControls
   }
 
-  public getToolsControls(): ToolsControls | null {
-    return this.toolsControls
-  }
-
   public updateRoomParams(params: Partial<RoomParams>): void {
     this.roomControls?.updateParams(params)
   }
@@ -123,14 +109,9 @@ export class ControlsContainer {
     this.styleControls?.updateParams(params)
   }
 
-  public updateToolsParams(params: Partial<ToolsParams>): void {
-    this.toolsControls?.updateParams(params)
-  }
-
   public dispose(): void {
     this.roomControls?.dispose()
     this.styleControls?.dispose()
-    this.toolsControls?.dispose()
     this.panelManager?.dispose()
     
     if (this.container) {

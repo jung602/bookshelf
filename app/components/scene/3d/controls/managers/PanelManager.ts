@@ -8,6 +8,7 @@ import { RangeSlider } from '../components/RangeSlider'
 import { PresetButtons } from '../components/PresetButtons'
 import { UIUtils } from '../utils/UIUtils'
 import { ToolType } from '../constants/ControlsConstants'
+import { availableModels } from '../../objects'
 
 export interface PanelConfig {
   id: string
@@ -58,6 +59,11 @@ export class PanelManager {
     // 마진 추가 (패널 간 간격) - 최소한의 하드코딩 유지
     panelContainer.style.marginBottom = '2px'
     panelContainer.style.position = 'relative'
+    
+    // Tools 패널의 경우 overflow visible 설정 (드롭다운을 위해)
+    if (config.id === 'tools') {
+      panelContainer.style.overflow = 'visible'
+    }
 
     // 헤더 생성
     const header = this.createPanelHeader(config)
@@ -276,25 +282,155 @@ export class PanelManager {
     return content
   }
 
-  private createToolsContent(toolsControls: ToolsControls): HTMLElement {
+  private createToolsContent(_toolsControls: ToolsControls): HTMLElement { // eslint-disable-line @typescript-eslint/no-unused-vars
     const content = document.createElement('div')
     Object.assign(content.style, {
       backgroundColor: ROOM_CONTROL_STYLES.PANEL_CONTENT.background,
+      padding: '10px',
+      overflow: 'visible' // 드롭다운이 패널 밖으로 나올 수 있도록 함
     })
 
-    // Tools 컨테이너 생성 및 설정
-    const toolsContainer = toolsControls.getContainer()
-    if (toolsContainer) {
-      // 기존 스타일을 제거하고 패널 내부 스타일 적용
-      toolsContainer.style.position = 'static'
-      toolsContainer.style.padding = '0'
-      toolsContainer.style.backgroundColor = 'transparent'
-      toolsContainer.style.border = 'none'
-      
-      content.appendChild(toolsContainer)
-    }
+    // 메인 그리드 컨테이너
+    const gridContainer = document.createElement('div')
+    Object.assign(gridContainer.style, {
+      ...ROOM_CONTROL_STYLES.TOOLS_GRID_CONTAINER,
+      overflow: 'visible' // 그리드 컨테이너도 overflow visible로 설정
+    })
 
+    // 모델 추가 버튼
+    const modelAddButton = this.createModelAddButton()
+    gridContainer.appendChild(modelAddButton)
+
+    content.appendChild(gridContainer)
     return content
+  }
+
+  private createModelAddButton(): HTMLElement {
+    const buttonContainer = document.createElement('div')
+    buttonContainer.style.position = 'relative'
+
+    const button = document.createElement('button')
+    Object.assign(button.style, ROOM_CONTROL_STYLES.MODEL_ADD_BUTTON)
+
+    // 버튼 내용
+    const icon = document.createElement('span')
+    icon.textContent = '📦'
+    
+    const text = document.createElement('span')
+    text.textContent = '모델 추가'
+    
+    const arrow = document.createElement('span')
+    arrow.textContent = '▼'
+    arrow.style.transition = 'transform 0.2s'
+
+    button.appendChild(icon)
+    button.appendChild(text)
+    button.appendChild(arrow)
+
+    // 드롭다운 컨테이너 생성
+    const dropdownContainer = this.createDropdown()
+    buttonContainer.appendChild(button)
+    buttonContainer.appendChild(dropdownContainer)
+
+    // 이벤트 리스너
+    button.addEventListener('click', (e) => {
+      e.stopPropagation()
+      this.toggleDropdown(dropdownContainer, arrow)
+    })
+
+    button.addEventListener('mouseenter', () => {
+      Object.assign(button.style, {
+        ...ROOM_CONTROL_STYLES.MODEL_ADD_BUTTON,
+        ...ROOM_CONTROL_STYLES.MODEL_ADD_BUTTON_HOVER
+      })
+    })
+
+    button.addEventListener('mouseleave', () => {
+      Object.assign(button.style, ROOM_CONTROL_STYLES.MODEL_ADD_BUTTON)
+    })
+
+    return buttonContainer
+  }
+
+  private createDropdown(): HTMLElement {
+    const dropdown = document.createElement('div')
+    Object.assign(dropdown.style, {
+      ...ROOM_CONTROL_STYLES.MODEL_DROPDOWN_CONTAINER,
+      display: 'none'
+    })
+
+    const models = availableModels
+
+    models.forEach((model) => {
+      const item = document.createElement('button')
+      Object.assign(item.style, ROOM_CONTROL_STYLES.MODEL_DROPDOWN_ITEM)
+
+      const iconSpan = document.createElement('span')
+      iconSpan.textContent = model.icon
+      Object.assign(iconSpan.style, ROOM_CONTROL_STYLES.MODEL_DROPDOWN_ITEM_ICON)
+
+      const textContainer = document.createElement('div')
+      Object.assign(textContainer.style, ROOM_CONTROL_STYLES.MODEL_DROPDOWN_ITEM_TEXT)
+
+      const nameDiv = document.createElement('div')
+      nameDiv.textContent = model.name
+      
+      const descDiv = document.createElement('div')
+      descDiv.textContent = model.description
+      Object.assign(descDiv.style, ROOM_CONTROL_STYLES.MODEL_DROPDOWN_ITEM_DESC)
+
+      textContainer.appendChild(nameDiv)
+      textContainer.appendChild(descDiv)
+
+      item.appendChild(iconSpan)
+      item.appendChild(textContainer)
+
+      // 이벤트 리스너
+      item.addEventListener('mouseenter', () => {
+        Object.assign(item.style, {
+          ...ROOM_CONTROL_STYLES.MODEL_DROPDOWN_ITEM,
+          ...ROOM_CONTROL_STYLES.MODEL_DROPDOWN_ITEM_HOVER
+        })
+      })
+
+      item.addEventListener('mouseleave', () => {
+        Object.assign(item.style, ROOM_CONTROL_STYLES.MODEL_DROPDOWN_ITEM)
+      })
+
+      item.addEventListener('click', () => {
+        this.handleModelSelect(model.id, dropdown, iconSpan.parentElement?.querySelector('span:last-child') as HTMLElement)
+      })
+
+      dropdown.appendChild(item)
+    })
+
+    return dropdown
+  }
+
+  private toggleDropdown(dropdownContainer: HTMLElement, arrow: HTMLElement): void {
+    const isOpen = dropdownContainer.style.display === 'block'
+    
+    if (isOpen) {
+      dropdownContainer.style.display = 'none'
+      arrow.style.transform = 'rotate(0deg)'
+    } else {
+      dropdownContainer.style.display = 'block'
+      arrow.style.transform = 'rotate(180deg)'
+    }
+  }
+
+  private handleModelSelect(modelId: string, dropdownContainer: HTMLElement, arrow?: HTMLElement): void {
+    if (modelId === 'book') {
+      this.onBookCreate('', 3, 1, '') // 북 크리에이터 모달 띄우기
+    } else {
+      this.onModelAdd(modelId)
+    }
+    
+    // 드롭다운 닫기
+    dropdownContainer.style.display = 'none'
+    if (arrow) {
+      arrow.style.transform = 'rotate(0deg)'
+    }
   }
 
   private createRoomContent(roomControls: RoomControls): HTMLElement {
@@ -403,6 +539,11 @@ export class PanelManager {
       panelContainer.style.marginBottom = '2px'
       panelContainer.style.position = 'relative'
       
+      // Tools 패널의 경우 overflow visible 유지
+      if (panelId === 'tools') {
+        panelContainer.style.overflow = 'visible'
+      }
+      
       // 콘텐츠 나타남
       setTimeout(() => {
         contentContainer.style.opacity = '1'
@@ -423,6 +564,11 @@ export class PanelManager {
         // 패널 간 간격 유지
         panelContainer.style.marginBottom = '2px'
         panelContainer.style.position = 'relative'
+        
+        // Tools 패널의 경우 overflow visible 유지
+        if (panelId === 'tools') {
+          panelContainer.style.overflow = 'visible'
+        }
       }, ROOM_CONTROL_CONSTANTS.CONTENT_HIDE_DELAY)
     }
   }

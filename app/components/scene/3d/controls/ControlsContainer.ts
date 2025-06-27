@@ -71,7 +71,7 @@ export class ControlsContainer {
       isOpen: true
     })
 
-    // Style Controls 패널 (DOM에 추가하지 않음) 
+    // Style Controls 패널 (DOM에 추가하지 않음)
     this.styleControls = new StyleControls(styleParams, onStyleParamsChange, false)
     this.panelManager.addPanel({
       id: 'style',
@@ -84,11 +84,11 @@ export class ControlsContainer {
     // Tools 패널 (PanelManager에서 직접 처리하므로 더미 객체 전달)
     const dummyToolsControls = {} // Tools 패널은 PanelManager에서 직접 처리
     this.panelManager.addPanel({
-      id: 'tools',
-      title: 'Tools',
-      iconSrc: '/icons/room.png',
+        id: 'tools',
+        title: 'Tools',
+        iconSrc: '/icons/room.png',
       component: dummyToolsControls,
-      isOpen: true
+        isOpen: true
     })
   }
 

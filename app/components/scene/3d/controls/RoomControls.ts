@@ -44,14 +44,14 @@ export class RoomControls extends BasePanel<RoomParams> {
 
   private createHeightSlider(): void {
     if (!this.panelContent) return
-
+    
     // 섹션 컨테이너
     const section = document.createElement('div')
     Object.assign(section.style, {
       marginBottom: '16px',
       padding: '8px'
     })
-
+    
     // 타이틀
     const titleElement = document.createElement('div')
     titleElement.textContent = 'Walls'
@@ -85,10 +85,10 @@ export class RoomControls extends BasePanel<RoomParams> {
       appearance: 'none',
       padding: '4px'
     })
-
+    
     // 슬라이더 핸들 스타일 추가
     this.addSliderThumbStyles()
-
+    
     this.heightSlider.addEventListener('input', (e) => {
       const value = parseInt((e.target as HTMLInputElement).value)
       this.updateParams({ wallHeight: value })
@@ -109,14 +109,14 @@ export class RoomControls extends BasePanel<RoomParams> {
 
   private createGrid(): void {
     if (!this.panelContent) return
-
+    
     // 섹션 컨테이너
     const section = document.createElement('div')
     Object.assign(section.style, {
       marginBottom: '16px',
       padding: '8px'
     })
-
+    
     // 타이틀
     const titleElement = document.createElement('div')
     titleElement.textContent = 'Floors'
@@ -145,13 +145,13 @@ export class RoomControls extends BasePanel<RoomParams> {
 
   private createPresetButtons(): void {
     if (!this.panelContent) return
-
+    
     // 섹션 컨테이너
     const section = document.createElement('div')
     Object.assign(section.style, {
       padding: '8px'
     })
-
+    
     // 타이틀
     const titleElement = document.createElement('div')
     titleElement.textContent = 'Shapes'
@@ -163,7 +163,7 @@ export class RoomControls extends BasePanel<RoomParams> {
       fontFamily: '"W95FA", "MS Sans Serif", sans-serif'
     })
     section.appendChild(titleElement)
-
+    
     // 프리셋 버튼 컨테이너
     const presetsContainer = document.createElement('div')
     Object.assign(presetsContainer.style, {
@@ -176,7 +176,7 @@ export class RoomControls extends BasePanel<RoomParams> {
       border: '1px solid rgba(0, 0, 0, 1)',
       boxShadow: 'inset -1px -1px  rgba(38, 38, 38, 1), inset 1px 1px rgba(255, 255, 255, 0.8), inset -2px -2px rgba(126, 126, 126, 1)'
     })
-
+    
     const presets = [
       { icon: 'preA.svg', action: () => this.applyPattern(GridPatterns.createFullPattern()) },
       { icon: 'preB.svg', action: () => this.applyPattern(GridPatterns.createLPattern()) },
@@ -184,12 +184,12 @@ export class RoomControls extends BasePanel<RoomParams> {
       { icon: 'PreD.svg', action: () => this.applyPattern(GridPatterns.createTPattern()) },
       { icon: 'preE.svg', action: () => this.applyPattern(GridPatterns.createCompactCrossPattern()) }
     ]
-
+    
     presets.forEach(preset => {
       const button = this.createIconPresetButton(preset.icon, preset.action)
       presetsContainer.appendChild(button)
     })
-
+    
     section.appendChild(presetsContainer)
     this.panelContent.appendChild(section)
   }
@@ -219,15 +219,15 @@ export class RoomControls extends BasePanel<RoomParams> {
       filter: 'none'
     })
     button.appendChild(iconImg)
-
+    
     button.addEventListener('mouseenter', () => {
       button.style.boxShadow = 'inset -2px -2px rgba(126, 126, 126, 1), inset 2px 2px rgba(240, 240, 240, 1)'
     })
-
+    
     button.addEventListener('mouseleave', () => {
       button.style.boxShadow = 'inset -2px -2px rgba(126, 126, 126, 1), inset 2px 2px rgba(240, 240, 240, 1), inset 2px 2px rgba(179, 179, 179, 1)'
     })
-
+    
     button.addEventListener('click', (e) => {
       e.stopPropagation()
       action()

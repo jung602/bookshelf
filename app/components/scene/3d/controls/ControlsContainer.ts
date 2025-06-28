@@ -16,7 +16,9 @@ export class ControlsContainer {
     onRoomParamsChange: (params: Partial<RoomParams>) => void,
     onStyleParamsChange: (params: Partial<StyleParams>) => void,
     onModelAdd?: (modelType: string) => void,
-    onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
+    onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
+    onModelDelete?: (modelId: string) => void,
+    getModels?: () => any[]
   ) {
     this.createContainer()
     this.initializePanels(
@@ -25,7 +27,9 @@ export class ControlsContainer {
       onRoomParamsChange, 
       onStyleParamsChange,
       onModelAdd || (() => {}),
-      onBookCreate || (() => {})
+      onBookCreate || (() => {}),
+      onModelDelete,
+      getModels
     )
   }
 
@@ -50,7 +54,9 @@ export class ControlsContainer {
     onRoomParamsChange: (params: Partial<RoomParams>) => void,
     onStyleParamsChange: (params: Partial<StyleParams>) => void,
     onModelAdd: (modelType: string) => void,
-    onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
+    onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
+    onModelDelete?: (modelId: string) => void,
+    getModels?: () => any[]
   ): void {
     if (!this.container) return
 
@@ -59,38 +65,37 @@ export class ControlsContainer {
       this.container,
       onStyleParamsChange,
       onModelAdd,
-      onBookCreate
+      onBookCreate,
+      onModelDelete,
+      getModels
     )
 
-    // Room Controls 패널 (DOM에 추가하지 않음)
+    // Room Controls 탭 (DOM에 추가하지 않음)
     this.roomControls = new RoomControls(roomParams, onRoomParamsChange, false)
-    this.panelManager.addPanel({
+    this.panelManager.addTab({
       id: 'room',
       title: 'Room',
       iconSrc: getAssetPath('/icons/room.png'),
-      component: this.roomControls,
-      isOpen: true
+      component: this.roomControls
     })
 
-    // Style Controls 패널 (DOM에 추가하지 않음)
+    // Style Controls 탭 (DOM에 추가하지 않음)
     this.styleControls = new StyleControls(styleParams, onStyleParamsChange, false)
-    this.panelManager.addPanel({
+    this.panelManager.addTab({
       id: 'style',
       title: 'Style',
       iconSrc: getAssetPath('/icons/style.png'),
-      component: this.styleControls,
-      isOpen: true
+      component: this.styleControls
     })
 
-    // Tools 패널 (PanelManager에서 직접 처리하므로 더미 객체 전달)
-    const dummyToolsControls = {} // Tools 패널은 PanelManager에서 직접 처리
-    this.panelManager.addPanel({
-        id: 'tools',
-        title: 'Tools',
-        iconSrc: getAssetPath('/icons/room.png'),
-      component: dummyToolsControls,
-        isOpen: true
-      })
+    // Tools 탭 (PanelManager에서 직접 처리하므로 더미 객체 전달)
+    const dummyToolsControls = {} // Tools 탭은 PanelManager에서 직접 처리
+    this.panelManager.addTab({
+      id: 'tools',
+      title: 'Tools',
+      iconSrc: getAssetPath('/icons/pen.png'),
+      component: dummyToolsControls
+    })
   }
 
   // 공개 메서드들
@@ -108,6 +113,10 @@ export class ControlsContainer {
 
   public updateStyleParams(params: Partial<StyleParams>): void {
     this.styleControls?.updateParams(params)
+  }
+
+  public updateLayerModels(): void {
+    this.panelManager?.updateLayerModels()
   }
 
   public dispose(): void {

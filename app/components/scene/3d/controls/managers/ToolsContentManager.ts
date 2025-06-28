@@ -1,18 +1,27 @@
 import { ROOM_CONTROL_STYLES } from '../styles/RoomControlsStyles'
 import { availableModels } from '../../objects'
 import { BookCreator } from '../components/BookCreator'
+import { LayerManager, LayerManagerConfig } from '../components/LayerManager'
+import { BaseModel } from '../../objects/BaseModel'
 
 export class ToolsContentManager {
   private onModelAdd: (modelType: string) => void
   private onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
+  private onModelDelete?: (modelId: string) => void
+  private getModels?: () => BaseModel[]
   private bookCreator: BookCreator | null = null
+  private layerManager: LayerManager | null = null
 
   constructor(
     onModelAdd: (modelType: string) => void,
-    onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
+    onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
+    onModelDelete?: (modelId: string) => void,
+    getModels?: () => BaseModel[]
   ) {
     this.onModelAdd = onModelAdd
     this.onBookCreate = onBookCreate
+    this.onModelDelete = onModelDelete
+    this.getModels = getModels
     
     // BookCreator 초기화
     this.bookCreator = new BookCreator({
@@ -23,6 +32,24 @@ export class ToolsContentManager {
         // 모달 닫기 시 추가 로직이 필요하면 여기에
       }
     })
+
+    // LayerManager 초기화
+    const layerConfig: LayerManagerConfig = {
+      onModelDelete: (modelId: string) => {
+        this.onModelDelete?.(modelId)
+        this.updateLayerModels() // 모델 삭제 후 레이어 업데이트
+      },
+      onModelSelect: (modelId: string) => {
+        console.log(`Model selected: ${modelId}`)
+        // 여기에 모델 선택 로직 추가 가능
+      },
+      onModelVisibilityToggle: (modelId: string, visible: boolean) => {
+        console.log(`Model ${modelId} visibility toggled: ${visible}`)
+        // 가시성 변경 로직은 LayerManager 내부에서 처리됨
+      }
+    }
+    
+    this.layerManager = new LayerManager(layerConfig)
   }
 
   public createContent(): HTMLElement {
@@ -32,6 +59,13 @@ export class ToolsContentManager {
       padding: '10px',
       overflow: 'visible' // 드롭다운이 패널 밖으로 나올 수 있도록 함
     })
+
+    // 레이어 매니저 섹션 추가
+    if (this.layerManager) {
+      const layerContainer = this.layerManager.create()
+      content.appendChild(layerContainer)
+      this.updateLayerModels() // 초기 모델 목록 업데이트
+    }
 
     // 메인 그리드 컨테이너
     const gridContainer = document.createElement('div')
@@ -63,7 +97,7 @@ export class ToolsContentManager {
     text.textContent = '모델 추가'
     
     const arrow = document.createElement('span')
-    arrow.textContent = '▼'
+    arrow.textContent = '▲'
     arrow.style.transition = 'transform 0.2s'
 
     button.appendChild(icon)
@@ -99,7 +133,11 @@ export class ToolsContentManager {
     const dropdown = document.createElement('div')
     Object.assign(dropdown.style, {
       ...ROOM_CONTROL_STYLES.MODEL_DROPDOWN_CONTAINER,
-      display: 'none'
+      display: 'none',
+      top: 'auto',
+      bottom: '100%',
+      borderTop: '2px solid #000000',
+      borderBottom: 'none'
     })
 
     const models = availableModels
@@ -180,5 +218,15 @@ export class ToolsContentManager {
   public dispose(): void {
     this.bookCreator?.dispose()
     this.bookCreator = null
+    this.layerManager?.dispose()
+    this.layerManager = null
+  }
+
+  // 레이어 모델 목록 업데이트
+  public updateLayerModels(): void {
+    if (this.layerManager && this.getModels) {
+      const models = this.getModels()
+      this.layerManager.updateModels(models)
+    }
   }
 } 

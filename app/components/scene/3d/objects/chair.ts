@@ -19,6 +19,10 @@ export class ChairModel extends BaseModel {
   public update(): void {
   }
 
+  public getType(): string {
+    return 'chair'
+  }
+
   protected applyTransforms(): void {
     super.applyTransforms()
     this.setupModel()

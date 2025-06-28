@@ -246,6 +246,10 @@ export class Book extends BaseModel {
     // 책은 정적 객체이므로 업데이트 로직 불필요
   }
 
+  public getType(): string {
+    return 'book'
+  }
+
   public getConfig(): BookConfig {
     return { ...this.config }
   }

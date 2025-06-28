@@ -25,6 +25,10 @@ export class StoolModel extends BaseModel {
     }
   }
 
+  public getType(): string {
+    return 'stool'
+  }
+
   protected applyTransforms(): void {
     super.applyTransforms()
     this.setupModel()

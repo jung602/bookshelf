@@ -73,13 +73,22 @@ export default function ThreeScene() {
       styleParams,
       (params: Partial<RoomParams>) => {
         newSceneManager.updateRoom(params)
+        // 레이어 업데이트 (바닥 변경 시 모델들이 재배치될 수 있으므로)
+        setTimeout(() => {
+          controlsContainerRef.current?.updateLayerModels()
+        }, 100)
       },
       (params: Partial<StyleParams>) => {
         // 색상 업데이트는 SceneManager 내부에서 처리
         console.log('Style params updated:', params)
       },
       handleModelAdd,
-      handleBookCreate
+      handleBookCreate,
+      handleModelDelete,
+      () => {
+        // 현재 씬의 모든 모델 목록 반환
+        return newSceneManager.getModelManager().getAllModels()
+      }
     )
     controlsContainerRef.current = controlsContainer
 
@@ -155,6 +164,9 @@ export default function ThreeScene() {
       const model = new ModelClass()
       await sceneManagerRef.current.getModelManager().addModel(model)
       console.log(`${modelType} model added successfully`)
+      
+      // 레이어 목록 업데이트
+      controlsContainerRef.current?.updateLayerModels()
     } catch (error) {
       console.error(`Failed to add ${modelType} model:`, error)
     }
@@ -174,6 +186,9 @@ export default function ThreeScene() {
       const book = new Book(bookConfig)
       await sceneManagerRef.current.getModelManager().addModel(book)
       console.log('Book created successfully')
+      
+      // 레이어 목록 업데이트
+      controlsContainerRef.current?.updateLayerModels()
     } catch (error) {
       console.error('Failed to create book:', error)
     }
@@ -188,6 +203,9 @@ export default function ThreeScene() {
   const handleModelDelete = (modelId: string) => {
     if (sceneManagerRef.current) {
       sceneManagerRef.current.deleteModel(modelId)
+      
+      // 레이어 목록 업데이트
+      controlsContainerRef.current?.updateLayerModels()
     }
   }
 

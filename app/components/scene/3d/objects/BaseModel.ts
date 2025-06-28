@@ -28,6 +28,7 @@ export abstract class BaseModel {
   protected isLoaded: boolean = false
   protected id: string
   protected collider!: THREE.Mesh // 간단한 박스 콜라이더
+  protected visible: boolean = true // 가시성 상태
 
   constructor(
     modelPath: string,
@@ -193,6 +194,23 @@ export abstract class BaseModel {
 
   public isModelLoaded(): boolean {
     return this.isLoaded
+  }
+
+  // 가시성 제어 메서드들
+  public isVisible(): boolean {
+    return this.visible
+  }
+
+  public setVisible(visible: boolean): void {
+    this.visible = visible
+    if (this.model) {
+      this.model.visible = visible
+    }
+  }
+
+  // 모델 타입 반환 (자식 클래스에서 오버라이드)
+  public getType(): string {
+    return 'unknown'
   }
 
   // 자식 클래스에서 구현해야 하는 업데이트 메서드

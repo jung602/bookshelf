@@ -1,5 +1,6 @@
 import { ROOM_CONTROL_STYLES } from '../styles/RoomControlsStyles'
 import { GridPatterns } from '../patterns/GridPatterns'
+import { getAssetPath } from '../utils'
 
 export interface PresetButtonConfig {
   icon: string
@@ -63,7 +64,7 @@ export class PresetButtons {
 
     // 아이콘 이미지
     const iconImg = document.createElement('img')
-    iconImg.src = `/icons/presets/${preset.icon}`
+    iconImg.src = getAssetPath(`/icons/presets/${preset.icon}`)
     Object.assign(iconImg.style, ROOM_CONTROL_STYLES.PRESET_ICON_IMAGE)
     button.appendChild(iconImg)
 

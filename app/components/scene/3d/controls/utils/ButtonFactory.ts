@@ -1,5 +1,6 @@
 import { ROOM_CONTROL_STYLES } from '../styles/RoomControlsStyles'
 import { type ToolType } from '../constants/ControlsConstants'
+import { getAssetPath } from './index'
 
 export interface ToolButtonConfig {
   text: string
@@ -95,11 +96,11 @@ export class ButtonFactory {
   private static getToolIcon(tool: ToolType): string {
     switch (tool) {
       case 'pen':
-        return '/icons/pen.png'
+        return getAssetPath('/icons/pen.png')
       case 'eraser':
-        return '/icons/eraser.png'
+        return getAssetPath('/icons/eraser.png')
       default:
-        return '/icons/room.png'
+        return getAssetPath('/icons/pen.png')
     }
   }
 
@@ -109,11 +110,11 @@ export class ButtonFactory {
   private static getActionIcon(action: string): string {
     switch (action) {
       case 'Save':
-        return '/icons/save.svg'
+        return getAssetPath('/icons/save.svg')
       case 'Reset':
-        return '/icons/reset.png'
+        return getAssetPath('/icons/reset.png')
       default:
-        return '/icons/room.png'
+        return getAssetPath('/icons/room.png')
     }
   }
 

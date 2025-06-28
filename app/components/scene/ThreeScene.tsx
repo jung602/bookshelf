@@ -196,6 +196,6 @@ export default function ThreeScene() {
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full" />
+      <div ref={containerRef} className="w-full h-full" />
   )
 } 

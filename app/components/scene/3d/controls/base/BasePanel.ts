@@ -1,4 +1,5 @@
 import { ROOM_CONTROL_STYLES, ROOM_CONTROL_CONSTANTS } from '../styles/RoomControlsStyles'
+import { getAssetPath } from '../utils'
 
 export interface PanelConfig {
   title: string
@@ -126,7 +127,7 @@ export abstract class BasePanel<TParams = object> {
     Object.assign(this.closeButton.style, ROOM_CONTROL_STYLES.CLOSE_BUTTON)
 
     const closeIcon = document.createElement('img')
-    closeIcon.src = this.isOpen ? '/icons/Minimize.png' : '/icons/Maximize.svg'
+    closeIcon.src = this.isOpen ? getAssetPath('/icons/Minimize.png') : getAssetPath('/icons/Maximize.svg')
     Object.assign(closeIcon.style, ROOM_CONTROL_STYLES.CLOSE_BUTTON_IMAGE)
     this.closeButton.appendChild(closeIcon)
 
@@ -237,7 +238,7 @@ export abstract class BasePanel<TParams = object> {
     
     const closeIcon = this.closeButton.querySelector('img')
     if (closeIcon) {
-      closeIcon.src = this.isOpen ? '/icons/Minimize.png' : '/icons/Maximize.svg'
+      closeIcon.src = this.isOpen ? getAssetPath('/icons/Minimize.png') : getAssetPath('/icons/Maximize.svg')
     }
   }
 

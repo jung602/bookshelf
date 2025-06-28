@@ -1,4 +1,5 @@
 import { BasePanel, PanelConfig } from './base/BasePanel'
+import { getAssetPath } from './utils'
 
 export interface StyleParams {
   wallColor: string
@@ -16,7 +17,7 @@ export class StyleControls extends BasePanel<StyleParams> {
   ) {
     const config: PanelConfig = {
       title: 'Style',
-      iconSrc: '/icons/style.png',
+      iconSrc: getAssetPath('/icons/style.png'),
       isOpen: false,
       addToDOM
     }

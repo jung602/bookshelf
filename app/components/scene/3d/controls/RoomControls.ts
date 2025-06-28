@@ -3,6 +3,7 @@ import { SLIDER_THUMB_CSS } from './styles/RoomControlsStyles'
 import { GridPatterns } from './patterns/GridPatterns'
 import { GridComponent } from './components/GridComponent'
 import type { RoomParams } from './types/RoomControlTypes'
+import { getAssetPath } from './utils'
 
 export type { RoomParams }
 
@@ -27,7 +28,7 @@ export class RoomControls extends BasePanel<RoomParams> {
       onParamsChange,
       {
         title: 'Room',
-        iconSrc: '/icons/grid.svg',
+        iconSrc: getAssetPath('/icons/grid.svg'),
         isOpen: true
       },
       addToDOM
@@ -39,7 +40,6 @@ export class RoomControls extends BasePanel<RoomParams> {
     
     this.createHeightSlider()
     this.createGrid()
-    this.createPresetButtons()
   }
 
   private createHeightSlider(): void {
@@ -141,104 +141,6 @@ export class RoomControls extends BasePanel<RoomParams> {
     const gridContainer = this.gridComponent.create()
     section.appendChild(gridContainer)
     this.panelContent.appendChild(section)
-  }
-
-  private createPresetButtons(): void {
-    if (!this.panelContent) return
-    
-    // 섹션 컨테이너
-    const section = document.createElement('div')
-    Object.assign(section.style, {
-      padding: '8px'
-    })
-    
-    // 타이틀
-    const titleElement = document.createElement('div')
-    titleElement.textContent = 'Shapes'
-    Object.assign(titleElement.style, {
-      fontSize: '12px',
-      fontWeight: 'bold',
-      color: '#000000',
-      marginBottom: '8px',
-      fontFamily: '"W95FA", "MS Sans Serif", sans-serif'
-    })
-    section.appendChild(titleElement)
-    
-    // 프리셋 버튼 컨테이너
-    const presetsContainer = document.createElement('div')
-    Object.assign(presetsContainer.style, {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(5, 1fr)',
-      gap: '4px',
-      width: '100%',
-      padding: '4px',
-      background: '#C0C0C0',
-      border: '1px solid rgba(0, 0, 0, 1)',
-      boxShadow: 'inset -1px -1px  rgba(38, 38, 38, 1), inset 1px 1px rgba(255, 255, 255, 0.8), inset -2px -2px rgba(126, 126, 126, 1)'
-    })
-    
-    const presets = [
-      { icon: 'preA.svg', action: () => this.applyPattern(GridPatterns.createFullPattern()) },
-      { icon: 'preB.svg', action: () => this.applyPattern(GridPatterns.createLPattern()) },
-      { icon: 'preC.svg', action: () => this.applyPattern(GridPatterns.createReverseLPattern()) },
-      { icon: 'PreD.svg', action: () => this.applyPattern(GridPatterns.createTPattern()) },
-      { icon: 'preE.svg', action: () => this.applyPattern(GridPatterns.createCompactCrossPattern()) }
-    ]
-    
-    presets.forEach(preset => {
-      const button = this.createIconPresetButton(preset.icon, preset.action)
-      presetsContainer.appendChild(button)
-    })
-    
-    section.appendChild(presetsContainer)
-    this.panelContent.appendChild(section)
-  }
-
-  private createIconPresetButton(iconFileName: string, action: () => void): HTMLButtonElement {
-    const button = document.createElement('button')
-    Object.assign(button.style, {
-      width: '100%',
-      aspectRatio: '1',
-      border: 'none',
-      background: '#C0C0C0',
-      cursor: 'pointer',
-      padding: '2px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      transition: 'none',
-      boxShadow: 'inset -2px -2px rgba(126, 126, 126, 1), inset 2px 2px rgba(240, 240, 240, 1), inset 2px 2px rgba(179, 179, 179, 1)'
-    })
-
-    const iconImg = document.createElement('img')
-    iconImg.src = `/icons/presets/${iconFileName}`
-    Object.assign(iconImg.style, {
-      width: '16px',
-      height: '16px',
-      imageRendering: 'pixelated',
-      filter: 'none'
-    })
-    button.appendChild(iconImg)
-    
-    button.addEventListener('mouseenter', () => {
-      button.style.boxShadow = 'inset -2px -2px rgba(126, 126, 126, 1), inset 2px 2px rgba(240, 240, 240, 1)'
-    })
-    
-    button.addEventListener('mouseleave', () => {
-      button.style.boxShadow = 'inset -2px -2px rgba(126, 126, 126, 1), inset 2px 2px rgba(240, 240, 240, 1), inset 2px 2px rgba(179, 179, 179, 1)'
-    })
-    
-    button.addEventListener('click', (e) => {
-      e.stopPropagation()
-      action()
-    })
-
-    return button
-  }
-
-  private applyPattern(pattern: boolean[][]): void {
-    this.gridComponent?.updateGrid(pattern)
-    this.updateParams({ customGrid: pattern })
   }
 
   public override updateParams(params: Partial<RoomParams>): void {

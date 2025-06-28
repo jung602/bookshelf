@@ -2,6 +2,7 @@ import { ROOM_CONTROL_STYLES } from './styles/RoomControlsStyles'
 import { RoomControls, RoomParams } from './RoomControls'
 import { StyleControls, StyleParams } from './StyleControls'
 import { PanelManager } from './managers/PanelManager'
+import { getAssetPath } from './utils'
 
 export class ControlsContainer {
   private container: HTMLDivElement | null = null
@@ -66,7 +67,7 @@ export class ControlsContainer {
     this.panelManager.addPanel({
       id: 'room',
       title: 'Room',
-      iconSrc: '/icons/room.png',
+      iconSrc: getAssetPath('/icons/room.png'),
       component: this.roomControls,
       isOpen: true
     })
@@ -76,7 +77,7 @@ export class ControlsContainer {
     this.panelManager.addPanel({
       id: 'style',
       title: 'Style',
-      iconSrc: '/icons/style.png',
+      iconSrc: getAssetPath('/icons/style.png'),
       component: this.styleControls,
       isOpen: true
     })
@@ -86,10 +87,10 @@ export class ControlsContainer {
     this.panelManager.addPanel({
         id: 'tools',
         title: 'Tools',
-        iconSrc: '/icons/room.png',
+        iconSrc: getAssetPath('/icons/room.png'),
       component: dummyToolsControls,
         isOpen: true
-    })
+      })
   }
 
   // 공개 메서드들

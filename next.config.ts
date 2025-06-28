@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 
+// GitHub Pages 여부 확인 (더 간단한 조건)
+const isGitHubPages = process.env.NODE_ENV === 'production';
+
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
-  // GitHub Pages 설정은 배포시에만 적용
-  ...(process.env.NODE_ENV === 'production' && process.env.GITHUB_ACTIONS ? {
+  // GitHub Pages 설정
+  ...(isGitHubPages ? {
     output: 'export',
     trailingSlash: true,
     basePath: '/bookshelf',

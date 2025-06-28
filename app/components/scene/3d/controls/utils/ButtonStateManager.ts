@@ -10,7 +10,7 @@ export class ButtonStateManager {
     toolButtons.forEach(button => {
       const textElement = button.querySelector('div:last-child') as HTMLElement
       if (textElement) {
-        this.updateToolButtonState(button, textElement, selectedTool)
+        ButtonStateManager.updateToolButtonState(button, textElement, selectedTool)
       }
     })
   }
@@ -26,9 +26,9 @@ export class ButtonStateManager {
     const buttonText = textElement.textContent
 
     if (buttonText === 'Pen') {
-      this.applyButtonStyle(button, selectedTool === 'pen')
+      ButtonStateManager.applyButtonStyle(button, selectedTool === 'pen')
     } else if (buttonText === 'Eraser') {
-      this.applyButtonStyle(button, selectedTool === 'eraser')
+      ButtonStateManager.applyButtonStyle(button, selectedTool === 'eraser')
     }
   }
 

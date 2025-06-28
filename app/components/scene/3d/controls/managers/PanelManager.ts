@@ -4,6 +4,7 @@ import { ROOM_CONTROL_STYLES, ROOM_CONTROL_CONSTANTS } from '../styles/RoomContr
 import { StyleContentManager } from './StyleContentManager'
 import { ToolsContentManager } from './ToolsContentManager'
 import { RoomContentManager } from './RoomContentManager'
+import { getAssetPath } from '../utils'
 
 // Tools 패널용 더미 타입
 type DummyToolsComponent = object
@@ -126,7 +127,7 @@ export class PanelManager {
     Object.assign(toggleButton.style, ROOM_CONTROL_STYLES.CLOSE_BUTTON)
 
     const toggleIcon = document.createElement('img')
-    toggleIcon.src = config.isOpen ? '/icons/Minimize.png' : '/icons/Maximize.svg'
+    toggleIcon.src = config.isOpen ? getAssetPath('/icons/Minimize.png') : getAssetPath('/icons/Maximize.svg')
     Object.assign(toggleIcon.style, ROOM_CONTROL_STYLES.CLOSE_BUTTON_IMAGE)
     toggleButton.appendChild(toggleIcon)
 
@@ -163,10 +164,6 @@ export class PanelManager {
     }
   }
 
-
-
-
-
   public togglePanel(panelId: string): void {
     const panel = this.panels.get(panelId)
     if (!panel) return
@@ -198,13 +195,13 @@ export class PanelManager {
         contentContainer.style.pointerEvents = 'auto'
       }, ROOM_CONTROL_CONSTANTS.ICON_FADE_DELAY)
       
-      if (toggleIcon) toggleIcon.src = '/icons/Minimize.png'
+      if (toggleIcon) toggleIcon.src = getAssetPath('/icons/Minimize.png')
     } else {
       // 패널 닫기 - 기존 RoomControls 방식
       contentContainer.style.opacity = '0'
       contentContainer.style.pointerEvents = 'none'
       
-      if (toggleIcon) toggleIcon.src = '/icons/Maximize.svg'
+      if (toggleIcon) toggleIcon.src = getAssetPath('/icons/Maximize.svg')
       
       // 패널을 버튼 스타일로 되돌림
       setTimeout(() => {

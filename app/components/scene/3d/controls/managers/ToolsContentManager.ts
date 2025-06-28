@@ -137,7 +137,8 @@ export class ToolsContentManager {
       top: 'auto',
       bottom: '100%',
       borderTop: '2px solid #000000',
-      borderBottom: 'none'
+      borderBottom: 'none',
+      zIndex: '9999' // 드롭다운이 다른 요소들 위에 나타나도록 높은 z-index 설정
     })
 
     const models = availableModels

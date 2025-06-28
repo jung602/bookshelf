@@ -110,9 +110,10 @@ export class PanelManager {
       opacity: '1',
       pointerEvents: 'auto',
       borderRadius: '4px 4px 0 0', // 상단 모서리만 둥글게
-      maxHeight: '400px', // 기본 최대 높이
+      maxHeight: '300px', // 최대 높이를 줄여서 탭 버튼이 보이도록
       transition: 'none', // 애니메이션 제거
-      overflow: 'visible', // 드롭다운이 컨테이너 밖으로 나올 수 있도록
+      overflowY: 'auto', // 세로 스크롤만 허용
+      overflowX: 'visible', // 가로는 드롭다운을 위해 visible
       padding: '0' // padding 제거
     })
 
@@ -231,8 +232,9 @@ export class PanelManager {
     Object.assign(this.tabContentContainer.style, {
       opacity: '1',
       pointerEvents: 'auto',
-      maxHeight: '400px', // 최대 높이 설정
-      overflow: 'visible', // 드롭다운이 컨테이너 밖으로 나올 수 있도록
+      maxHeight: '300px', // 최대 높이를 줄여서 탭 버튼이 보이도록
+      overflowY: 'auto', // 세로 스크롤만 허용
+      overflowX: 'visible', // 가로는 드롭다운을 위해 visible
       transition: 'none' // 열릴 때도 애니메이션 제거
     })
     
@@ -306,7 +308,7 @@ export class PanelManager {
     if (component instanceof StyleControls) {
       return this.styleContentManager.createContent(component)
     } else if (component instanceof RoomControls) {
-      return this.roomContentManager.createContent(component)
+      return this.roomContentManager.createContent(component, this.onStyleParamsChange)
     } else {
       // Tools 컴포넌트의 경우 (더미 객체)
       return this.toolsContentManager.createContent()

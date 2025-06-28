@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SceneManager } from './3d/SceneManager'
 import { ControlsContainer } from './3d/controls/ControlsContainer'
-import { StyleParams } from './3d/controls/StyleControls'
+
 import { RoomParams } from './3d/controls/RoomControls'
 import { GizmoState } from './3d/managers/InteractionManager'
 import { getModelClass } from './3d/objects'
@@ -66,11 +66,8 @@ export default function ThreeScene() {
       })()
     }
     
-    const styleParams: StyleParams = { wallColor: '#DCDCDC', floorColor: '#f0f0f0' }
-    
     const controlsContainer = new ControlsContainer(
       roomParams,
-      styleParams,
       (params: Partial<RoomParams>) => {
         newSceneManager.updateRoom(params)
         // 레이어 업데이트 (바닥 변경 시 모델들이 재배치될 수 있으므로)
@@ -78,8 +75,8 @@ export default function ThreeScene() {
           controlsContainerRef.current?.updateLayerModels()
         }, 100)
       },
-      (params: Partial<StyleParams>) => {
-        // 색상 업데이트는 SceneManager 내부에서 처리
+      (params: Record<string, any>) => {
+        // Style 파라미터 업데이트 (벽/바닥 색상 등)
         console.log('Style params updated:', params)
       },
       handleModelAdd,

@@ -130,8 +130,16 @@ export class ColorPaletteUtils {
   private static toggleColorPalette(colorDisplay: HTMLElement, colorPalette: HTMLElement): void {
     if (colorPalette.style.display === 'none' || !colorPalette.style.display) {
       const rect = colorDisplay.getBoundingClientRect()
+      const paletteHeight = 128 // 팔레트 높이 (120px + padding 8px)
+      let topPosition = rect.top - paletteHeight
+      
+      // 화면 상단을 벗어나지 않도록 체크
+      if (topPosition < 0) {
+        topPosition = rect.bottom + 4 // 상단이 부족하면 아래로 열기
+      }
+      
       colorPalette.style.left = `${rect.left}px`
-      colorPalette.style.top = `${rect.bottom + 4}px`
+      colorPalette.style.top = `${topPosition}px`
       colorPalette.style.display = 'grid'
     } else {
       colorPalette.style.display = 'none'

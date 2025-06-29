@@ -237,8 +237,6 @@ export class PanelManager {
       opacity: '1',
       pointerEvents: 'auto',
       maxHeight: '300px', // 최대 높이를 줄여서 탭 버튼이 보이도록
-      overflowY: 'auto', // 세로 스크롤만 허용
-      overflowX: 'visible', // 가로는 드롭다운을 위해 visible
       transition: 'none' // 열릴 때도 애니메이션 제거
     })
     
@@ -270,6 +268,27 @@ export class PanelManager {
 
     // 기존 콘텐츠 제거
     this.tabContentContainer.innerHTML = ''
+
+    // 탭에 따라 overflow 속성 설정
+    if (tabId === 'room') {
+      // room 탭: overflow auto
+      Object.assign(this.tabContentContainer.style, {
+        overflowY: 'auto',
+        overflowX: 'auto'
+      })
+    } else if (tabId === 'tools') {
+      // tools 탭: overflow visible (드롭다운을 위해)
+      Object.assign(this.tabContentContainer.style, {
+        overflowY: 'visible',
+        overflowX: 'visible'
+      })
+    } else {
+      // 기타 탭: 기본값 (auto)
+      Object.assign(this.tabContentContainer.style, {
+        overflowY: 'auto',
+        overflowX: 'visible'
+      })
+    }
 
     // 새 콘텐츠 생성
     const content = this.extractComponentContent(tab.component)

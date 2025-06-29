@@ -113,8 +113,16 @@ export class ColorSection {
         if (this.colorPalette.style.display === 'none') {
           // 현재 색상 표시 박스의 위치 계산
           const rect = this.currentColorDisplay.getBoundingClientRect()
+          const paletteHeight = 128 // 팔레트 높이 (120px + padding 8px)
+          let topPosition = rect.top - paletteHeight
+          
+          // 화면 상단을 벗어나지 않도록 체크
+          if (topPosition < 0) {
+            topPosition = rect.bottom + 4 // 상단이 부족하면 아래로 열기
+          }
+          
           this.colorPalette.style.left = `${rect.left}px`
-          this.colorPalette.style.top = `${rect.bottom + 4}px`
+          this.colorPalette.style.top = `${topPosition}px`
           this.colorPalette.style.display = 'grid'
         } else {
           this.colorPalette.style.display = 'none'

@@ -16,7 +16,8 @@ export class ControlsContainer {
     onModelAdd?: (modelType: string) => void,
     onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
     onModelDelete?: (modelId: string) => void,
-    getModels?: () => any[]
+    getModels?: () => any[],
+    getCurrentRoomState?: () => { roomParams: any, colorParams: any }
   ) {
     this.createContainer()
     this.initializePanels(
@@ -26,7 +27,8 @@ export class ControlsContainer {
       onModelAdd || (() => {}),
       onBookCreate || (() => {}),
       onModelDelete,
-      getModels
+      getModels,
+      getCurrentRoomState
     )
   }
 
@@ -52,7 +54,8 @@ export class ControlsContainer {
     onModelAdd: (modelType: string) => void,
     onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
     onModelDelete?: (modelId: string) => void,
-    getModels?: () => any[]
+    getModels?: () => any[],
+    getCurrentRoomState?: () => { roomParams: any, colorParams: any }
   ): void {
     if (!this.container) return
 
@@ -63,7 +66,8 @@ export class ControlsContainer {
       onModelAdd,
       onBookCreate,
       onModelDelete,
-      getModels
+      getModels,
+      getCurrentRoomState
     )
 
     // Room Controls 탭 (DOM에 추가하지 않음)
@@ -74,8 +78,6 @@ export class ControlsContainer {
       iconSrc: getAssetPath('/icons/room.png'),
       component: this.roomControls
     })
-
-
 
     // Tools 탭 (PanelManager에서 직접 처리하므로 더미 객체 전달)
     const dummyToolsControls = {} // Tools 탭은 PanelManager에서 직접 처리

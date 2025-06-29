@@ -167,14 +167,17 @@ export function useResponsiveScene(
     }
   }, [sceneManager, updateScene])
 
+  // forceUpdate 함수를 useCallback으로 메모이제이션하여 불필요한 재생성 방지
+  const forceUpdate = useCallback(() => {
+    console.log('useResponsiveScene: Force update called')
+    updateScene()
+  }, [updateScene])
+
   return {
     viewportSize,
     currentFrustumSize: calculateFrustumSize(),
     updateConfig,
     currentConfig: configRef.current,
-    forceUpdate: () => {
-      console.log('useResponsiveScene: Force update called')
-      updateScene()
-    }
+    forceUpdate
   }
 } 

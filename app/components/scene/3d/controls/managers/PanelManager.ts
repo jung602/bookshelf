@@ -37,6 +37,7 @@ export class PanelManager {
   private getModels?: () => any[]
   private activeTabId: string = 'room'
   private isTabContainerOpen: boolean = true // 탭 컨테이너 열림/닫힘 상태
+  private getCurrentRoomState?: () => { roomParams: any, colorParams: any }
   
   // Content Managers
   private styleContentManager: StyleContentManager
@@ -54,7 +55,8 @@ export class PanelManager {
     onModelAdd: (modelType: string) => void,
     onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
     onModelDelete?: (modelId: string) => void,
-    getModels?: () => any[]
+    getModels?: () => any[],
+    getCurrentRoomState?: () => { roomParams: any, colorParams: any }
   ) {
     this.container = container
     this.onStyleParamsChange = onStyleParamsChange
@@ -62,6 +64,7 @@ export class PanelManager {
     this.onBookCreate = onBookCreate
     this.onModelDelete = onModelDelete
     this.getModels = getModels
+    this.getCurrentRoomState = getCurrentRoomState
     
     // Content Managers 초기화
     this.styleContentManager = new StyleContentManager(onStyleParamsChange)
@@ -308,7 +311,7 @@ export class PanelManager {
     if (component instanceof StyleControls) {
       return this.styleContentManager.createContent(component)
     } else if (component instanceof RoomControls) {
-      return this.roomContentManager.createContent(component, this.onStyleParamsChange)
+      return this.roomContentManager.createContent(component, this.onStyleParamsChange, this.getCurrentRoomState)
     } else {
       // Tools 컴포넌트의 경우 (더미 객체)
       return this.toolsContentManager.createContent()

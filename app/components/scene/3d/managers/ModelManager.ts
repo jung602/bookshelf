@@ -754,4 +754,130 @@ export class ModelManager {
     
     return Math.min(overlapRatio + stabilityBonus, 1.0)
   }
+
+  /**
+   * 바닥 변경 시 모든 가구를 자동으로 재배치하는 메서드
+   * 바닥이 없어진 위치의 가구들을 가장 가까운 바닥 위치로 이동시킵니다.
+   */
+  public repositionModelsAfterFloorChange(): void {
+    console.log('=== Starting automatic model repositioning after floor change ===')
+    
+    const allModels = Array.from(this.models.values()).filter(model => model.isModelLoaded())
+    
+    if (allModels.length === 0) {
+      console.log('No models to reposition')
+      return
+    }
+
+    console.log(`Found ${allModels.length} models to check`)
+
+    // 바닥이 없으면 모든 모델 제거 또는 경고
+    if (!this.hasFloorMeshes()) {
+      console.log('⚠️ No floor available after change - models cannot be repositioned')
+      return
+    }
+
+    let repositionedCount = 0
+    
+    allModels.forEach((model) => {
+      const currentPosition = model.getPosition()
+      console.log(`Checking model ${model.getId()} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
+      
+      // 현재 위치에 바닥이 있는지 확인
+      const hasFloorAtCurrentPosition = this.hasFloorTileAt(currentPosition.x, currentPosition.z)
+      
+      if (!hasFloorAtCurrentPosition) {
+        // 바닥이 없는 위치에 있는 가구는 가장 가까운 바닥으로 이동
+        console.log(`  -> Model ${model.getId()} has no floor at current position, finding nearest floor tile`)
+        
+        const nearestFloorPosition = this.findNearestFloorTile(currentPosition.x, currentPosition.z)
+        
+        if (nearestFloorPosition) {
+          // 모델의 바운딩 박스를 고려한 위치 조정
+          const adjustedPosition = this.clampToFloorWithBounds(model, nearestFloorPosition.x, nearestFloorPosition.z)
+          
+          try {
+            // 바닥 변경 시에는 단순히 바닥 Y 위치 계산 (레이캐스팅 없이)
+            const floorY = this.calculateModelFloorY(model)
+            
+            model.setPosition({
+              x: adjustedPosition.x,
+              y: floorY,
+              z: adjustedPosition.z
+            })
+            
+            repositionedCount++
+            console.log(`  -> ✅ Model ${model.getId()} repositioned to nearest floor at (${adjustedPosition.x.toFixed(3)}, ${floorY.toFixed(3)}, ${adjustedPosition.z.toFixed(3)})`)
+          } catch (error) {
+            console.log(`  -> ❌ Failed to calculate floor Y for model ${model.getId()}: ${error}`)
+            
+            // 대안: 간단한 Y=0 기준 계산
+            const modelBottomOffset = this.getModelBottomOffset(model)
+            const simpleY = 0 - modelBottomOffset
+            
+            model.setPosition({
+              x: adjustedPosition.x,
+              y: simpleY,
+              z: adjustedPosition.z
+            })
+            
+            repositionedCount++
+            console.log(`  -> ⚡ Model ${model.getId()} positioned using simple Y calculation at (${adjustedPosition.x.toFixed(3)}, ${simpleY.toFixed(3)}, ${adjustedPosition.z.toFixed(3)})`)
+          }
+        } else {
+          console.log(`  -> ⚠️ No valid floor tile found for model ${model.getId()}`)
+        }
+      } else {
+        // 바닥이 있는 위치에 있는 가구는 Y 좌표만 재계산하여 올바른 표면에 배치
+        console.log(`  -> Model ${model.getId()} has floor at current position, recalculating surface Y`)
+        
+        try {
+          // 바닥이 있는 경우에는 기존의 복잡한 calculateSurfaceY 사용 (다른 가구 위에 올라갈 수 있음)
+          const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
+          
+          // Y 위치가 변경되었을 때만 업데이트
+          if (Math.abs(currentPosition.y - newY) > 0.001) {
+            model.setPosition({
+              x: currentPosition.x,
+              y: newY,
+              z: currentPosition.z
+            })
+            
+            console.log(`  -> ✅ Model ${model.getId()} Y position adjusted from ${currentPosition.y.toFixed(3)} to ${newY.toFixed(3)}`)
+          } else {
+            console.log(`  -> ⏸️ Model ${model.getId()} position unchanged`)
+          }
+        } catch (error) {
+          console.log(`  -> ⚠️ Failed to calculate surface Y for model ${model.getId()}: ${error}`)
+          
+          // 대안: 간단한 바닥 Y 위치 계산
+          try {
+            const floorY = this.calculateModelFloorY(model)
+            
+            model.setPosition({
+              x: currentPosition.x,
+              y: floorY,
+              z: currentPosition.z
+            })
+            
+            console.log(`  -> ⚡ Model ${model.getId()} positioned using simple floor Y calculation at Y: ${floorY.toFixed(3)}`)
+          } catch (floorError) {
+            console.log(`  -> ❌ Failed to calculate floor Y, keeping original position: ${floorError}`)
+          }
+        }
+      }
+    })
+    
+    console.log(`=== Floor change repositioning completed: ${repositionedCount} models repositioned ===`)
+    
+    // 모든 재배치가 완료된 후, 모델들 간의 상호작용을 위해 전체 위치 재계산 수행
+    if (repositionedCount > 0) {
+      console.log('Running final position recalculation to handle model interactions...')
+      
+      // 약간의 지연 후 실행하여 위치 변경이 완전히 적용된 후 재계산
+      setTimeout(() => {
+        this.recalculateAllModelPositions()
+      }, 100)
+    }
+  }
 } 

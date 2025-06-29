@@ -114,50 +114,64 @@ export class InteractionManager {
     this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1
     this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1
     
-    console.log(`Mouse position: screen(${clientX}, ${clientY}) -> normalized(${this.mouse.x.toFixed(3)}, ${this.mouse.y.toFixed(3)})`)
+    // 마우스 위치 로그는 제거 (너무 빈번함)
   }
 
-  private getIntersectedModels(): THREE.Intersection[] {
+  private getIntersectedModels(isInteraction: boolean = false): THREE.Intersection[] {
     this.raycaster.setFromCamera(this.mouse, this.camera)
     
     // 모든 모델의 모든 콜라이더 메시 수집
     const colliders: THREE.Mesh[] = []
     const allModels = this.modelManager.getAllModels()
     
-    console.log(`Checking ${allModels.length} models for intersection`)
+    // 실제 인터랙션(클릭, 터치)일 때만 로그 출력
+    if (isInteraction) {
+      console.log(`Checking ${allModels.length} models for intersection`)
+    }
     
     allModels.forEach((model, index) => {
       const modelColliders = model.getAllColliders()
       if (modelColliders.length > 0) {
         colliders.push(...modelColliders)
-        console.log(`Model ${index}: ${model.getId()}, ${modelColliders.length} collider(s) available`)
+        if (isInteraction) {
+          console.log(`Model ${index}: ${model.getId()}, ${modelColliders.length} collider(s) available`)
+        }
       }
     })
 
-    console.log(`Total colliders for raycasting: ${colliders.length}`)
+    if (isInteraction) {
+      console.log(`Total colliders for raycasting: ${colliders.length}`)
+    }
     
     const intersections = this.raycaster.intersectObjects(colliders, false)
-    console.log(`Raycasting found ${intersections.length} intersections`)
     
-    if (intersections.length > 0) {
-      console.log(`First intersection at: (${intersections[0].point.x.toFixed(3)}, ${intersections[0].point.y.toFixed(3)}, ${intersections[0].point.z.toFixed(3)})`)
+    if (isInteraction) {
+      console.log(`Raycasting found ${intersections.length} intersections`)
+      
+      if (intersections.length > 0) {
+        console.log(`First intersection at: (${intersections[0].point.x.toFixed(3)}, ${intersections[0].point.y.toFixed(3)}, ${intersections[0].point.z.toFixed(3)})`)
+      }
     }
     
     return intersections
   }
 
-  private getModelFromIntersection(intersection: THREE.Intersection): BaseModel | null {
+  private getModelFromIntersection(intersection: THREE.Intersection, isInteraction: boolean = false): BaseModel | null {
     // 콜라이더의 userData에서 modelId 가져오기
     const intersectedObject = intersection.object
     const modelId = intersectedObject.userData.modelId
     
     if (modelId) {
       const model = this.modelManager.getModel(modelId)
-      console.log(`Found model from intersection: ${modelId}`)
+      if (isInteraction) {
+        console.log(`Found model from intersection: ${modelId}`)
+      }
       return model || null
     }
     
-    console.log('No modelId found in intersection userData')
+    if (isInteraction) {
+      console.log('No modelId found in intersection userData')
+    }
     return null
   }
 
@@ -180,10 +194,10 @@ export class InteractionManager {
     this.clickStartPosition = { x: event.clientX, y: event.clientY }
     this.isDragStarted = false
 
-    const intersections = this.getIntersectedModels()
+    const intersections = this.getIntersectedModels(true) // 클릭 인터랙션이므로 로그 출력
     
     if (intersections.length > 0) {
-      const selectedModel = this.getModelFromIntersection(intersections[0])
+      const selectedModel = this.getModelFromIntersection(intersections[0], true) // 클릭 인터랙션
       
       if (selectedModel) {
         console.log(`Model selected: ${selectedModel.getId()}`)
@@ -260,10 +274,10 @@ export class InteractionManager {
       this.clickStartPosition = { x: touch.clientX, y: touch.clientY }
       this.isDragStarted = false
 
-      const intersections = this.getIntersectedModels()
+      const intersections = this.getIntersectedModels(true) // 터치 인터랙션이므로 로그 출력
       
       if (intersections.length > 0) {
-        const selectedModel = this.getModelFromIntersection(intersections[0])
+        const selectedModel = this.getModelFromIntersection(intersections[0], true) // 터치 인터랙션
         
         if (selectedModel) {
           console.log(`Model selected via touch: ${selectedModel.getId()}`)
@@ -489,8 +503,8 @@ export class InteractionManager {
   }
 
   private updateHover(): void {
-    // 호버 효과 구현 (선택사항)
-    const intersections = this.getIntersectedModels()
+    // 호버 효과 구현 (선택사항) - 로그 없이 조용히 작동
+    const intersections = this.getIntersectedModels() // 기본값 false로 로그 출력 안함
     
     if (intersections.length > 0) {
       // 마우스 커서 변경

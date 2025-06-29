@@ -85,6 +85,13 @@ export default function ThreeScene() {
       () => {
         // 현재 씬의 모든 모델 목록 반환
         return newSceneManager.getModelManager().getAllModels()
+      },
+      () => {
+        // 현재 실제 씬 상태 반환 (바닥 동기화용)
+        return {
+          roomParams: newSceneManager.getCurrentRoomParams(),
+          colorParams: newSceneManager.getCurrentColorParams()
+        }
       }
     )
     controlsContainerRef.current = controlsContainer
@@ -102,15 +109,17 @@ export default function ThreeScene() {
     }
   }, [])
 
-  // SceneManager가 생성된 후 초기 리사이즈 호출
+  // SceneManager가 생성된 후 초기 리사이즈 호출 (한 번만)
   useEffect(() => {
     if (sceneManager && forceUpdate) {
       console.log('ThreeScene: Calling initial resize...')
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         forceUpdate()
       }, 100)
+      
+      return () => clearTimeout(timeoutId)
     }
-  }, [sceneManager, forceUpdate])
+  }, [sceneManager]) // forceUpdate 의존성 제거하여 무한 루프 방지
 
   // ModelGizmo 초기화 (컴포넌트 마운트 시 한 번만)
   useEffect(() => {

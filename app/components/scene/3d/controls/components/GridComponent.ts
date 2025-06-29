@@ -14,6 +14,8 @@ export class GridComponent {
   ) {
     this.grid = [...initialGrid]
     this.onGridChange = onGridChange
+    console.log('🏗️ GridComponent constructor called with initialGrid:', initialGrid)
+    console.log('🏗️ Grid copied to this.grid:', this.grid)
   }
 
   public create(): HTMLDivElement {
@@ -21,6 +23,9 @@ export class GridComponent {
     Object.assign(this.gridContainer.style, ROOM_CONTROL_STYLES.GRID_CONTAINER)
 
     this.createCells(this.gridContainer)
+    
+    // 초기 격자 상태를 UI에 반영
+    this.updateVisual()
     
     // 드래그 핸들러 초기화
     this.dragHandler = new DragHandler(
@@ -96,30 +101,40 @@ export class GridComponent {
   private updateVisual(): void {
     if (!this.gridContainer) return
     
+    console.log('🎨 updateVisual called with grid:', this.grid)
+    
     const gridSize = ROOM_CONTROL_CONSTANTS.GRID_SIZE
     const centerIndex = ROOM_CONTROL_CONSTANTS.CENTER_INDEX
     const cells = this.gridContainer.children
+    
+    console.log(`🎨 Updating ${cells.length} cells for ${gridSize}x${gridSize} grid`)
     
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize; col++) {
         const cellIndex = row * gridSize + col
         const cell = cells[cellIndex] as HTMLDivElement
         const isCenterTile = row === centerIndex && col === centerIndex
+        const isActive = this.grid[row][col]
         
-        if (this.grid[row][col]) {
+        if (isActive) {
           if (isCenterTile) {
             Object.assign(cell.style, ROOM_CONTROL_STYLES.CENTER_CELL)
+            console.log(`🎨 Cell [${row}][${col}] (center): set to CENTER style`)
           } else {
             Object.assign(cell.style, { 
               ...ROOM_CONTROL_STYLES.GRID_CELL, 
               ...ROOM_CONTROL_STYLES.ACTIVE_CELL 
             })
+            console.log(`🎨 Cell [${row}][${col}]: set to ACTIVE style`)
           }
         } else {
           Object.assign(cell.style, ROOM_CONTROL_STYLES.GRID_CELL)
+          console.log(`🎨 Cell [${row}][${col}]: set to DEFAULT style`)
         }
       }
     }
+    
+    console.log('🎨 updateVisual completed')
   }
 
   public dispose(): void {

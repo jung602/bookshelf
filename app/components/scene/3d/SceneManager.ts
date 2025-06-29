@@ -197,6 +197,10 @@ export class SceneManager {
       // 바닥 재생성
       createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
       
+      // 바닥 텍스처 변경 후 가구들을 자동으로 재배치 (바닥 메시가 새로 생성되므로)
+      console.log('Custom texture applied to floor, repositioning models...')
+      this.modelManager.repositionModelsAfterFloorChange()
+      
       console.log('Custom texture applied to floor')
     })
     
@@ -232,6 +236,10 @@ export class SceneManager {
     // 바닥 재생성
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     
+    // 바닥 텍스처 변경 후 가구들을 자동으로 재배치 (바닥 메시가 새로 생성되므로)
+    console.log('Custom texture applied to floor, repositioning models...')
+    this.modelManager.repositionModelsAfterFloorChange()
+    
     console.log('Custom texture applied to floor')
   }
 
@@ -261,6 +269,10 @@ export class SceneManager {
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
+    // 바닥 변경 후 가구들을 자동으로 재배치
+    console.log('Floor updated, repositioning models...')
+    this.modelManager.repositionModelsAfterFloorChange()
+    
     // 카메라 위치 조정 (격자 크기 기반)
     const maxSize = Math.max(5, this.roomParams.wallHeight) // 5x5 격자 고정
     const cameraDistance = maxSize * 2
@@ -275,9 +287,11 @@ export class SceneManager {
     // 바닥과 벽 다시 생성 (격자 기반)
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    
+    // 바닥 재생성 후 가구들을 자동으로 재배치 (바닥 색상 변경 시에도 바닥 메시가 새로 생성되므로)
+    console.log('Floor/walls color updated, repositioning models...')
+    this.modelManager.repositionModelsAfterFloorChange()
   }
-
-
 
   public getModelManager(): ModelManager {
     return this.modelManager
@@ -304,6 +318,21 @@ export class SceneManager {
 
   public getGizmoState(): GizmoState {
     return this.gizmoState
+  }
+
+  /**
+   * 현재 실제 바닥 상태를 반환합니다.
+   * UI와 실제 렌더된 바닥을 동기화하는데 사용됩니다.
+   */
+  public getCurrentRoomParams(): RoomParams {
+    return { ...this.roomParams }
+  }
+
+  /**
+   * 현재 실제 색상 파라미터를 반환합니다.
+   */
+  public getCurrentColorParams(): ColorParams {
+    return { ...this.colorParams }
   }
 
   private animate = () => {

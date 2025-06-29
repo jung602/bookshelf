@@ -12,13 +12,29 @@ export class RoomContentManager {
   private tileCanvas: TileCanvas | null = null
   private selectedTool: ToolType = 'pen'
 
-  public createContent(roomControls: RoomControls, onStyleParamsChange?: (params: Record<string, unknown>) => void): HTMLElement {
+  public createContent(
+    roomControls: RoomControls, 
+    onStyleParamsChange?: (params: Record<string, unknown>) => void,
+    getCurrentRoomState?: () => { roomParams: any, colorParams: any }
+  ): HTMLElement {
     const content = document.createElement('div')
     Object.assign(content.style, {
       backgroundColor: ROOM_CONTROL_STYLES.PANEL_CONTENT.background
     })
 
-    const roomParams = roomControls.getParams()
+    // 실제 씬 상태가 있으면 그것을 사용, 없으면 roomControls의 파라미터 사용
+    let roomParams = roomControls.getParams()
+    if (getCurrentRoomState) {
+      try {
+        const currentState = getCurrentRoomState()
+        if (currentState?.roomParams) {
+          roomParams = currentState.roomParams
+          console.log('🔄 Room UI synchronized with actual scene state:', roomParams)
+        }
+      } catch (error) {
+        console.warn('Failed to get current room state, using default params:', error)
+      }
+    }
 
     // Walls 섹션
     const wallsSection = this.createWallsSection(roomParams.wallHeight, (height) => {
@@ -29,7 +45,7 @@ export class RoomContentManager {
     })
     content.appendChild(wallsSection)
 
-    // Floors 섹션 
+    // Floors 섹션 - 실제 씬 상태로 초기화
     const floorsSection = this.createFloorsSection(roomParams.customGrid, (newGrid) => {
       const controlsWithParams = roomControls as unknown as { onParamsChange?: (params: Record<string, unknown>) => void }
       if (controlsWithParams.onParamsChange) {
@@ -71,6 +87,14 @@ export class RoomContentManager {
   }
 
   private createFloorsSection(currentGrid: boolean[][], onChange: (grid: boolean[][]) => void): HTMLElement {
+    console.log('🎯 createFloorsSection called with currentGrid:', currentGrid)
+    console.log('🎯 Grid details:', {
+      isArray: Array.isArray(currentGrid),
+      length: currentGrid?.length,
+      firstRow: currentGrid?.[0],
+      centerTile: currentGrid?.[2]?.[2] // 중앙 타일 상태
+    })
+    
     const section = document.createElement('div')
     Object.assign(section.style, ROOM_CONTROL_STYLES.SECTION_CONTAINER)
 

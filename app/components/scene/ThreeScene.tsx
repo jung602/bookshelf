@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { SceneManager } from './3d/SceneManager'
-import { ControlsContainer } from './3d/controls/ControlsContainer'
+import { ControlsContainer, StyleParams } from './3d/controls/ControlsContainer'
 
 import { RoomParams } from './3d/controls/RoomControls'
 import { GizmoState } from './3d/managers/InteractionManager'
@@ -75,7 +75,7 @@ export default function ThreeScene() {
           controlsContainerRef.current?.updateLayerModels()
         }, 100)
       },
-      (params: Record<string, any>) => {
+      (params: StyleParams) => {
         // Style 파라미터 업데이트 (벽/바닥 색상 등)
         console.log('Style params updated:', params)
       },
@@ -119,7 +119,7 @@ export default function ThreeScene() {
       
       return () => clearTimeout(timeoutId)
     }
-  }, [sceneManager]) // forceUpdate 의존성 제거하여 무한 루프 방지
+  }, [sceneManager, forceUpdate])
 
   // ModelGizmo 초기화 (컴포넌트 마운트 시 한 번만)
   useEffect(() => {

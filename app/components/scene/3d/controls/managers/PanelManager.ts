@@ -1,10 +1,11 @@
 import { RoomControls } from '../RoomControls'
 import { StyleControls } from '../StyleControls'
-import { ROOM_CONTROL_STYLES, ROOM_CONTROL_CONSTANTS } from '../styles/RoomControlsStyles'
+import { ROOM_CONTROL_STYLES } from '../styles/RoomControlsStyles'
 import { StyleContentManager } from './StyleContentManager'
 import { ToolsContentManager } from './ToolsContentManager'
 import { RoomContentManager } from './RoomContentManager'
-import { getAssetPath } from '../utils'
+import { BaseModel } from '../../objects/BaseModel'
+import { StyleParams, RoomState } from '../ControlsContainer'
 
 // Tools 패널용 더미 타입
 type DummyToolsComponent = object
@@ -30,14 +31,14 @@ export class PanelManager {
   private panels: Map<string, PanelConfig> = new Map()
   private tabs: Map<string, TabConfig> = new Map()
   private container: HTMLDivElement | null = null
-  private onStyleParamsChange: PanelChangeHandler
+  private onStyleParamsChange: (params: StyleParams) => void
   private onModelAdd: (modelType: string) => void
   private onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void
   private onModelDelete?: (modelId: string) => void
-  private getModels?: () => any[]
+  private getModels?: () => BaseModel[]
   private activeTabId: string = 'room'
   private isTabContainerOpen: boolean = true // 탭 컨테이너 열림/닫힘 상태
-  private getCurrentRoomState?: () => { roomParams: any, colorParams: any }
+  private getCurrentRoomState?: () => RoomState
   
   // Content Managers
   private styleContentManager: StyleContentManager
@@ -51,12 +52,12 @@ export class PanelManager {
 
   constructor(
     container: HTMLDivElement,
-    onStyleParamsChange: PanelChangeHandler,
+    onStyleParamsChange: (params: StyleParams) => void,
     onModelAdd: (modelType: string) => void,
     onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
     onModelDelete?: (modelId: string) => void,
-    getModels?: () => any[],
-    getCurrentRoomState?: () => { roomParams: any, colorParams: any }
+    getModels?: () => BaseModel[],
+    getCurrentRoomState?: () => RoomState
   ) {
     this.container = container
     this.onStyleParamsChange = onStyleParamsChange
@@ -300,10 +301,8 @@ export class PanelManager {
     })
   }
 
-  // 기존 addPanel 메서드는 유지하되 사용하지 않음
-  public addPanel(config: PanelConfig): void {
-    // 더 이상 사용하지 않지만 기존 호환성을 위해 유지
-    console.warn('addPanel is deprecated, use addTab instead')
+  public addPanel(panelConfig: PanelConfig): void {
+    this.panels.set(panelConfig.id, panelConfig)
   }
 
   private extractComponentContent(component: RoomControls | StyleControls | DummyToolsComponent): HTMLElement | null {

@@ -1,4 +1,4 @@
-import { RoomControls } from '../RoomControls'
+import { RoomControls, RoomParams } from '../RoomControls'
 import { ROOM_CONTROL_STYLES } from '../styles/RoomControlsStyles'
 import { GridComponent } from '../components/GridComponent'
 import { RangeSlider } from '../components/RangeSlider'
@@ -6,6 +6,13 @@ import { PresetButtons } from '../components/PresetButtons'
 import { TileCanvas } from '../components/TileCanvas'
 import { UIUtils } from '../utils/UIUtils'
 import { ToolType } from '../constants/ControlsConstants'
+import { ColorParams } from '../../SceneManager'
+
+// 현재 룸 상태 타입 정의
+export interface CurrentRoomState {
+  roomParams: RoomParams
+  colorParams: ColorParams
+}
 
 export class RoomContentManager {
   private gridComponent: GridComponent | null = null
@@ -15,7 +22,7 @@ export class RoomContentManager {
   public createContent(
     roomControls: RoomControls, 
     onStyleParamsChange?: (params: Record<string, unknown>) => void,
-    getCurrentRoomState?: () => { roomParams: any, colorParams: any }
+    getCurrentRoomState?: () => CurrentRoomState
   ): HTMLElement {
     const content = document.createElement('div')
     Object.assign(content.style, {

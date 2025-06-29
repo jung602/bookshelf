@@ -1,4 +1,3 @@
-import { ROOM_CONTROL_STYLES } from '../styles/RoomControlsStyles'
 import { BaseModel } from '../../objects/BaseModel'
 
 export interface LayerManagerConfig {
@@ -102,15 +101,15 @@ export class LayerManager {
 
     // 모델별 레이어 항목 생성 (최신 순으로 정렬)
     const sortedModels = [...this.models].reverse()
-    sortedModels.forEach((model, index) => {
-      const layerItem = this.createLayerItem(model, index)
+    sortedModels.forEach((model) => {
+      const layerItem = this.createLayerItem(model)
       if (this.layersContainer) {
         this.layersContainer.appendChild(layerItem)
       }
     })
   }
 
-  private createLayerItem(model: BaseModel, index: number): HTMLElement {
+  private createLayerItem(model: BaseModel): HTMLElement {
     const item = document.createElement('div')
     const isSelected = this.selectedModelId === model.getId()
     

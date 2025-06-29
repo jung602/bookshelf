@@ -1,8 +1,23 @@
 import { ROOM_CONTROL_STYLES } from './styles/RoomControlsStyles'
 import { RoomControls, RoomParams } from './RoomControls'
+import { BaseModel } from '../objects/BaseModel'
+import { ColorParams } from '../SceneManager'
 
 import { PanelManager } from './managers/PanelManager'
 import { getAssetPath } from './utils'
+
+// 스타일 파라미터 타입 정의
+export interface StyleParams {
+  wallColor?: string
+  floorColor?: string
+  [key: string]: unknown
+}
+
+// 현재 룸 상태 타입 정의
+export interface RoomState {
+  roomParams: RoomParams
+  colorParams: ColorParams
+}
 
 export class ControlsContainer {
   private container: HTMLDivElement | null = null
@@ -12,12 +27,12 @@ export class ControlsContainer {
   constructor(
     roomParams: RoomParams,
     onRoomParamsChange: (params: Partial<RoomParams>) => void,
-    onStyleParamsChange: (params: Record<string, any>) => void,
+    onStyleParamsChange: (params: StyleParams) => void,
     onModelAdd?: (modelType: string) => void,
     onBookCreate?: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
     onModelDelete?: (modelId: string) => void,
-    getModels?: () => any[],
-    getCurrentRoomState?: () => { roomParams: any, colorParams: any }
+    getModels?: () => BaseModel[],
+    getCurrentRoomState?: () => RoomState
   ) {
     this.createContainer()
     this.initializePanels(
@@ -50,12 +65,12 @@ export class ControlsContainer {
   private initializePanels(
     roomParams: RoomParams,
     onRoomParamsChange: (params: Partial<RoomParams>) => void,
-    onStyleParamsChange: (params: Record<string, any>) => void,
+    onStyleParamsChange: (params: StyleParams) => void,
     onModelAdd: (modelType: string) => void,
     onBookCreate: (imageUrl: string, thickness: number, aspectRatio: number, title: string) => void,
     onModelDelete?: (modelId: string) => void,
-    getModels?: () => any[],
-    getCurrentRoomState?: () => { roomParams: any, colorParams: any }
+    getModels?: () => BaseModel[],
+    getCurrentRoomState?: () => RoomState
   ): void {
     if (!this.container) return
 

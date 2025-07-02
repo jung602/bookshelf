@@ -159,7 +159,20 @@ export default function ThreeScene() {
     if (!sceneManagerRef.current) return
 
     try {
-      // 동적으로 모델 클래스 가져오기
+      // 벽 가구인 경우 특별 처리
+      if (modelType === 'wallcube') {
+        const wallCubeId = await sceneManagerRef.current.addTestWallCube(0, 0)
+        if (wallCubeId) {
+          console.log('Wall cube added successfully:', wallCubeId)
+          // 레이어 목록 업데이트
+          controlsContainerRef.current?.updateLayerModels()
+        } else {
+          console.log('Failed to add wall cube')
+        }
+        return
+      }
+
+      // 일반 바닥 가구 처리
       const ModelClass = getModelClass(modelType)
       
       if (!ModelClass) {
@@ -199,6 +212,8 @@ export default function ThreeScene() {
       console.error('Failed to create book:', error)
     }
   }
+
+
 
   const handleModelRotate = (modelId: string) => {
     if (sceneManagerRef.current) {

@@ -269,9 +269,13 @@ export class SceneManager {
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
-    // 바닥 변경 후 가구들을 자동으로 재배치
-    console.log('Floor updated, repositioning models...')
+    // 바닥 변경 후 바닥 가구들을 자동으로 재배치
+    console.log('Floor updated, repositioning floor models...')
     this.modelManager.repositionModelsAfterFloorChange()
+    
+    // 벽 변경 후 벽 가구들을 자동으로 재부착
+    console.log('Walls updated, repositioning wall models...')
+    this.modelManager.repositionWallModelsAfterWallChange()
     
     // 카메라 위치 조정 (격자 크기 기반)
     const maxSize = Math.max(5, this.roomParams.wallHeight) // 5x5 격자 고정
@@ -288,9 +292,13 @@ export class SceneManager {
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
-    // 바닥 재생성 후 가구들을 자동으로 재배치 (바닥 색상 변경 시에도 바닥 메시가 새로 생성되므로)
-    console.log('Floor/walls color updated, repositioning models...')
+    // 바닥 재생성 후 바닥 가구들을 자동으로 재배치 (바닥 색상 변경 시에도 바닥 메시가 새로 생성되므로)
+    console.log('Floor/walls color updated, repositioning floor models...')
     this.modelManager.repositionModelsAfterFloorChange()
+    
+    // 벽 재생성 후 벽 가구들을 자동으로 재부착
+    console.log('Walls color updated, repositioning wall models...')
+    this.modelManager.repositionWallModelsAfterWallChange()
   }
 
   public getModelManager(): ModelManager {
@@ -299,6 +307,11 @@ export class SceneManager {
 
   public getInteractionManager(): InteractionManager {
     return this.interactionManager
+  }
+
+  // 벽 큐브 테스트용 메서드
+  public async addTestWallCube(x: number = 0, z: number = 0): Promise<string | null> {
+    return await this.modelManager.addWallCube(x, z)
   }
 
   public rotateModel(modelId: string): void {

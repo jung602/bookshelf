@@ -387,34 +387,45 @@ export class InteractionManager {
     const newX = dragIntersection.x + this.dragState.dragOffset.x
     const newZ = dragIntersection.z + this.dragState.dragOffset.z
 
-    // 충돌 감지 throttling - 성능 최적화
-    const currentTime = Date.now()
-    const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
-
-    let adjustedPosition = { x: newX, y: 0, z: newZ } // Y는 임시값
-
-    if (shouldCheckCollision) {
-      // 충돌 감지 및 자동 올라가기 적용 (Y축은 ModelManager에서 자동 계산)
-      adjustedPosition = this.modelManager.checkCollisionAndAdjust(
-        this.dragState.selectedModel, 
-        newX, 
-        0, // Y값은 ModelManager에서 자동 계산되므로 임시값
-        newZ
-      )
-      
-      this.lastCollisionCheckTime = currentTime
-    } else {
-      // 충돌 검사를 하지 않을 때는 현재 Y 위치 유지하고 X, Z만 업데이트
+    // 벽 가구인지 확인
+    if (this.dragState.selectedModel.getType() === 'wallcube') {
+      // 벽 가구는 Y 위치를 유지하면서 X, Z만 업데이트 (드래그 중에는 벽 재부착 없이)
       const currentPosition = this.dragState.selectedModel.getPosition()
-      adjustedPosition.y = currentPosition.y
-    }
+      this.dragState.selectedModel.setPosition({
+        x: newX,
+        y: currentPosition.y, // Y 위치 유지
+        z: newZ
+      })
+    } else {
+      // 바닥 가구는 기존 충돌 감지 로직 적용
+      const currentTime = Date.now()
+      const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
 
-    // 조정된 위치로 모델 이동
-    this.dragState.selectedModel.setPosition({
-      x: adjustedPosition.x,
-      y: adjustedPosition.y,
-      z: adjustedPosition.z
-    })
+      let adjustedPosition = { x: newX, y: 0, z: newZ } // Y는 임시값
+
+      if (shouldCheckCollision) {
+        // 충돌 감지 및 자동 올라가기 적용 (Y축은 ModelManager에서 자동 계산)
+        adjustedPosition = this.modelManager.checkCollisionAndAdjust(
+          this.dragState.selectedModel, 
+          newX, 
+          0, // Y값은 ModelManager에서 자동 계산되므로 임시값
+          newZ
+        )
+        
+        this.lastCollisionCheckTime = currentTime
+      } else {
+        // 충돌 검사를 하지 않을 때는 현재 Y 위치 유지하고 X, Z만 업데이트
+        const currentPosition = this.dragState.selectedModel.getPosition()
+        adjustedPosition.y = currentPosition.y
+      }
+
+      // 조정된 위치로 모델 이동
+      this.dragState.selectedModel.setPosition({
+        x: adjustedPosition.x,
+        y: adjustedPosition.y,
+        z: adjustedPosition.z
+      })
+    }
   }
 
   // 드래그 평면과의 교차점을 계산하는 새로운 메서드
@@ -439,24 +450,27 @@ export class InteractionManager {
       if (wasActuallyDragged) {
         const currentPosition = selectedModel.getPosition()
         
-        // 모델의 바운딩 박스를 고려한 경계 체크
-        const clampedPosition = this.modelManager.clampToFloorWithBounds(selectedModel, currentPosition.x, currentPosition.z)
-        
-        // 항상 표면 감지를 통해 Y 위치 계산
-        const surfaceY = this.modelManager.calculateSurfaceY(selectedModel, clampedPosition.x, clampedPosition.z)
-        
-        // 항상 표면에 붙도록 설정
-        selectedModel.setPosition({
-          x: clampedPosition.x,
-          y: surfaceY,
-          z: clampedPosition.z
-        })
-        
-        console.log(`Model positioned at (${clampedPosition.x}, ${surfaceY}, ${clampedPosition.z})`)
-        
-        // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
-        console.log('Recalculating positions for other models after drag...')
-        this.modelManager.recalculateOtherModelPositions(selectedModel.getId())
+        // 벽 가구인지 확인
+        if (selectedModel.getType() === 'wallcube') {
+          // 벽 가구는 ModelManager의 moveModel을 통해 벽 재부착
+          this.modelManager.moveModel(selectedModel.getId(), currentPosition.x, currentPosition.z)
+        } else {
+          // 바닥 가구는 기존 로직 적용
+          const clampedPosition = this.modelManager.clampToFloorWithBounds(selectedModel, currentPosition.x, currentPosition.z)
+          const surfaceY = this.modelManager.calculateSurfaceY(selectedModel, clampedPosition.x, clampedPosition.z)
+          
+          selectedModel.setPosition({
+            x: clampedPosition.x,
+            y: surfaceY,
+            z: clampedPosition.z
+          })
+          
+          console.log(`Floor model positioned at (${clampedPosition.x}, ${surfaceY}, ${clampedPosition.z})`)
+          
+          // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
+          console.log('Recalculating positions for other models after drag...')
+          this.modelManager.recalculateOtherModelPositions(selectedModel.getId())
+        }
       }
       
       // 실제로 드래그가 발생했을 때만 기즈모를 다시 표시

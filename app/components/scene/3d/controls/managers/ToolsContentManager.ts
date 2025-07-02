@@ -33,6 +33,8 @@ export class ToolsContentManager {
       }
     })
 
+
+
     // LayerManager 초기화
     const layerConfig: LayerManagerConfig = {
       onModelDelete: (modelId: string) => {
@@ -66,6 +68,8 @@ export class ToolsContentManager {
       content.appendChild(layerContainer)
       this.updateLayerModels() // 초기 모델 목록 업데이트
     }
+
+
 
     // 메인 그리드 컨테이너
     const gridContainer = document.createElement('div')

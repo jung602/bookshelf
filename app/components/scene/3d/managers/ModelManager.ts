@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { BaseModel } from '../objects/BaseModel'
+import { WallCube } from '../objects/WallCube'
 
 export class ModelManager {
   private models: Map<string, BaseModel> = new Map()
@@ -123,6 +124,31 @@ export class ModelManager {
     }
   }
 
+  // 벽 큐브 전용 추가 메서드
+  public async addWallCube(targetX: number = 0, targetZ: number = 0): Promise<string | null> {
+    try {
+      const wallCube = new WallCube()
+      await wallCube.load()
+      
+      // 벽에 부착 시도
+      const attached = wallCube.attachToWall(this.scene, targetX, targetZ)
+      
+      if (!attached) {
+        console.log('Failed to attach wall cube to any wall')
+        return null
+      }
+      
+      wallCube.addToScene(this.scene)
+      this.models.set(wallCube.getId(), wallCube)
+      
+      console.log(`WallCube ${wallCube.getId()} added and attached to wall`)
+      return wallCube.getId()
+    } catch (error) {
+      console.error('Failed to add wall cube:', error)
+      return null
+    }
+  }
+
   public removeModel(modelId: string): void {
     const model = this.models.get(modelId)
     if (model) {
@@ -156,16 +182,19 @@ export class ModelManager {
     const model = this.models.get(modelId)
     if (!model) return
 
-    // 실제 바닥이 있는지 확인
+    // 벽 가구인지 확인
+    if (model.getType() === 'wallcube') {
+      this.moveWallModel(modelId, x, z)
+      return
+    }
+
+    // 바닥 가구 이동 로직
     if (!this.hasFloorMeshes()) {
       console.log('No floor available - cannot move model')
       return
     }
 
-    // 모델의 바운딩 박스를 고려한 경계 체크
     const clampedPosition = this.clampToFloorWithBounds(model, x, z)
-
-    // Y 위치 계산 - 다른 모델 위에 올라갈 수 있도록 표면 감지
     const modelY = this.calculateSurfaceY(model, clampedPosition.x, clampedPosition.z)
     model.setPosition({
       x: clampedPosition.x,
@@ -174,6 +203,23 @@ export class ModelManager {
     })
 
     console.log(`Model ${modelId} moved to (${clampedPosition.x}, ${modelY}, ${clampedPosition.z})`)
+  }
+
+  // 벽 가구 이동 전용 메서드
+  private moveWallModel(modelId: string, x: number, z: number): void {
+    const model = this.models.get(modelId)
+    if (!model || model.getType() !== 'wallcube') return
+
+    const wallCube = model as WallCube
+    
+    // 새로운 위치에서 벽에 다시 부착 시도
+    const attached = wallCube.attachToWall(this.scene, x, z)
+    
+    if (attached) {
+      console.log(`Wall model ${modelId} moved and reattached to wall`)
+    } else {
+      console.log(`Failed to reattach wall model ${modelId} to wall`)
+    }
   }
 
   public rotateModel(modelId: string): void {
@@ -532,9 +578,9 @@ export class ModelManager {
       
       console.log(`=== Position recalculation iteration ${iterations} ===`)
       
-      // 모든 모델에 대해 현재 X, Z 위치에서 올바른 Y 위치를 재계산
+      // 바닥 가구에 대해서만 현재 X, Z 위치에서 올바른 Y 위치를 재계산 (벽 가구는 제외)
       this.models.forEach((model) => {
-        if (model.isModelLoaded()) {
+        if (model.isModelLoaded() && model.getType() !== 'wallcube') { // 벽 가구는 바닥 계산에서 제외
           const currentPosition = model.getPosition()
           console.log(`Checking model ${model.getId()} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
           
@@ -572,10 +618,12 @@ export class ModelManager {
   public recalculateOtherModelPositions(excludeModelId: string): void {
     console.log(`=== Starting position recalculation for models (excluding ${excludeModelId}) ===`)
     
-    // 제외된 모델을 제외한 모든 모델 수집
+    // 제외된 모델을 제외한 바닥 가구만 수집 (벽 가구는 제외)
     const modelsToRecalculate: BaseModel[] = []
     this.models.forEach((model) => {
-      if (model.getId() !== excludeModelId && model.isModelLoaded()) {
+      if (model.getId() !== excludeModelId && 
+          model.isModelLoaded() && 
+          model.getType() !== 'wallcube') { // 벽 가구는 바닥 계산에서 제외
         modelsToRecalculate.push(model)
       }
     })
@@ -756,13 +804,61 @@ export class ModelManager {
   }
 
   /**
+   * 벽 변경 시 모든 벽 가구를 자동으로 재부착하는 메서드
+   * 벽 큐브들을 가장 가까운 벽에 재부착시킵니다.
+   */
+  public repositionWallModelsAfterWallChange(): void {
+    console.log('=== Starting automatic wall model repositioning after wall change ===')
+    
+    const wallModels = Array.from(this.models.values()).filter(model => 
+      model.isModelLoaded() && model.getType() === 'wallcube'
+    )
+    
+    if (wallModels.length === 0) {
+      console.log('No wall models to reposition')
+      return
+    }
+
+    console.log(`Found ${wallModels.length} wall models to reposition`)
+
+    let repositionedCount = 0
+    
+    wallModels.forEach((model) => {
+      const currentPosition = model.getPosition()
+      console.log(`Repositioning wall model ${model.getId()} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
+      
+      // WallCube 타입인지 확인하고 재부착
+      if (model.getType() === 'wallcube') {
+        try {
+          // WallCube의 attachToWall 메서드 호출
+          const wallCube = model as any // WallCube 타입으로 캐스팅
+          const attached = wallCube.attachToWall(this.scene, currentPosition.x, currentPosition.z)
+          
+          if (attached) {
+            repositionedCount++
+            console.log(`  -> ✅ Wall model ${model.getId()} successfully reattached to wall`)
+          } else {
+            console.log(`  -> ⚠️ Wall model ${model.getId()} could not find a nearby wall`)
+          }
+        } catch (error) {
+          console.log(`  -> ❌ Failed to reattach wall model ${model.getId()}: ${error}`)
+        }
+      }
+    })
+    
+    console.log(`=== Wall model repositioning completed: ${repositionedCount} wall models repositioned ===`)
+  }
+
+  /**
    * 바닥 변경 시 모든 가구를 자동으로 재배치하는 메서드
    * 바닥이 없어진 위치의 가구들을 가장 가까운 바닥 위치로 이동시킵니다.
    */
   public repositionModelsAfterFloorChange(): void {
     console.log('=== Starting automatic model repositioning after floor change ===')
     
-    const allModels = Array.from(this.models.values()).filter(model => model.isModelLoaded())
+    const allModels = Array.from(this.models.values()).filter(model => 
+      model.isModelLoaded() && model.getType() !== 'wallcube' // 벽 가구는 바닥 변경 시 재배치에서 제외
+    )
     
     if (allModels.length === 0) {
       console.log('No models to reposition')

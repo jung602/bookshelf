@@ -9,7 +9,7 @@ import { GizmoState } from './3d/managers/InteractionManager'
 import { getModelClass } from './3d/objects'
 import { Book } from './3d/objects/book'
 
-import { ModelGizmo } from './3d/controls/components/ModelGizmo'
+import { ModelGizmo } from './3d/managers/ModelGizmo'
 import { useResponsiveScene } from '../../hooks/useResponsiveScene'
 
 export default function ThreeScene() {

@@ -1,4 +1,3 @@
-export { ModelGizmo } from './ModelGizmo'
 export { BookCreator } from './BookCreator'
 export { GridComponent } from './GridComponent'
 export { ColorSection, type ColorSectionConfig } from './ColorSection'

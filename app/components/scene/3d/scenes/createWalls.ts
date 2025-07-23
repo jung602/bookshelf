@@ -8,9 +8,42 @@ export function createWalls(
   color: string = '#cccccc',
   customGrid?: boolean[][]  // 5x5 격자 패턴
 ) {
-  // 기존 벽 제거
-  const existingWalls = scene.children.filter(child => child.userData.isWall)
-  existingWalls.forEach(wall => scene.remove(wall))
+  // 기존 벽 제거 (모델 보호) - 더 안전한 방식
+  console.log('=== createWalls: Removing existing walls (with model protection) ===')
+  
+  // 모델들을 보호하기 위해 더 엄격한 필터링
+  const existingWalls = scene.children.filter(child => {
+    // userData.isWall이 명시적으로 true인 객체만 제거
+    // 그리고 모델이 아닌 것만 (모델은 Group이고 다른 특성을 가짐)
+    const isWall = child.userData.isWall === true
+    const isNotModel = !child.userData.modelId && !child.userData.isCollider
+    
+    return isWall && isNotModel
+  })
+  
+  console.log(`Found ${existingWalls.length} existing wall objects to remove (safely filtered)`)
+  console.log(`Total scene children before removal: ${scene.children.length}`)
+  
+  existingWalls.forEach((wall, index) => {
+    console.log(`Removing wall object ${index + 1}: userData =`, wall.userData, 'type =', wall.constructor.name)
+    scene.remove(wall)
+    
+    // 메모리 정리
+    if (wall instanceof THREE.Mesh) {
+      if (wall.geometry) wall.geometry.dispose()
+      if (wall.material) {
+        if (Array.isArray(wall.material)) {
+          wall.material.forEach(mat => mat.dispose())
+        } else {
+          wall.material.dispose()
+        }
+      }
+    }
+  })
+  
+  // 제거 후 남은 객체 확인
+  const remainingObjects = scene.children.length
+  console.log(`Objects remaining in scene after wall removal: ${remainingObjects}`)
 
   // 커스텀 격자가 있는 경우 격자별로 벽 생성
   if (customGrid && Array.isArray(customGrid)) {

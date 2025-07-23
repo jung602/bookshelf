@@ -8,9 +8,42 @@ export function createFloor(
   customGrid?: boolean[][],  // 5x5 격자 패턴
   customTexture?: string     // 사용자 정의 텍스처 (data URL)
 ) {
-  // 기존 바닥 제거
-  const existingFloors = scene.children.filter(child => child.userData.isFloor)
-  existingFloors.forEach(floor => scene.remove(floor))
+  // 기존 바닥 제거 (모델 보호) - 더 안전한 방식
+  console.log('=== createFloor: Removing existing floors (with model protection) ===')
+  
+  // 모델들을 보호하기 위해 더 엄격한 필터링
+  const existingFloors = scene.children.filter(child => {
+    // userData.isFloor가 명시적으로 true인 객체만 제거
+    // 그리고 모델이 아닌 것만 (모델은 Group이고 다른 특성을 가짐)
+    const isFloor = child.userData.isFloor === true
+    const isNotModel = !child.userData.modelId && !child.userData.isCollider
+    
+    return isFloor && isNotModel
+  })
+  
+  console.log(`Found ${existingFloors.length} existing floor objects to remove (safely filtered)`)
+  console.log(`Total scene children before removal: ${scene.children.length}`)
+  
+  existingFloors.forEach((floor, index) => {
+    console.log(`Removing floor object ${index + 1}: userData =`, floor.userData, 'type =', floor.constructor.name)
+    scene.remove(floor)
+    
+    // 메모리 정리
+    if (floor instanceof THREE.Mesh) {
+      if (floor.geometry) floor.geometry.dispose()
+      if (floor.material) {
+        if (Array.isArray(floor.material)) {
+          floor.material.forEach(mat => mat.dispose())
+        } else {
+          floor.material.dispose()
+        }
+      }
+    }
+  })
+  
+  // 제거 후 남은 객체 확인
+  const remainingObjects = scene.children.length
+  console.log(`Objects remaining in scene after floor removal: ${remainingObjects}`)
 
   // 커스텀 격자가 있는 경우 격자별로 타일 생성
   if (customGrid && Array.isArray(customGrid)) {

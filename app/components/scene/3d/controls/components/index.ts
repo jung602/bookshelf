@@ -1,6 +1,0 @@
-export { BookCreator } from './BookCreator'
-export { GridComponent } from './GridComponent'
-export { ColorSection, type ColorSectionConfig } from './ColorSection'
-export { RangeSlider, type RangeSliderConfig } from './RangeSlider'
-export { PresetButtons, type PresetButtonConfig, type PresetButtonsConfig } from './PresetButtons'
-export { TileCanvas, type TileCanvasConfig } from './TileCanvas' 

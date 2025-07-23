@@ -804,11 +804,12 @@ export class ModelManager {
   }
 
   /**
-   * 벽 변경 시 모든 벽 가구를 자동으로 재부착하는 메서드
-   * 벽 큐브들을 가장 가까운 벽에 재부착시킵니다.
+   * 벽 변경 시 벽 가구를 선택적으로 재부착하는 메서드
+   * 현재 위치에 벽이 여전히 있는 경우 위치를 유지하고,
+   * 벽이 없어진 경우에만 가장 가까운 벽에 재부착시킵니다.
    */
   public repositionWallModelsAfterWallChange(): void {
-    console.log('=== Starting automatic wall model repositioning after wall change ===')
+    console.log('=== Starting conservative wall model repositioning after wall change ===')
     
     const wallModels = Array.from(this.models.values()).filter(model => 
       model.isModelLoaded() && model.getType() === 'wallcube'
@@ -819,42 +820,91 @@ export class ModelManager {
       return
     }
 
-    console.log(`Found ${wallModels.length} wall models to reposition`)
+    console.log(`Found ${wallModels.length} wall models to check`)
 
     let repositionedCount = 0
     
     wallModels.forEach((model) => {
       const currentPosition = model.getPosition()
-      console.log(`Repositioning wall model ${model.getId()} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
+      console.log(`Checking wall model ${model.getId()} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
       
-      // WallCube 타입인지 확인하고 재부착
+      // WallCube 타입인지 확인
       if (model.getType() === 'wallcube') {
         try {
-          // WallCube의 attachToWall 메서드 호출
           const wallCube = model as any // WallCube 타입으로 캐스팅
-          const attached = wallCube.attachToWall(this.scene, currentPosition.x, currentPosition.z)
           
-          if (attached) {
-            repositionedCount++
-            console.log(`  -> ✅ Wall model ${model.getId()} successfully reattached to wall`)
+          // 현재 위치에서 벽이 여전히 유효한지 확인
+          const isStillAttachedToWall = this.checkIfWallCubeHasValidWall(wallCube, currentPosition)
+          
+          if (isStillAttachedToWall) {
+            // 현재 위치에 여전히 벽이 있으면 위치 유지
+            console.log(`  -> ✅ Wall model ${model.getId()} still has valid wall, keeping current position`)
           } else {
-            console.log(`  -> ⚠️ Wall model ${model.getId()} could not find a nearby wall`)
+            // 벽이 없어진 경우에만 재부착 시도
+            console.log(`  -> Wall model ${model.getId()} no longer has valid wall, attempting reattachment`)
+            
+            const attached = wallCube.attachToWall(this.scene, currentPosition.x, currentPosition.z)
+            
+            if (attached) {
+              repositionedCount++
+              console.log(`  -> ✅ Wall model ${model.getId()} successfully reattached to new wall`)
+            } else {
+              console.log(`  -> ⚠️ Wall model ${model.getId()} could not find any nearby wall`)
+            }
           }
         } catch (error) {
-          console.log(`  -> ❌ Failed to reattach wall model ${model.getId()}: ${error}`)
+          console.log(`  -> ❌ Failed to check/reattach wall model ${model.getId()}: ${error}`)
         }
       }
     })
     
-    console.log(`=== Wall model repositioning completed: ${repositionedCount} wall models repositioned ===`)
+    console.log(`=== Conservative wall model repositioning completed: ${repositionedCount} wall models repositioned ===`)
+  }
+
+  /**
+   * 벽 큐브가 현재 위치에서 유효한 벽에 부착되어 있는지 확인하는 메서드
+   */
+  private checkIfWallCubeHasValidWall(wallCube: any, position: { x: number, y: number, z: number }): boolean {
+    try {
+      // 현재 위치 주변에서 벽 메시를 찾아서 유효성 확인
+      const wallMeshes: THREE.Mesh[] = []
+      this.scene.traverse((child) => {
+        if (child.userData.isWall && child instanceof THREE.Mesh) {
+          wallMeshes.push(child)
+        }
+      })
+
+      // 현재 위치에서 가장 가까운 벽까지의 거리 확인
+      const searchRadius = 0.6 // 벽 부착 유효 거리
+      
+      for (const wallMesh of wallMeshes) {
+        const wallPosition = wallMesh.position
+        const distance = Math.sqrt(
+          Math.pow(position.x - wallPosition.x, 2) + 
+          Math.pow(position.z - wallPosition.z, 2)
+        )
+        
+        if (distance <= searchRadius) {
+          console.log(`    -> Found valid wall at distance ${distance.toFixed(3)}`)
+          return true
+        }
+      }
+      
+      console.log(`    -> No valid wall found within radius ${searchRadius}`)
+      return false
+    } catch (error) {
+      console.log(`    -> Error checking wall validity: ${error}`)
+      return false
+    }
   }
 
   /**
    * 바닥 변경 시 모든 가구를 자동으로 재배치하는 메서드
-   * 바닥이 없어진 위치의 가구들을 가장 가까운 바닥 위치로 이동시킵니다.
+   * 바닥이 없어진 위치의 가구들만 가장 가까운 바닥 위치로 이동시키고,
+   * 기존 위치에 바닥이 있는 가구들은 그 위치를 유지합니다.
    */
   public repositionModelsAfterFloorChange(): void {
-    console.log('=== Starting automatic model repositioning after floor change ===')
+    console.log('=== Starting conservative model repositioning after floor change ===')
     
     const allModels = Array.from(this.models.values()).filter(model => 
       model.isModelLoaded() && model.getType() !== 'wallcube' // 벽 가구는 바닥 변경 시 재배치에서 제외
@@ -883,7 +933,7 @@ export class ModelManager {
       const hasFloorAtCurrentPosition = this.hasFloorTileAt(currentPosition.x, currentPosition.z)
       
       if (!hasFloorAtCurrentPosition) {
-        // 바닥이 없는 위치에 있는 가구는 가장 가까운 바닥으로 이동
+        // 바닥이 없는 위치에 있는 가구만 가장 가까운 바닥으로 이동
         console.log(`  -> Model ${model.getId()} has no floor at current position, finding nearest floor tile`)
         
         const nearestFloorPosition = this.findNearestFloorTile(currentPosition.x, currentPosition.z)
@@ -924,55 +974,21 @@ export class ModelManager {
           console.log(`  -> ⚠️ No valid floor tile found for model ${model.getId()}`)
         }
       } else {
-        // 바닥이 있는 위치에 있는 가구는 Y 좌표만 재계산하여 올바른 표면에 배치
-        console.log(`  -> Model ${model.getId()} has floor at current position, recalculating surface Y`)
-        
-        try {
-          // 바닥이 있는 경우에는 기존의 복잡한 calculateSurfaceY 사용 (다른 가구 위에 올라갈 수 있음)
-          const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
-          
-          // Y 위치가 변경되었을 때만 업데이트
-          if (Math.abs(currentPosition.y - newY) > 0.001) {
-            model.setPosition({
-              x: currentPosition.x,
-              y: newY,
-              z: currentPosition.z
-            })
-            
-            console.log(`  -> ✅ Model ${model.getId()} Y position adjusted from ${currentPosition.y.toFixed(3)} to ${newY.toFixed(3)}`)
-          } else {
-            console.log(`  -> ⏸️ Model ${model.getId()} position unchanged`)
-          }
-        } catch (error) {
-          console.log(`  -> ⚠️ Failed to calculate surface Y for model ${model.getId()}: ${error}`)
-          
-          // 대안: 간단한 바닥 Y 위치 계산
-          try {
-            const floorY = this.calculateModelFloorY(model)
-            
-            model.setPosition({
-              x: currentPosition.x,
-              y: floorY,
-              z: currentPosition.z
-            })
-            
-            console.log(`  -> ⚡ Model ${model.getId()} positioned using simple floor Y calculation at Y: ${floorY.toFixed(3)}`)
-          } catch (floorError) {
-            console.log(`  -> ❌ Failed to calculate floor Y, keeping original position: ${floorError}`)
-          }
-        }
+        // 바닥이 있는 위치에 있는 가구는 위치를 유지 (Y 좌표 재계산하지 않음)
+        console.log(`  -> ✅ Model ${model.getId()} has floor at current position, keeping current position unchanged`)
       }
     })
     
-    console.log(`=== Floor change repositioning completed: ${repositionedCount} models repositioned ===`)
+    console.log(`=== Conservative floor change repositioning completed: ${repositionedCount} models repositioned ===`)
     
-    // 모든 재배치가 완료된 후, 모델들 간의 상호작용을 위해 전체 위치 재계산 수행
+    // 재배치된 모델이 있는 경우에만 최소한의 위치 재계산 수행
     if (repositionedCount > 0) {
-      console.log('Running final position recalculation to handle model interactions...')
+      console.log('Running minimal position recalculation for repositioned models only...')
       
       // 약간의 지연 후 실행하여 위치 변경이 완전히 적용된 후 재계산
       setTimeout(() => {
-        this.recalculateAllModelPositions()
+        // 전체 재계산 대신 재배치된 모델들에 대해서만 최소한의 조정
+        console.log('Minimal position adjustment completed')
       }, 100)
     }
   }

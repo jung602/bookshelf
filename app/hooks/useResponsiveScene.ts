@@ -30,28 +30,45 @@ export function useResponsiveScene(
   const resizeTimeoutRef = useRef<number | undefined>(undefined)
   const prevFrustumSizeRef = useRef<number>(configRef.current.baseFrustumSize)
 
-  // 브라우저 크기에 따른 frustumSize 계산 (useModelScale.ts 로직 참고)
+  // 현재 브라우저가 가로 모드인지 확인
+  const isLandscape = viewportSize.width > viewportSize.height
+
+  // 실제 3D 씬이 차지하는 영역 크기 계산
+  const getSceneAreaSize = useCallback(() => {
+    const { width, height } = viewportSize
+    
+    if (isLandscape) {
+      // 가로 모드: 3D 씬이 왼쪽 50% 차지
+      return { width: width / 2, height }
+    } else {
+      // 세로 모드: 3D 씬이 위쪽 50% 차지
+      return { width, height: height / 2 }
+    }
+  }, [viewportSize, isLandscape])
+
+  // 브라우저 크기에 따른 frustumSize 계산 (실제 3D 씬 영역 기준)
   const calculateFrustumSize = useCallback((): number => {
     const { baseFrustumSize } = configRef.current
-    const { width } = viewportSize
+    const sceneArea = getSceneAreaSize()
+    const effectiveWidth = Math.min(sceneArea.width, sceneArea.height * 1.5) // 가로세로 비율 고려
 
-    // 화면 크기에 따라 frustumSize 조절 (작은 화면일수록 더 큰 frustumSize로 줌아웃)
-    if (width > 1440) {
-      return baseFrustumSize * 0.8;      // 데스크탑 큰 화면 - 더 좁은 시야 (줌인)
-    } else if (width > 1024) {
-      return baseFrustumSize * 0.9;      // 데스크탑 - 약간 좁은 시야
-    } else if (width > 768) {
-      return baseFrustumSize * 1.0;      // 태블릿 - 기본 시야
-    } else if (width > 480) {
-      return baseFrustumSize * 1.3;      // 큰 모바일 - 넓은 시야 (줌아웃)
+    // 실제 3D 씬 영역 크기에 따라 frustumSize 조절
+    if (effectiveWidth > 720) {
+      return baseFrustumSize * 0.8;      // 큰 3D 씬 영역 - 더 좁은 시야 (줌인)
+    } else if (effectiveWidth > 512) {
+      return baseFrustumSize * 0.9;      // 중간 3D 씬 영역 - 약간 좁은 시야
+    } else if (effectiveWidth > 384) {
+      return baseFrustumSize * 1.0;      // 기본 3D 씬 영역 - 기본 시야
+    } else if (effectiveWidth > 240) {
+      return baseFrustumSize * 1.3;      // 작은 3D 씬 영역 - 넓은 시야 (줌아웃)
     } else {
-      return baseFrustumSize * 1.5;      // 작은 모바일 - 더 넓은 시야 (더 줌아웃)
+      return baseFrustumSize * 1.5;      // 매우 작은 3D 씬 영역 - 더 넓은 시야 (더 줌아웃)
     }
-  }, [viewportSize, configRef])
+  }, [getSceneAreaSize, configRef])
 
   // 실제 사용 가능한 크기 가져오기
   const getActualSize = useCallback(() => {
-    // sceneManager의 container 크기를 우선 사용
+    // sceneManager의 container 크기를 우선 사용 (이미 레이아웃에 맞게 조정된 크기)
     if (sceneManager && (sceneManager as unknown as { container: HTMLElement }).container) {
       const container = (sceneManager as unknown as { container: HTMLElement }).container
       const rect = container.getBoundingClientRect()
@@ -60,9 +77,9 @@ export function useResponsiveScene(
       }
     }
     
-    // fallback to viewport size
-    return viewportSize
-  }, [sceneManager, viewportSize])
+    // fallback to calculated scene area size
+    return getSceneAreaSize()
+  }, [sceneManager, getSceneAreaSize])
 
   // 씬 크기 및 frustumSize 업데이트 함수
   const updateScene = useCallback((width?: number, height?: number) => {
@@ -83,14 +100,14 @@ export function useResponsiveScene(
       return
     }
 
-    console.log(`useResponsiveScene: Updating scene - Size: ${actualSize.width}x${actualSize.height}, FrustumSize: ${newFrustumSize.toFixed(2)}`)
+    console.log(`useResponsiveScene: Updating scene - Size: ${actualSize.width}x${actualSize.height}, FrustumSize: ${newFrustumSize.toFixed(2)}, Mode: ${isLandscape ? 'Landscape' : 'Portrait'}`)
     
     lastSizeRef.current = actualSize
     prevFrustumSizeRef.current = newFrustumSize
 
     // SceneManager 업데이트
     sceneManager.updateSizeAndFrustum(actualSize.width, actualSize.height, newFrustumSize)
-  }, [sceneManager, getActualSize, calculateFrustumSize])
+  }, [sceneManager, getActualSize, calculateFrustumSize, isLandscape])
 
   // 브라우저 리사이즈 이벤트 핸들러
   useEffect(() => {
@@ -175,6 +192,8 @@ export function useResponsiveScene(
 
   return {
     viewportSize,
+    sceneAreaSize: getSceneAreaSize(),
+    isLandscape,
     currentFrustumSize: calculateFrustumSize(),
     updateConfig,
     currentConfig: configRef.current,

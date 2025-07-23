@@ -43,6 +43,14 @@ export class ColorPalettes {
       colorCount: 4,
       shaderArrayName: 'lostGBPalette',
       description: 'Pokemon Lost Silver 크리피파스타의 어두운 분위기'
+    },
+    {
+      key: 'useUIPalette',
+      name: 'UI Palette',
+      emoji: '🎯',
+      colorCount: 18,
+      shaderArrayName: 'uiPalette',
+      description: '모던 UI 디자인을 위한 18색 팔레트'
     }
   ]
 
@@ -143,6 +151,30 @@ export class ColorPalettes {
     );
   `
 
+  // UI 팔레트 (18 colors) - 모던 UI 디자인용
+  static readonly UI_PALETTE = `
+    vec3 uiPalette[18] = vec3[](
+      vec3(1.000, 1.000, 1.000),  // #ffffff - White
+      vec3(0.000, 0.000, 0.000),  // #000000 - Black
+      vec3(0.420, 0.447, 0.502),  // #6b7280 - Gray
+      vec3(0.627, 0.322, 0.176),  // #a0522d - Brown
+      vec3(0.863, 0.149, 0.149),  // #dc2626 - Red
+      vec3(0.925, 0.286, 0.600),  // #ec4899 - Pink
+      vec3(0.918, 0.345, 0.047),  // #ea580c - Orange
+      vec3(0.918, 0.702, 0.031),  // #eab308 - Yellow
+      vec3(0.518, 0.800, 0.086),  // #84cc16 - Lime
+      vec3(0.086, 0.639, 0.290),  // #16a34a - Green
+      vec3(0.020, 0.588, 0.412),  // #059669 - Emerald
+      vec3(0.051, 0.580, 0.533),  // #0d9488 - Teal
+      vec3(0.008, 0.518, 0.780),  // #0284c7 - Sky
+      vec3(0.149, 0.388, 0.922),  // #2563eb - Blue
+      vec3(0.263, 0.220, 0.792),  // #4338ca - Indigo
+      vec3(0.486, 0.227, 0.929),  // #7c3aed - Purple
+      vec3(0.753, 0.149, 0.827),  // #c026d3 - Fuchsia
+      vec3(0.882, 0.114, 0.282)   // #e11d48 - Rose
+    );
+  `
+
   // 팔레트 함수 이름 생성 헬퍼
   static getFunctionName(shaderArrayName: string): string {
     // pokemonPalette -> findClosestPokemonColor
@@ -196,6 +228,7 @@ export class ColorPalettes {
       ${this.WINDOWS_PALETTE}
       ${this.SUPREMO_PALETTE}
       ${this.LOSTGB_PALETTE}
+      ${this.UI_PALETTE}
       ${this.generatePaletteFunctions()}
     `
   }

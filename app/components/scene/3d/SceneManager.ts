@@ -5,9 +5,20 @@ import { createLights } from './scenes/createLights'
 import { createFloor } from './scenes/createFloor'
 import { createWalls } from './scenes/createWalls'
 import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
-import { RoomParams } from './controls/RoomControls'
 import { ModelManager } from './managers/ModelManager'
 import { InteractionManager, GizmoState } from './managers/InteractionManager'
+
+// 타입 정의들
+export interface RoomParams {
+  wallHeight: number
+  customGrid: boolean[][]  // 5x5 격자 패턴
+}
+
+export interface StyleParams {
+  wallColor?: string
+  floorColor?: string
+  [key: string]: unknown
+}
 
 export interface ColorParams {
   wallColor: string
@@ -107,7 +118,7 @@ export class SceneManager {
     this.controls.enableRotate = true
     this.controls.rotateSpeed = 0.5
     this.controls.autoRotate = false
-    this.controls.target.set(0, 0, 0)
+    this.controls.target.set(0, 1.5, 0) // 벽 높이 3의 중간인 1.5로 설정
     this.controls.update()
 
     // ModelManager 초기화
@@ -138,7 +149,8 @@ export class SceneManager {
       ditherStrength: 0, 
       ditherScale: 1.0, 
       normalEdgeStrength: 0.5,
-      useMSPaintPalette: 0.3
+      useUIPalette: 0.3,
+      useMSPaintPalette: 0.2
     } as PixelationParams
     
     // 컨테이너 크기 가져오기
@@ -281,6 +293,8 @@ export class SceneManager {
     const maxSize = Math.max(5, this.roomParams.wallHeight) // 5x5 격자 고정
     const cameraDistance = maxSize * 2
     this.camera.position.set(cameraDistance, cameraDistance, cameraDistance)
+    // 벽의 중간 높이를 화면 중앙에 맞추기 위해 target 조정
+    this.controls.target.set(0, 1.5, 0)
     this.controls.update()
   }
 
@@ -529,6 +543,6 @@ export class SceneManager {
       0.1,                              // near
       1000                          // far
     )
-    this.camera.position.set(10,10,10)
+    this.camera.position.set(10, 12, 10)
   }
 } 

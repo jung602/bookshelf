@@ -1,9 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { SceneManager, RoomParams } from './3d/SceneManager'
-import { GizmoState } from './3d/managers/InteractionManager'
-import { ModelGizmo } from './3d/managers/ModelGizmo'
 import { useResponsiveScene } from '../../hooks/useResponsiveScene'
 
 // 전역 플래그로 SceneManager 중복 생성 방지
@@ -11,7 +9,7 @@ let globalSceneManagerInstance: SceneManager | null = null
 let isInitializingSceneManager = false
 
 // 깊은 비교 함수
-function deepEqual(obj1: any, obj2: any): boolean {
+function deepEqual(obj1: unknown, obj2: unknown): boolean {
   if (obj1 === obj2) return true;
   
   if (obj1 == null || obj2 == null) return false;
@@ -23,9 +21,9 @@ function deepEqual(obj1: any, obj2: any): boolean {
   
   if (keys1.length !== keys2.length) return false;
   
-  for (let key of keys1) {
+  for (const key of keys1) {
     if (!keys2.includes(key)) return false;
-    if (!deepEqual(obj1[key], obj2[key])) return false;
+    if (!deepEqual((obj1 as Record<string, unknown>)[key], (obj2 as Record<string, unknown>)[key])) return false;
   }
   
   return true;
@@ -40,8 +38,6 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneManagerRef = useRef<SceneManager | null>(null)
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null)
-  const [gizmoState, setGizmoState] = useState<GizmoState>({ selectedModelId: null, screenPosition: null })
-  const modelGizmoRef = useRef<ModelGizmo | null>(null)
   const previousRoomParamsRef = useRef<RoomParams>(roomParams)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
@@ -53,6 +49,15 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
 
   // SceneManager가 생성된 후에 useResponsiveScene 훅 사용
   const { forceUpdate } = useResponsiveScene(sceneManager, responsiveConfig)
+
+  // roomParams 업데이트 함수를 useCallback으로 메모화
+  const updateRoomParams = useCallback(() => {
+    if (sceneManagerRef.current && !deepEqual(previousRoomParamsRef.current, roomParams)) {
+      console.log('ThreeScene: Updating room with params:', roomParams);
+      sceneManagerRef.current.updateRoom(roomParams);
+      previousRoomParamsRef.current = roomParams;
+    }
+  }, [roomParams])
 
   // Container 크기 변화 감지 및 3D 씬 업데이트
   useEffect(() => {
@@ -104,8 +109,8 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
     try {
       const newSceneManager = new SceneManager(
         containerRef.current,
-        (newGizmoState: GizmoState) => {
-          setGizmoState(newGizmoState)
+        () => {
+          // Gizmo state callback - placeholder for future use
         }
       )
       
@@ -156,16 +161,12 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
       
       isInitializingSceneManager = false
     }
-  }, []) // 빈 의존성 배열로 한 번만 실행
+  }, [onSceneManagerReady, roomParams, forceUpdate]) // 빈 의존성 배열로 한 번만 실행
 
-  // roomParams가 변경될 때 씬 업데이트 (깊은 비교로 불필요한 업데이트 방지)
+  // roomParams가 변경될 때 씬 업데이트
   useEffect(() => {
-    if (sceneManagerRef.current && !deepEqual(previousRoomParamsRef.current, roomParams)) {
-      console.log('ThreeScene: Updating room with params:', roomParams);
-      sceneManagerRef.current.updateRoom(roomParams);
-      previousRoomParamsRef.current = roomParams;
-    }
-  }, [roomParams]);
+    updateRoomParams()
+  }, [updateRoomParams])
 
   return <div ref={containerRef} className="w-full h-full" />
 } 

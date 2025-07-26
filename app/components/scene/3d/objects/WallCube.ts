@@ -131,7 +131,7 @@ export class WallCube extends BaseModel {
     const cubeSize = 0.1
     
     let attachX = wallPos.x
-    let attachY = wallPos.y
+    const attachY = wallPos.y
     let attachZ = wallPos.z
 
     switch (this.wallDirection) {

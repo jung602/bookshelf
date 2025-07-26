@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface ModelInfo {
   id: string
@@ -26,7 +26,7 @@ export default function ModelLayerControl({
   const [visibleModels, setVisibleModels] = useState<Set<string>>(new Set())
 
   // 모델 목록 업데이트
-  const updateModels = () => {
+  const updateModels = useCallback(() => {
     const currentModels = getModels()
     setModels(currentModels)
     
@@ -38,13 +38,13 @@ export default function ModelLayerControl({
       }
     })
     setVisibleModels(newVisibleModels)
-  }
+  }, [getModels, visibleModels])
 
   useEffect(() => {
     updateModels()
     const interval = setInterval(updateModels, 1000) // 1초마다 업데이트
     return () => clearInterval(interval)
-  }, [getModels])
+  }, [getModels, updateModels])
 
   const handleModelSelect = (modelId: string) => {
     setSelectedModelId(modelId)

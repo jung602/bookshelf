@@ -831,7 +831,7 @@ export class ModelManager {
       // WallCube 타입인지 확인
       if (model.getType() === 'wallcube') {
         try {
-          const wallCube = model as any // WallCube 타입으로 캐스팅
+          const wallCube = model as WallCube // WallCube 타입으로 캐스팅
           
           // 현재 위치에서 벽이 여전히 유효한지 확인
           const isStillAttachedToWall = this.checkIfWallCubeHasValidWall(wallCube, currentPosition)
@@ -864,7 +864,7 @@ export class ModelManager {
   /**
    * 벽 큐브가 현재 위치에서 유효한 벽에 부착되어 있는지 확인하는 메서드
    */
-  private checkIfWallCubeHasValidWall(wallCube: any, position: { x: number, y: number, z: number }): boolean {
+  private checkIfWallCubeHasValidWall(wallCube: WallCube, position: { x: number, y: number, z: number }): boolean {
     try {
       // 현재 위치 주변에서 벽 메시를 찾아서 유효성 확인
       const wallMeshes: THREE.Mesh[] = []

@@ -11,7 +11,6 @@ import {
   getCornerRadius,
   GRADIENTS,
   TRANSITIONS,
-  ThemeColors,
   getResponsiveContainerRounding,
   getResponsiveGridRounding,
 } from "./cssUtils";
@@ -181,8 +180,8 @@ export default function FloorTileControl({
     // Initialize AudioContext
     try {
       audioContextRef.current = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-    } catch (e) {
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
+    } catch {
       console.log("Web Audio API not supported");
     }
 

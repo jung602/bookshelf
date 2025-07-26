@@ -298,6 +298,22 @@ export class SceneManager {
     this.controls.update()
   }
 
+  // 간단한 바닥만 업데이트 (카메라 위치 유지)
+  public updateFloorOnly(customGrid: boolean[][]) {
+    console.log('SceneManager: Updating floor and walls, preserving camera state')
+    
+    // roomParams 업데이트
+    this.roomParams.customGrid = customGrid
+    
+    // 바닥과 벽 모두 재생성 (카메라는 건드리지 않음)
+    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+    createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    
+    // 바닥과 벽 변경 후 모델들 재배치
+    this.modelManager.repositionModelsAfterFloorChange()
+    this.modelManager.repositionWallModelsAfterWallChange()
+  }
+
   private updateColors(params: ColorParams) {
     // 색상 파라미터 업데이트
     Object.assign(this.colorParams, params)

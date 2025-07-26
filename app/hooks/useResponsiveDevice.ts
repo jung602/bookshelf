@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 // 반응형 breakpoints 정의
 export const BREAKPOINTS = {
-  mobile: 640,   // iPhone, 갤럭시 등 모바일 기기
+  mobile: 450,   // iPhone, 갤럭시 등 모바일 기기
   tablet: 1024,  // 태블릿 (세로 768px 포함)
   desktop: 1280  // 데스크탑
 } as const

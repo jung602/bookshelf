@@ -5,7 +5,7 @@ export function createWalls(
   width: number = 1, 
   height: number = 1, 
   wallHeight: number = 1,
-  color: string = '#cccccc',
+  color: string = '#f3f3f3',
   customGrid?: boolean[][]  // 5x5 격자 패턴
 ) {
   // 기존 벽 제거 (모델 보호) - 더 안전한 방식

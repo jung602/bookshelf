@@ -9,10 +9,12 @@ import {
   getThemeColors,
   getGridArea,
   getCornerRadius,
+  getCornerRadiusStyle,
   GRADIENTS,
   TRANSITIONS,
   getResponsiveContainerRounding,
   getResponsiveGridRounding,
+  getCenterBlockRounding,
 } from "./cssUtils";
 import { useResponsiveDevice } from "../../../../hooks/useResponsiveDevice";
 
@@ -328,7 +330,7 @@ export default function FloorTileControl({
   const renderBlock = (row: number, col: number) => {
     const isActive = getBlockState(row, col);
     const gridArea = getGridArea(row, col);
-    const cornerRadius = getCornerRadius(row, col);
+    const cornerRadiusStyle = getCornerRadiusStyle(row, col, isMobile);
 
     return (
       <div
@@ -342,30 +344,34 @@ export default function FloorTileControl({
           <div className="absolute contents left-[-0.2px] top-[0.4px]">
             {/* Colorful gradient background layer */}
             <div
-              className={`absolute inset-0 w-full h-full ${cornerRadius}`}
+              className="absolute inset-0 w-full h-full"
               style={{
                 backgroundImage: GRADIENTS.colorfulRadial,
+                ...cornerRadiusStyle,
               }}
             />
             {/* Blue gradient layer */}
             <div
-              className={`absolute inset-0 w-full h-full opacity-60 ${cornerRadius}`}
+              className="absolute inset-0 w-full h-full opacity-60"
               style={{
                 backgroundImage: GRADIENTS.radialBlue,
+                ...cornerRadiusStyle,
               }}
             />
             <div
-              className={`absolute backdrop-blur-[20px] backdrop-filter ${cornerRadius} size-full translate-x-[-50%] translate-y-[-50%]`}
+              className="absolute backdrop-blur-[20px] backdrop-filter size-full translate-x-[-50%] translate-y-[-50%]"
               style={{
                 backgroundColor: themeColors.activeBackdrop,
                 top: "calc(50% + 0.4px)",
                 left: "calc(50% - 0.2px)",
+                ...cornerRadiusStyle,
               }}
             >
               <div
-                className={`absolute inset-0 pointer-events-none ${cornerRadius}`}
+                className="absolute inset-0 pointer-events-none"
                 style={{
                   boxShadow: `0px 1px 2px 1px inset ${themeColors.activeShadow}`,
+                  ...cornerRadiusStyle,
                 }}
               />
             </div>
@@ -374,18 +380,20 @@ export default function FloorTileControl({
           // Inactive state - Basic design
           <div className="absolute contents left-[-0.2px] top-[0.4px]">
             <div
-              className={`absolute backdrop-blur-[20px] backdrop-filter ${cornerRadius} size-full translate-x-[-50%] translate-y-[-50%]`}
+              className="absolute backdrop-blur-[20px] backdrop-filter size-full translate-x-[-50%] translate-y-[-50%]"
               style={{
                 backgroundColor: themeColors.inactiveBlock,
                 boxShadow: `0px 1px 2px 0px ${themeColors.inactiveShadow}`,
                 top: "calc(50% + 0.4px)",
                 left: "calc(50% - 0.2px)",
+                ...cornerRadiusStyle,
               }}
             >
               <div
-                className={`absolute inset-0 w-full h-full pointer-events-none ${cornerRadius}`}
+                className="absolute inset-0 w-full h-full pointer-events-none"
                 style={{
                   boxShadow: `0px 1px 2px 0px inset ${themeColors.inactiveInnerShadow}`,
+                  ...cornerRadiusStyle,
                 }}
               />
             </div>
@@ -414,7 +422,7 @@ export default function FloorTileControl({
                 return (
                   <div
                     key={`${row}-${col}`}
-                    className={`[grid-area:3_/_3] rounded-[8px] shrink-0 ${TRANSITIONS.colors}`}
+                    className={`[grid-area:3_/_3] ${getCenterBlockRounding()} shrink-0 ${TRANSITIONS.colors}`}
                     style={{
                       backgroundColor: themeColors.centerBlock,
                     }}

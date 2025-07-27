@@ -12,6 +12,41 @@ export interface ThemeColors {
   inactiveInnerShadow: string;
 }
 
+// 기본 반지름 값 (반응형)
+const getBaseRadius = (isMobile: boolean): number => {
+  return isMobile ? 8 : 12; // 모바일: 8px, 데스크톱: 12px
+};
+
+// Rounded 값들 반응형 함수
+export const getRoundedValues = (isMobile: boolean) => {
+  const BASE_RADIUS = getBaseRadius(isMobile);
+  
+  return {
+    // 컨테이너용
+    container: {
+      desktop: "rounded-[30px]",
+      mobile: "rounded-0"
+    },
+    // 그리드 컨테이너용
+    gridContainer: {
+      desktop: "rounded-[30px]", 
+      mobile: "rounded-0"
+    },
+    // 센터 블록용
+    centerBlock: "rounded-[8px]",
+    // 일반 블록용 (기본) - BASE_RADIUS 사용
+    defaultBlock: `rounded-[${BASE_RADIUS}px]`,
+    // 모서리 블록용 (세부 값들)
+    corner: {
+      radius: `${BASE_RADIUS + 8}px`, // 계산 가능!
+      edge: `${BASE_RADIUS}px` // 템플릿 리터럴 사용
+    }
+  } as const;
+};
+
+// 호환성을 위한 기본 ROUNDED_VALUES (데스크톱 기준)
+export const ROUNDED_VALUES = getRoundedValues(false);
+
 // 테마별 색상 반환 함수
 export const getThemeColors = (isDarkMode: boolean): ThemeColors => {
   if (isDarkMode) {
@@ -43,17 +78,87 @@ export const getThemeColors = (isDarkMode: boolean): ThemeColors => {
 export const getGridArea = (row: number, col: number): string => 
   `[grid-area:${row}_/_${col}]`;
 
-// 모서리 반지름 반환 함수 (5x5 그리드 기준)
+// 모서리 반지름 반환 함수 (5x5 그리드 기준) - 인라인 스타일 버전
 export const getCornerRadius = (row: number, col: number): string => {
-  if (row === 1 && col === 1)
-    return "rounded-bl-[12px] rounded-br-[12px] rounded-tl-[22px] rounded-tr-[12px]";
-  if (row === 1 && col === 5)
-    return "rounded-bl-[12px] rounded-br-[12px] rounded-tl-[12px] rounded-tr-[22px]";
-  if (row === 5 && col === 1)
-    return "rounded-bl-[22px] rounded-br-[12px] rounded-tl-[12px] rounded-tr-[12px]";
-  if (row === 5 && col === 5)
-    return "rounded-bl-[12px] rounded-br-[22px] rounded-tl-[12px] rounded-tr-[12px]";
+  // 기본 클래스만 반환 (인라인 스타일과 함께 사용)
   return "rounded-xl";
+};
+
+// Tailwind rounded 클래스를 CSS borderRadius 값으로 변환
+export const convertTailwindRoundedToCSS = (tailwindClass: string): string => {
+  switch (tailwindClass) {
+    case "rounded-0":
+      return "0";
+    case "rounded-sm":
+      return "0.125rem"; // 2px
+    case "rounded":
+      return "0.25rem"; // 4px
+    case "rounded-md":
+      return "0.375rem"; // 6px
+    case "rounded-lg":
+      return "0.5rem"; // 8px
+    case "rounded-xl":
+      return "0.75rem"; // 12px
+    case "rounded-2xl":
+      return "1rem"; // 16px
+    case "rounded-3xl":
+      return "1.5rem"; // 24px
+    case "rounded-full":
+      return "9999px";
+    default:
+      // 커스텀 값 처리 (예: rounded-[8px])
+      const match = tailwindClass.match(/rounded-\[(.+)\]/);
+      return match ? match[1] : "0.75rem"; // 기본값
+  }
+};
+
+// 모서리 반지름 인라인 스타일 반환 함수 (반응형)
+export const getCornerRadiusStyle = (row: number, col: number, isMobile: boolean = false): React.CSSProperties => {
+  const roundedValues = getRoundedValues(isMobile);
+  const { corner } = roundedValues;
+  
+  if (row === 1 && col === 1) {
+    return {
+      borderBottomLeftRadius: corner.edge,
+      borderBottomRightRadius: corner.edge,
+      borderTopLeftRadius: corner.radius,
+      borderTopRightRadius: corner.edge,
+    };
+  }
+  if (row === 1 && col === 5) {
+    return {
+      borderBottomLeftRadius: corner.edge,
+      borderBottomRightRadius: corner.edge,
+      borderTopLeftRadius: corner.edge,
+      borderTopRightRadius: corner.radius,
+    };
+  }
+  if (row === 5 && col === 1) {
+    return {
+      borderBottomLeftRadius: corner.radius,
+      borderBottomRightRadius: corner.edge,
+      borderTopLeftRadius: corner.edge,
+      borderTopRightRadius: corner.edge,
+    };
+  }
+  if (row === 5 && col === 5) {
+    return {
+      borderBottomLeftRadius: corner.edge,
+      borderBottomRightRadius: corner.radius,
+      borderTopLeftRadius: corner.edge,
+      borderTopRightRadius: corner.edge,
+    };
+  }
+  
+  // 기본값 - roundedValues.defaultBlock을 CSS 값으로 변환
+  return {
+    borderRadius: convertTailwindRoundedToCSS(roundedValues.defaultBlock)
+  };
+};
+
+// 센터 블록 rounded 값 반환 함수
+export const getCenterBlockRounding = (): string => {
+  return ROUNDED_VALUES.centerBlock;
 };
 
 // 커스터마이즈 가능한 모서리 반지름 함수
@@ -62,9 +167,9 @@ export const getCustomCornerRadius = (
   col: number, 
   maxRow: number, 
   maxCol: number,
-  defaultRadius: string = "rounded-xl",
-  cornerRadius: string = "22px",
-  edgeRadius: string = "12px"
+  defaultRadius: string = ROUNDED_VALUES.defaultBlock,
+  cornerRadius: string = ROUNDED_VALUES.corner.radius,
+  edgeRadius: string = ROUNDED_VALUES.corner.edge
 ): string => {
   // 좌상단 모서리
   if (row === 1 && col === 1)
@@ -135,10 +240,10 @@ export const getShadowStyles = (isDarkMode: boolean) => {
 
 // 반응형 컨테이너 라운드 스타일 반환 함수
 export const getResponsiveContainerRounding = (isMobile: boolean): string => {
-  return isMobile ? "rounded-0" : "rounded-[30px]";
+  return isMobile ? ROUNDED_VALUES.container.mobile : ROUNDED_VALUES.container.desktop;
 };
 
 // 반응형 그리드 컨테이너 라운드 스타일 반환 함수  
 export const getResponsiveGridRounding = (isMobile: boolean): string => {
-  return isMobile ? "rounded-0" : "rounded-[30px]";
+  return isMobile ? ROUNDED_VALUES.gridContainer.mobile : ROUNDED_VALUES.gridContainer.desktop;
 }; 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import ThreeScene from './ThreeScene'
 import ControlsContainer from './3d/controls/ControlsContainer'
+import { TopBar } from './3d/controls'
 import { SceneManager, RoomParams } from './3d/SceneManager'
 import { useResponsiveDevice } from '../../hooks/useResponsiveDevice'
 
@@ -27,6 +28,9 @@ const Scene = () => {
   // 모바일 접기/펴기 상태
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
 
+  // 다크모드 상태
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
   // SceneManager가 준비되었을 때 호출
   const handleSceneManagerReady = (newSceneManager: SceneManager) => {
     setSceneManager(newSceneManager)
@@ -42,6 +46,25 @@ const Scene = () => {
     setIsCollapsed(!isCollapsed)
   }
 
+  // 시스템 다크모드 감지
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    
+    // 초기 다크모드 상태 설정
+    setIsDarkMode(mediaQuery.matches)
+    
+    // 다크모드 변경 리스너
+    const handleDarkModeChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches)
+    }
+    
+    mediaQuery.addEventListener('change', handleDarkModeChange)
+    
+    return () => {
+      mediaQuery.removeEventListener('change', handleDarkModeChange)
+    }
+  }, [])
+
   // 모바일에서 동적 높이 계산
   useEffect(() => {
     const calculateHeights = () => {
@@ -50,7 +73,7 @@ const Scene = () => {
         const browserHeight = window.innerHeight
         
         // 접혔을 때는 42px만, 펼쳤을 때는 브라우저 너비 + 42px
-        const controlsUIHeight = isCollapsed ? 42 : browserWidth + 42
+        const controlsUIHeight = isCollapsed ? 36 : browserWidth + 36
         
         // ThreeScene 높이 = 전체 높이 - 컨트롤 UI 높이
         const threeSceneCalcHeight = browserHeight - controlsUIHeight
@@ -93,37 +116,18 @@ const Scene = () => {
         {/* 컨트롤 UI - 모바일에서는 동적 높이, 나머지에서는 하단 고정 */}
         <div 
           className={isMobile 
-            ? "w-full flex flex-col bg-[#f3f3f3]" 
-            : "fixed bottom-[80px] left-1/2 transform -translate-x-1/2 z-50"
+            ? "w-full flex flex-col" 
+            : "fixed bottom-[12px] left-1/2 transform -translate-x-1/2 z-50 min-w-[402px]"
           }
           style={isMobile ? { height: `${controlsHeight}px` } : {}}
         >
           {/* 상단 바 - 모바일에서 접기/펴기 버튼 포함 */}
-          <div className="w-full h-[42px] bg-[#D4D4D8] rounded-t-[30px] relative flex items-center justify-center">
-            {isMobile && (
-              <button
-                onClick={toggleCollapse}
-                className="flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
-                aria-label={isCollapsed ? "펼치기" : "접기"}
-              >
-                <svg 
-                  width="16" 
-                  height="16" 
-                  viewBox="0 0 16 16" 
-                  fill="none" 
-                  className={`transform transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`}
-                >
-                  <path 
-                    d="M4 6L8 10L12 6" 
-                    stroke="#6B7280" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
+          <TopBar 
+            isMobile={isMobile}
+            isCollapsed={isCollapsed}
+            onToggleCollapse={toggleCollapse}
+            isDarkMode={isDarkMode}
+          />
           
           {/* 컨트롤 컨테이너 - 접혔을 때는 숨김 */}
           {(!isMobile || !isCollapsed) && (

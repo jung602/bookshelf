@@ -81,7 +81,8 @@ export class SceneManager {
     // 렌더러 설정
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: false,
-      powerPreference: "high-performance"
+      powerPreference: "high-performance",
+      alpha: true // 투명한 배경을 위해 알파 채널 활성화
     })
     
     // 컨테이너 크기 가져오기
@@ -99,12 +100,12 @@ export class SceneManager {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    this.renderer.setClearColor(0xFAFAFA)
+    this.renderer.setClearColor(0x000000, 0) // 투명한 배경 (검은색, 알파 0)
     this.container.appendChild(this.renderer.domElement)
 
     // 씬 설정
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0xF5F5F5)
+    this.scene.background = null // 배경 제거하여 투명하게 설정
 
     // 카메라 초기 설정
     this.updateCamera(width, height, 10)

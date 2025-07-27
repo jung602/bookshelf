@@ -405,13 +405,13 @@ export default function FloorTileControl({
 
   return (
     <div
-      className={`relative ${getResponsiveContainerRounding(isMobile)} size-full ${TRANSITIONS.colors}`}
+      className={`relative ${getResponsiveContainerRounding(isMobile)} size-full ${TRANSITIONS.fast}`}
       style={{ backgroundColor: themeColors.outerContainer }}
       ref={gridRef}
     >
       <div className="relative size-full">
         <div
-          className={`box-border gap-[2px] grid grid-cols-[repeat(5,_minmax(0px,_1fr))] grid-rows-[repeat(5,_minmax(0px,_1fr))] overflow-clip p-[8px] relative size-full ${getResponsiveGridRounding(isMobile)} ${TRANSITIONS.colors}`}
+          className={`box-border gap-[2px] grid grid-cols-[repeat(5,_minmax(0px,_1fr))] grid-rows-[repeat(5,_minmax(0px,_1fr))] overflow-clip p-[8px] relative size-full ${getResponsiveGridRounding(isMobile)} ${TRANSITIONS.fast}`}
           style={{ backgroundColor: themeColors.gridContainer }}
         >
           {Array.from({ length: 5 }, (_, rowIndex) =>
@@ -422,7 +422,7 @@ export default function FloorTileControl({
                 return (
                   <div
                     key={`${row}-${col}`}
-                    className={`[grid-area:3_/_3] ${getCenterBlockRounding()} shrink-0 ${TRANSITIONS.colors}`}
+                    className={`[grid-area:3_/_3] ${getCenterBlockRounding()} shrink-0 ${TRANSITIONS.fast}`}
                     style={{
                       backgroundColor: themeColors.centerBlock,
                     }}

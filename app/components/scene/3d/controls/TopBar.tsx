@@ -22,7 +22,7 @@ const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, isDarkMode = false }:
   
   return (
     <div 
-      className={`w-full h-[42px] ${topRoundingClass} relative flex items-center justify-center`}
+      className={`w-full h-[42px] ${topRoundingClass} relative flex items-center justify-center ${TRANSITIONS.fast}`}
       style={{ 
         backgroundColor: isDarkMode ? themeColors.gridContainer : themeColors.outerContainer,
       }}

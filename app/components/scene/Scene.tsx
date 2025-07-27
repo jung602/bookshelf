@@ -28,8 +28,15 @@ const Scene = () => {
   // 모바일 접기/펴기 상태
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
 
-  // 다크모드 상태
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  // 다크모드 상태 - 초기값을 시스템 다크모드로 설정
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // SSR 환경에서는 기본값 false 반환
+    if (typeof window === 'undefined') {
+      return false
+    }
+    // 클라이언트에서는 시스템 다크모드 상태를 즉시 확인
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
 
   // SceneManager가 준비되었을 때 호출
   const handleSceneManagerReady = (newSceneManager: SceneManager) => {
@@ -64,6 +71,15 @@ const Scene = () => {
       mediaQuery.removeEventListener('change', handleDarkModeChange)
     }
   }, [])
+
+  // isDarkMode 상태에 따라 HTML 요소에 dark 클래스 토글
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [isDarkMode])
 
   // 모바일에서 동적 높이 계산
   useEffect(() => {
@@ -135,6 +151,7 @@ const Scene = () => {
               sceneManager={sceneManager}
               roomParams={roomParams}
               onRoomParamsChange={handleRoomParamsChange}
+              isDarkMode={isDarkMode}
             />
           )}
         </div>

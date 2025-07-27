@@ -50,6 +50,7 @@ export class SceneManager {
   private gizmoState: GizmoState = { selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
   private customFloorTexture?: string
+  private themeObserver?: MutationObserver
 
   // 크기 애니메이션 관련 변수들
   private currentSize: { width: number; height: number } = { width: 0, height: 0 }
@@ -68,6 +69,7 @@ export class SceneManager {
     this.setupControls()
     this.setupInteraction()
     this.setupCustomTextureListener()
+    this.setupThemeObserver()
     this.animate()
   }
 
@@ -82,7 +84,7 @@ export class SceneManager {
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: false,
       powerPreference: "high-performance",
-      alpha: true // 투명한 배경을 위해 알파 채널 활성화
+      alpha: false // 배경색을 사용하므로 alpha를 false로 변경
     })
     
     // 컨테이너 크기 가져오기
@@ -100,12 +102,16 @@ export class SceneManager {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    this.renderer.setClearColor(0x000000, 0) // 투명한 배경 (검은색, 알파 0)
+    
+    // CSS 변수에서 배경색 가져와서 설정
+    this.updateBackgroundColor()
+    
     this.container.appendChild(this.renderer.domElement)
 
     // 씬 설정
     this.scene = new THREE.Scene()
-    this.scene.background = null // 배경 제거하여 투명하게 설정
+    // 씬 배경색도 CSS 변수에서 가져와서 설정
+    this.updateSceneBackground()
 
     // 카메라 초기 설정
     this.updateCamera(width, height, 10)
@@ -241,6 +247,113 @@ export class SceneManager {
       
       console.log('Colors reset to default:', { wallColor, floorColor })
     })
+  }
+
+  private setupThemeObserver() {
+    // 다크/라이트 모드 변경 감지를 위한 MutationObserver 설정
+    this.themeObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          // 클래스 변경이 감지되면 배경색 업데이트
+          this.updateBackgroundColor()
+          this.updateSceneBackground()
+          console.log('Theme change detected, background color updated')
+        }
+      })
+    })
+
+    // html 요소의 클래스 변경 감지
+    const htmlElement = document.documentElement
+    this.themeObserver.observe(htmlElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    })
+
+    // prefers-color-scheme 미디어 쿼리 변경 감지
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    darkModeMediaQuery.addEventListener('change', () => {
+      // 시스템 테마 변경 시에도 배경색 업데이트
+      setTimeout(() => {
+        this.updateBackgroundColor()
+        this.updateSceneBackground()
+        console.log('System theme change detected, background color updated')
+      }, 100) // 약간의 지연을 두어 CSS 변수가 업데이트된 후 실행
+    })
+  }
+
+  private updateBackgroundColor() {
+    // CSS 변수에서 배경색 가져오기
+    const backgroundColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--background')
+      .trim()
+    
+    if (backgroundColor) {
+      // CSS 변수 값을 THREE.Color로 변환
+      const color = new THREE.Color()
+      
+      // oklch 형식인지 확인하고 적절히 처리
+      if (backgroundColor.startsWith('oklch(')) {
+        // oklch 형식을 대략적으로 RGB로 변환 (간단한 변환)
+        const oklchMatch = backgroundColor.match(/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/)
+        if (oklchMatch) {
+          const lightness = parseFloat(oklchMatch[1])
+          // 간단한 근사치: lightness 값을 RGB로 변환
+          const rgbValue = Math.round(lightness * 255)
+          color.setRGB(rgbValue / 255, rgbValue / 255, rgbValue / 255)
+        } else {
+          // fallback: 기본값 사용
+          color.setHex(0xf3f3f3) // 라이트 모드 기본값
+        }
+      } else {
+        // 일반적인 색상 형식 (hex, rgb 등)
+        try {
+          color.setStyle(backgroundColor)
+        } catch (error) {
+          console.warn('Failed to parse background color:', backgroundColor)
+          color.setHex(0xf3f3f3) // fallback
+        }
+      }
+      
+      // 렌더러 배경색 설정
+      this.renderer.setClearColor(color)
+      
+      console.log('Background color updated to:', backgroundColor, 'THREE.Color:', color)
+    }
+  }
+
+  private updateSceneBackground() {
+    // CSS 변수에서 배경색 가져오기
+    const backgroundColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--background')
+      .trim()
+    
+    if (backgroundColor && this.scene) {
+      const color = new THREE.Color()
+      
+      // oklch 형식인지 확인하고 적절히 처리
+      if (backgroundColor.startsWith('oklch(')) {
+        const oklchMatch = backgroundColor.match(/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/)
+        if (oklchMatch) {
+          const lightness = parseFloat(oklchMatch[1])
+          const rgbValue = Math.round(lightness * 255)
+          color.setRGB(rgbValue / 255, rgbValue / 255, rgbValue / 255)
+        } else {
+          color.setHex(0xf3f3f3)
+        }
+      } else {
+        try {
+          color.setStyle(backgroundColor)
+        } catch (error) {
+          console.warn('Failed to parse scene background color:', backgroundColor)
+          color.setHex(0xf3f3f3)
+        }
+      }
+      
+      // 씬 배경색 설정
+      this.scene.background = color
+      
+      console.log('Scene background color updated to:', backgroundColor)
+    }
   }
 
   public applyCustomFloorTexture(textureDataURL: string) {
@@ -411,6 +524,11 @@ export class SceneManager {
     
     // ModelManager 정리
     this.modelManager.dispose()
+    
+    // ThemeObserver 정리
+    if (this.themeObserver) {
+      this.themeObserver.disconnect()
+    }
     
     // 씬의 모든 오브젝트 정리
     this.scene.traverse((object) => {

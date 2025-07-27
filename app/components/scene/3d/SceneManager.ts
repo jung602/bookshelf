@@ -45,7 +45,7 @@ export class SceneManager {
       return grid
     })()
   }
-  private colorParams: ColorParams = { wallColor: '#DCDCDC', floorColor: '#ffffff' }
+  private colorParams: ColorParams = { wallColor: '#f3f3f3', floorColor: '#ffffff' }
   private isInitialized: boolean = false
   private gizmoState: GizmoState = { selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
@@ -254,10 +254,11 @@ export class SceneManager {
     this.themeObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // 클래스 변경이 감지되면 배경색 업데이트
+          // 클래스 변경이 감지되면 배경색과 조명 업데이트
           this.updateBackgroundColor()
           this.updateSceneBackground()
-          console.log('Theme change detected, background color updated')
+          this.updateLights()
+          console.log('Theme change detected, background color and lights updated')
         }
       })
     })
@@ -272,11 +273,12 @@ export class SceneManager {
     // prefers-color-scheme 미디어 쿼리 변경 감지
     const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     darkModeMediaQuery.addEventListener('change', () => {
-      // 시스템 테마 변경 시에도 배경색 업데이트
+      // 시스템 테마 변경 시에도 배경색과 조명 업데이트
       setTimeout(() => {
         this.updateBackgroundColor()
         this.updateSceneBackground()
-        console.log('System theme change detected, background color updated')
+        this.updateLights()
+        console.log('System theme change detected, background color and lights updated')
       }, 100) // 약간의 지연을 두어 CSS 변수가 업데이트된 후 실행
     })
   }
@@ -353,6 +355,14 @@ export class SceneManager {
       this.scene.background = color
       
       console.log('Scene background color updated to:', backgroundColor)
+    }
+  }
+
+  private updateLights() {
+    // 조명을 테마에 맞게 업데이트
+    if (this.scene) {
+      createLights(this.scene)
+      console.log('Lights updated for theme change')
     }
   }
 

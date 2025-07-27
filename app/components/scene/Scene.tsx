@@ -41,8 +41,16 @@ const Scene = () => {
         const browserWidth = window.innerWidth
         const browserHeight = window.innerHeight
         
-        // 컨트롤 UI 높이 = 브라우저 너비 + 42px (상단 둥근 부분)
-        const controlsUIHeight = browserWidth + 42
+        const halfBrowserHeight = browserHeight / 2
+        
+        let controlsUIHeight
+        if (halfBrowserHeight > browserWidth) {
+          // 케이스 1: 실제브라우저 높이의 2분의1 > 브라우저 너비 - 현재 방식 유지
+          controlsUIHeight = browserWidth + 42
+        } else {
+          // 케이스 2: 실제브라우저 높이의 2분의1 < 브라우저 너비 - 높이의 절반 + 42px
+          controlsUIHeight = halfBrowserHeight + 42
+        }
         
         // ThreeScene 높이 = 전체 높이 - 컨트롤 UI 높이
         const threeSceneCalcHeight = browserHeight - controlsUIHeight
@@ -91,11 +99,29 @@ const Scene = () => {
           style={isMobile ? { height: `${controlsHeight}px` } : {}}
         >
           <div className="w-full h-[42px] bg-[#D4D4D8] rounded-t-[30px]"></div>
-          <ControlsContainer
-            sceneManager={sceneManager}
-            roomParams={roomParams}
-            onRoomParamsChange={handleRoomParamsChange}
-          />
+          {isMobile ? (
+            <div className="w-full flex-1 flex justify-center items-center bg-[#f3f3f3]">
+              <div 
+                className="bg-white"
+                style={{ 
+                  width: `${controlsHeight - 42}px`, 
+                  height: `${controlsHeight - 42}px` 
+                }}
+              >
+                <ControlsContainer
+                  sceneManager={sceneManager}
+                  roomParams={roomParams}
+                  onRoomParamsChange={handleRoomParamsChange}
+                />
+              </div>
+            </div>
+          ) : (
+            <ControlsContainer
+              sceneManager={sceneManager}
+              roomParams={roomParams}
+              onRoomParamsChange={handleRoomParamsChange}
+            />
+          )}
         </div>
       </div>
     </div>

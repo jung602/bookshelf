@@ -23,6 +23,9 @@ const Scene = () => {
   // 동적 높이 상태
   const [controlsHeight, setControlsHeight] = useState<number>(0)
   const [threeSceneHeight, setThreeSceneHeight] = useState<number>(0)
+  
+  // 모바일 접기/펴기 상태
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
 
   // SceneManager가 준비되었을 때 호출
   const handleSceneManagerReady = (newSceneManager: SceneManager) => {
@@ -34,6 +37,11 @@ const Scene = () => {
     setRoomParams(newParams)
   }
 
+  // 접기/펴기 토글 핸들러
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed)
+  }
+
   // 모바일에서 동적 높이 계산
   useEffect(() => {
     const calculateHeights = () => {
@@ -41,16 +49,8 @@ const Scene = () => {
         const browserWidth = window.innerWidth
         const browserHeight = window.innerHeight
         
-        const halfBrowserHeight = browserHeight / 2
-        
-        let controlsUIHeight
-        if (halfBrowserHeight > browserWidth) {
-          // 케이스 1: 실제브라우저 높이의 2분의1 > 브라우저 너비 - 현재 방식 유지
-          controlsUIHeight = browserWidth + 42
-        } else {
-          // 케이스 2: 실제브라우저 높이의 2분의1 < 브라우저 너비 - 높이의 절반 + 42px
-          controlsUIHeight = halfBrowserHeight + 42
-        }
+        // 접혔을 때는 42px만, 펼쳤을 때는 브라우저 너비 + 42px
+        const controlsUIHeight = isCollapsed ? 42 : browserWidth + 42
         
         // ThreeScene 높이 = 전체 높이 - 컨트롤 UI 높이
         const threeSceneCalcHeight = browserHeight - controlsUIHeight
@@ -74,7 +74,7 @@ const Scene = () => {
     return () => {
       window.removeEventListener('resize', handleResize)
     }
-  }, [isMobile])
+  }, [isMobile, isCollapsed]) // isCollapsed 의존성 추가
 
   return (
     <div className="w-full h-full relative bg-gradient-to-br from-gray-50 to-gray-100">
@@ -98,24 +98,35 @@ const Scene = () => {
           }
           style={isMobile ? { height: `${controlsHeight}px` } : {}}
         >
-          <div className="w-full h-[42px] bg-[#D4D4D8] rounded-t-[30px]"></div>
-          {isMobile ? (
-            <div className="w-full flex-1 flex justify-center items-center bg-[#f3f3f3]">
-              <div 
-                className="bg-white"
-                style={{ 
-                  width: `${controlsHeight - 42}px`, 
-                  height: `${controlsHeight - 42}px` 
-                }}
+          {/* 상단 바 - 모바일에서 접기/펴기 버튼 포함 */}
+          <div className="w-full h-[42px] bg-[#D4D4D8] rounded-t-[30px] relative flex items-center justify-center">
+            {isMobile && (
+              <button
+                onClick={toggleCollapse}
+                className="flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
+                aria-label={isCollapsed ? "펼치기" : "접기"}
               >
-                <ControlsContainer
-                  sceneManager={sceneManager}
-                  roomParams={roomParams}
-                  onRoomParamsChange={handleRoomParamsChange}
-                />
-              </div>
-            </div>
-          ) : (
+                <svg 
+                  width="16" 
+                  height="16" 
+                  viewBox="0 0 16 16" 
+                  fill="none" 
+                  className={`transform transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`}
+                >
+                  <path 
+                    d="M4 6L8 10L12 6" 
+                    stroke="#6B7280" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+          
+          {/* 컨트롤 컨테이너 - 접혔을 때는 숨김 */}
+          {(!isMobile || !isCollapsed) && (
             <ControlsContainer
               sceneManager={sceneManager}
               roomParams={roomParams}

@@ -2,7 +2,7 @@ import {
   getThemeColors, 
   TRANSITIONS,
   getShadowStyles 
-} from './cssUtils'
+} from './utils/cssUtils'
 
 interface TopBarProps {
   isMobile: boolean

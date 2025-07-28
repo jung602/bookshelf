@@ -52,8 +52,8 @@ export const getThemeColors = (isDarkMode: boolean): ThemeColors => {
   if (isDarkMode) {
     return {
       outerContainer: "#1a1a1a",
-      gridContainer: "#111111",
-      centerBlock: "#111111",
+      gridContainer: "#0F0F0F",
+      centerBlock: "#0F0F0F",
       inactiveBlock: "#1e1e1e",
       activeBackdrop: "rgba(30,30,30,0.2)",
       inactiveShadow: "rgba(0,0,0,0.3)",

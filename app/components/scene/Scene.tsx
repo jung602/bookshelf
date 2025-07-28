@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import ThreeScene from './ThreeScene'
 import ControlsContainer from './3d/controls/ControlsContainer'
-import { TopBar } from './3d/controls'
 import { SceneManager, RoomParams } from './3d/SceneManager'
 import { useResponsiveDevice } from '../../hooks/useResponsiveDevice'
 
@@ -129,23 +128,15 @@ const Scene = () => {
           }
           style={isMobile ? { height: `${controlsHeight}px` } : {}}
         >
-          {/* 상단 바 - 모바일에서 접기/펴기 버튼 포함 */}
-          <TopBar 
+          <ControlsContainer
+            sceneManager={sceneManager}
+            roomParams={roomParams}
+            onRoomParamsChange={handleRoomParamsChange}
+            isDarkMode={isDarkMode}
             isMobile={isMobile}
             isCollapsed={isCollapsed}
             onToggleCollapse={toggleCollapse}
-            isDarkMode={isDarkMode}
           />
-          
-          {/* 컨트롤 컨테이너 - 접혔을 때는 숨김 */}
-          {(!isMobile || !isCollapsed) && (
-            <ControlsContainer
-              sceneManager={sceneManager}
-              roomParams={roomParams}
-              onRoomParamsChange={handleRoomParamsChange}
-              isDarkMode={isDarkMode}
-            />
-          )}
         </div>
       </div>
     </div>

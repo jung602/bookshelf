@@ -14,7 +14,7 @@ import {
   getResponsiveContainerRounding,
   getResponsiveGridRounding,
   getCenterBlockRounding,
-} from "./cssUtils";
+} from "./utils/cssUtils";
 import { useResponsiveDevice } from "../../../../hooks/useResponsiveDevice";
 
 interface BlockState {

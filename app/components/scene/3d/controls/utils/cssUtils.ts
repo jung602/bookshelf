@@ -51,10 +51,10 @@ export const ROUNDED_VALUES = getRoundedValues(false);
 export const getThemeColors = (isDarkMode: boolean): ThemeColors => {
   if (isDarkMode) {
     return {
-      outerContainer: "#1a1a1a",
-      gridContainer: "#0F0F0F",
-      centerBlock: "#0F0F0F",
-      inactiveBlock: "#1e1e1e",
+      outerContainer: "#1a1a1a00",
+      gridContainer: "#ffffff08",
+      centerBlock: "#0F0F0F00",
+      inactiveBlock: "#ffffff10",
       activeBackdrop: "rgba(30,30,30,0.2)",
       inactiveShadow: "rgba(0,0,0,0.3)",
       activeShadow: "rgba(255,255,255,0.1)",

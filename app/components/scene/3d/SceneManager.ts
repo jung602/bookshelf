@@ -310,7 +310,7 @@ export class SceneManager {
         // 일반적인 색상 형식 (hex, rgb 등)
         try {
           color.setStyle(backgroundColor)
-        } catch (error) {
+        } catch {
           console.warn('Failed to parse background color:', backgroundColor)
           color.setHex(0xf3f3f3) // fallback
         }
@@ -345,7 +345,7 @@ export class SceneManager {
       } else {
         try {
           color.setStyle(backgroundColor)
-        } catch (error) {
+        } catch {
           console.warn('Failed to parse scene background color:', backgroundColor)
           color.setHex(0xf3f3f3)
         }

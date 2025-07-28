@@ -1,6 +1,5 @@
 import { 
   getThemeColors, 
-  getResponsiveContainerRounding, 
   TRANSITIONS,
   getShadowStyles 
 } from './cssUtils'
@@ -14,7 +13,6 @@ interface TopBarProps {
 
 const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, isDarkMode = false }: TopBarProps) => {
   const themeColors = getThemeColors(isDarkMode)
-  const containerRounding = getResponsiveContainerRounding(isMobile)
   const shadowStyles = getShadowStyles(isDarkMode)
   
   // 상단만 라운드 처리를 위한 클래스 (컨테이너 라운드에서 상단만 추출)

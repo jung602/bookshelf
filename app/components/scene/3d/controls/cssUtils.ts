@@ -79,7 +79,7 @@ export const getGridArea = (row: number, col: number): string =>
   `[grid-area:${row}_/_${col}]`;
 
 // 모서리 반지름 반환 함수 (5x5 그리드 기준) - 인라인 스타일 버전
-export const getCornerRadius = (row: number, col: number): string => {
+export const getCornerRadius = (): string => {
   // 기본 클래스만 반환 (인라인 스타일과 함께 사용)
   return "rounded-xl";
 };

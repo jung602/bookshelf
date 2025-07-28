@@ -8,7 +8,6 @@ import { SceneManager } from "../SceneManager";
 import {
   getThemeColors,
   getGridArea,
-  getCornerRadius,
   getCornerRadiusStyle,
   GRADIENTS,
   TRANSITIONS,

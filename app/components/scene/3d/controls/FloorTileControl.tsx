@@ -50,7 +50,7 @@ export default function FloorTileControl({
       try {
         const currentRoomParams = sceneManager.getCurrentRoomParams();
         sourceGrid = currentRoomParams.customGrid;
-      } catch (error) {
+      } catch {
         // SceneManager에서 상태를 가져올 수 없음
       }
     }
@@ -163,7 +163,7 @@ export default function FloorTileControl({
             return newBlocks;
           });
         }
-      } catch (error) {
+      } catch {
         // SceneManager 동기화 실패
       }
     }

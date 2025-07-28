@@ -36,7 +36,6 @@ export default function FloorTileControl({
   initialGrid,
   sceneManager,
 }: FloorTileControlProps) {
-  console.log('FloorTileControl: Component rendering, isDarkMode:', isDarkMode, 'onChange:', !!onChange, 'initialGrid:', initialGrid, 'sceneManager:', !!sceneManager);
 
   // 반응형 디바이스 감지
   const { isMobile } = useResponsiveDevice();
@@ -51,16 +50,14 @@ export default function FloorTileControl({
       try {
         const currentRoomParams = sceneManager.getCurrentRoomParams();
         sourceGrid = currentRoomParams.customGrid;
-        console.log('FloorTileControl: Using current floor state from SceneManager:', sourceGrid);
       } catch (error) {
-        console.log('FloorTileControl: Failed to get current room params from SceneManager:', error);
+        // SceneManager에서 상태를 가져올 수 없음
       }
     }
     
     // sceneManager에서 상태를 가져오지 못했으면 initialGrid 사용
     if (!sourceGrid && initialGrid && initialGrid.length === 5 && initialGrid[0].length === 5) {
       sourceGrid = initialGrid;
-      console.log('FloorTileControl: Using initialGrid prop:', sourceGrid);
     }
     
     // sourceGrid가 있으면 그것을 기준으로 초기화
@@ -89,7 +86,6 @@ export default function FloorTileControl({
       }
     }
     
-    console.log('FloorTileControl: Initial blocks created:', initialBlocks.length, 'with active blocks:', initialBlocks.filter(b => b.isActive).length);
     return initialBlocks;
   });
 
@@ -104,7 +100,7 @@ export default function FloorTileControl({
   // Initialize Web Audio Context for sound generation
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Convert blocks to boolean grid (5x5)
+  // Convert blocks to boolean grid (5x5) - useMemo로 최적화
   const convertBlocksToGrid = useCallback((blocks: BlockState[]): boolean[][] => {
     const grid: boolean[][] = Array(5).fill(null).map(() => Array(5).fill(false));
     
@@ -116,28 +112,21 @@ export default function FloorTileControl({
       grid[block.row - 1][block.col - 1] = block.isActive;
     });
     
-    console.log('FloorTileControl: convertBlocksToGrid result:', {
-      activeBlocks: blocks.filter(b => b.isActive),
-      grid: grid.map((row, i) => `Row ${i}: [${row.map(cell => cell ? '■' : '□').join(', ')}]`).join('\n')
-    });
-    
     return grid;
   }, []);
 
-  // 간단한 바닥 업데이트 (직접 호출)
+  // 간단한 바닥 업데이트 (직접 호출) - 의존성 최적화
   const updateFloorDirect = useCallback((blocks: BlockState[]) => {
     if (sceneManager && !isInitialMountRef.current) {
       const grid = convertBlocksToGrid(blocks);
-      console.log('FloorTileControl: Calling sceneManager.updateFloorOnly directly');
       sceneManager.updateFloorOnly(grid);
     }
   }, [sceneManager, convertBlocksToGrid]);
 
-  // 디바운싱된 업데이트
+  // 디바운싱된 업데이트 - 성능 최적화
   const debouncedUpdate = useCallback((blocks: BlockState[]) => {
     // 초기 마운트시에는 업데이트하지 않음
     if (isInitialMountRef.current) {
-      console.log('FloorTileControl: Skipping update - still in initial mount');
       return;
     }
 
@@ -150,13 +139,11 @@ export default function FloorTileControl({
       
       // SceneManager가 있으면 직접 호출만 하고 onChange는 호출하지 않음 (무한 루프 방지)
       if (sceneManager) {
-        console.log('FloorTileControl: Using SceneManager direct update');
         updateFloorDirect(blocks);
       } else if (onChange) {
-        console.log('FloorTileControl: Using fallback onChange');
         onChange(grid);
       }
-    }, 100); // 100ms로 더 빠르게
+    }, 100);
   }, [sceneManager, updateFloorDirect, onChange, convertBlocksToGrid]);
 
   // 컴포넌트 마운트 시 sceneManager와 동기화
@@ -167,20 +154,17 @@ export default function FloorTileControl({
         const currentGrid = currentRoomParams.customGrid;
         
         if (currentGrid && currentGrid.length === 5 && currentGrid[0].length === 5) {
-          console.log('FloorTileControl: Syncing with SceneManager current state on mount');
-          
           setBlocks(prevBlocks => {
             const newBlocks = prevBlocks.map(block => ({
               ...block,
               isActive: currentGrid[block.row - 1][block.col - 1]
             }));
             
-            console.log('FloorTileControl: Synced blocks with SceneManager:', newBlocks.filter(b => b.isActive).length, 'active blocks');
             return newBlocks;
           });
         }
       } catch (error) {
-        console.log('FloorTileControl: Failed to sync with SceneManager on mount:', error);
+        // SceneManager 동기화 실패
       }
     }
   }, [sceneManager]);
@@ -189,8 +173,7 @@ export default function FloorTileControl({
   useEffect(() => {
     const timer = setTimeout(() => {
       isInitialMountRef.current = false;
-      console.log('FloorTileControl: Initial mount completed, updates enabled');
-    }, 200); // 200ms로 더 빠르게
+    }, 200);
 
     return () => clearTimeout(timer);
   }, []);
@@ -206,14 +189,9 @@ export default function FloorTileControl({
   useEffect(() => {
     // sceneManager가 있을 때는 initialGrid 변경에 의한 업데이트를 하지 않음 (무한 루프 방지)
     if (!sceneManager && initialGrid && initialGrid.length === 5 && initialGrid[0].length === 5) {
-      console.log('FloorTileControl: initialGrid changed, updating blocks (fallback mode)');
-      
       setBlocks(prevBlocks => {
         const newBlocks = prevBlocks.map(block => {
           const newIsActive = initialGrid[block.row - 1][block.col - 1];
-          if (block.isActive !== newIsActive) {
-            console.log(`FloorTileControl: Updating block (${block.row}, ${block.col}) from ${block.isActive} to ${newIsActive}`);
-          }
           return {
             ...block,
             isActive: newIsActive
@@ -222,8 +200,6 @@ export default function FloorTileControl({
         
         return newBlocks;
       });
-    } else if (sceneManager) {
-      console.log('FloorTileControl: Skipping initialGrid update - using SceneManager mode');
     }
   }, [initialGrid, sceneManager]);
 
@@ -280,12 +256,7 @@ export default function FloorTileControl({
 
   const toggleBlock = useCallback(
     (row: number, col: number) => {
-      console.log(`FloorTileControl: toggleBlock called for (${row}, ${col})`);
       setBlocks((prevBlocks) => {
-        const currentBlock = prevBlocks.find(b => b.row === row && b.col === col);
-        const currentState = currentBlock?.isActive || false;
-        console.log(`FloorTileControl: Current state for (${row}, ${col}): ${currentState} -> ${!currentState}`);
-        
         const newBlocks = prevBlocks.map((block) => {
           if (block.row === row && block.col === col) {
             const newState = !block.isActive;
@@ -298,7 +269,6 @@ export default function FloorTileControl({
           return block;
         });
         
-        console.log('FloorTileControl: Updated blocks state:', newBlocks);
         return newBlocks;
       });
     },
@@ -307,7 +277,6 @@ export default function FloorTileControl({
 
   const setBlockState = useCallback(
     (row: number, col: number, isActive: boolean) => {
-      console.log(`FloorTileControl: setBlockState called for (${row}, ${col}) -> ${isActive}`);
       setBlocks((prevBlocks) => {
         const currentBlock = prevBlocks.find(
           (b) => b.row === row && b.col === col,
@@ -344,7 +313,6 @@ export default function FloorTileControl({
     col: number,
     e: React.MouseEvent,
   ) => {
-    console.log(`FloorTileControl: handleMouseDown called for (${row}, ${col})`);
     e.preventDefault();
     setIsDragging(true);
     const currentState = getBlockState(row, col);
@@ -384,7 +352,6 @@ export default function FloorTileControl({
         clearTimeout(debounceTimeoutRef.current);
         debounceTimeoutRef.current = null;
       }
-      console.log('FloorTileControl: Component unmounting, cleaned up debounce timer');
     };
   }, []);
 

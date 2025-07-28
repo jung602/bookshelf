@@ -8,7 +8,6 @@ import { SceneManager, RoomParams } from './3d/SceneManager'
 import { useResponsiveDevice } from '../../hooks/useResponsiveDevice'
 
 const Scene = () => {
-  console.log('Scene: Component rendering');
 
   const { isMobile } = useResponsiveDevice()
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null)
@@ -28,15 +27,8 @@ const Scene = () => {
   // 모바일 접기/펴기 상태
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
 
-  // 다크모드 상태 - 초기값을 시스템 다크모드로 설정
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    // SSR 환경에서는 기본값 false 반환
-    if (typeof window === 'undefined') {
-      return false
-    }
-    // 클라이언트에서는 시스템 다크모드 상태를 즉시 확인
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
+  // 다크모드 상태 - Hydration mismatch 방지를 위해 초기값은 항상 false
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
   // SceneManager가 준비되었을 때 호출
   const handleSceneManagerReady = (newSceneManager: SceneManager) => {

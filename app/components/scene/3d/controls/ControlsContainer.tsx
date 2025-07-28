@@ -16,7 +16,6 @@ export default function ControlsContainer({
   onRoomParamsChange,
   isDarkMode
 }: ControlsContainerProps) {
-  console.log('ControlsContainer: Rendering with sceneManager:', !!sceneManager, 'roomParams:', roomParams, 'isDarkMode:', isDarkMode);
 
   // 바닥 그리드 변경 핸들러
   const handleFloorGridChange = (grid: boolean[][]) => {

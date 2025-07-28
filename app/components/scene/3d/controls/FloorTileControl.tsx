@@ -148,14 +148,10 @@ export default function FloorTileControl({
     debounceTimeoutRef.current = setTimeout(() => {
       const grid = convertBlocksToGrid(blocks);
       
-      // SceneManager가 있으면 직접 호출하고, 동시에 onChange도 호출하여 상위 상태 동기화
+      // SceneManager가 있으면 직접 호출만 하고 onChange는 호출하지 않음 (무한 루프 방지)
       if (sceneManager) {
+        console.log('FloorTileControl: Using SceneManager direct update');
         updateFloorDirect(blocks);
-        // 상위 컴포넌트 상태도 동기화
-        if (onChange) {
-          console.log('FloorTileControl: Calling onChange to sync parent state');
-          onChange(grid);
-        }
       } else if (onChange) {
         console.log('FloorTileControl: Using fallback onChange');
         onChange(grid);
@@ -206,10 +202,11 @@ export default function FloorTileControl({
     }
   }, [blocks, debouncedUpdate]);
 
-  // initialGrid가 변경되었을 때 blocks 상태 업데이트
+  // initialGrid가 변경되었을 때 blocks 상태 업데이트 (sceneManager가 없을 때만)
   useEffect(() => {
-    if (initialGrid && initialGrid.length === 5 && initialGrid[0].length === 5) {
-      console.log('FloorTileControl: initialGrid changed, updating blocks');
+    // sceneManager가 있을 때는 initialGrid 변경에 의한 업데이트를 하지 않음 (무한 루프 방지)
+    if (!sceneManager && initialGrid && initialGrid.length === 5 && initialGrid[0].length === 5) {
+      console.log('FloorTileControl: initialGrid changed, updating blocks (fallback mode)');
       
       setBlocks(prevBlocks => {
         const newBlocks = prevBlocks.map(block => {
@@ -225,8 +222,10 @@ export default function FloorTileControl({
         
         return newBlocks;
       });
+    } else if (sceneManager) {
+      console.log('FloorTileControl: Skipping initialGrid update - using SceneManager mode');
     }
-  }, [initialGrid]);
+  }, [initialGrid, sceneManager]);
 
   useEffect(() => {
     // Initialize AudioContext

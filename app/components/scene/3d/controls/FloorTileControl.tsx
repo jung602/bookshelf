@@ -44,15 +44,34 @@ export default function FloorTileControl({
   const [blocks, setBlocks] = useState<BlockState[]>(() => {
     const initialBlocks: BlockState[] = [];
     
-    // initialGrid가 있으면 그것을 기준으로 초기화
-    if (initialGrid && initialGrid.length === 5 && initialGrid[0].length === 5) {
+    // sceneManager가 있으면 현재 바닥 상태를 가져와서 초기화
+    let sourceGrid: boolean[][] | null = null;
+    
+    if (sceneManager) {
+      try {
+        const currentRoomParams = sceneManager.getCurrentRoomParams();
+        sourceGrid = currentRoomParams.customGrid;
+        console.log('FloorTileControl: Using current floor state from SceneManager:', sourceGrid);
+      } catch (error) {
+        console.log('FloorTileControl: Failed to get current room params from SceneManager:', error);
+      }
+    }
+    
+    // sceneManager에서 상태를 가져오지 못했으면 initialGrid 사용
+    if (!sourceGrid && initialGrid && initialGrid.length === 5 && initialGrid[0].length === 5) {
+      sourceGrid = initialGrid;
+      console.log('FloorTileControl: Using initialGrid prop:', sourceGrid);
+    }
+    
+    // sourceGrid가 있으면 그것을 기준으로 초기화
+    if (sourceGrid && sourceGrid.length === 5 && sourceGrid[0].length === 5) {
       for (let row = 1; row <= 5; row++) {
         for (let col = 1; col <= 5; col++) {
           if (row === 3 && col === 3) continue; // 가운데는 제외
           initialBlocks.push({
             row,
             col,
-            isActive: initialGrid[row - 1][col - 1], // initialGrid에서 상태 가져오기
+            isActive: sourceGrid[row - 1][col - 1], // sourceGrid에서 상태 가져오기
           });
         }
       }
@@ -127,16 +146,48 @@ export default function FloorTileControl({
     }
     
     debounceTimeoutRef.current = setTimeout(() => {
-      // SceneManager가 있으면 직접 호출, 없으면 기존 onChange 사용
+      const grid = convertBlocksToGrid(blocks);
+      
+      // SceneManager가 있으면 직접 호출하고, 동시에 onChange도 호출하여 상위 상태 동기화
       if (sceneManager) {
         updateFloorDirect(blocks);
+        // 상위 컴포넌트 상태도 동기화
+        if (onChange) {
+          console.log('FloorTileControl: Calling onChange to sync parent state');
+          onChange(grid);
+        }
       } else if (onChange) {
-        const grid = convertBlocksToGrid(blocks);
         console.log('FloorTileControl: Using fallback onChange');
         onChange(grid);
       }
     }, 100); // 100ms로 더 빠르게
   }, [sceneManager, updateFloorDirect, onChange, convertBlocksToGrid]);
+
+  // 컴포넌트 마운트 시 sceneManager와 동기화
+  useEffect(() => {
+    if (sceneManager) {
+      try {
+        const currentRoomParams = sceneManager.getCurrentRoomParams();
+        const currentGrid = currentRoomParams.customGrid;
+        
+        if (currentGrid && currentGrid.length === 5 && currentGrid[0].length === 5) {
+          console.log('FloorTileControl: Syncing with SceneManager current state on mount');
+          
+          setBlocks(prevBlocks => {
+            const newBlocks = prevBlocks.map(block => ({
+              ...block,
+              isActive: currentGrid[block.row - 1][block.col - 1]
+            }));
+            
+            console.log('FloorTileControl: Synced blocks with SceneManager:', newBlocks.filter(b => b.isActive).length, 'active blocks');
+            return newBlocks;
+          });
+        }
+      } catch (error) {
+        console.log('FloorTileControl: Failed to sync with SceneManager on mount:', error);
+      }
+    }
+  }, [sceneManager]);
 
   // 초기 마운트 완료 후 플래그 해제
   useEffect(() => {
@@ -324,6 +375,18 @@ export default function FloorTileControl({
     document.addEventListener("mouseup", handleMouseUp);
     return () =>
       document.removeEventListener("mouseup", handleMouseUp);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // 컴포넌트 언마운트 시 pending된 debounce 타이머 정리
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
+      console.log('FloorTileControl: Component unmounting, cleaned up debounce timer');
+    };
   }, []);
 
   const renderBlock = (row: number, col: number) => {

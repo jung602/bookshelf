@@ -255,10 +255,12 @@ export class SceneManager {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
           // 클래스 변경이 감지되면 배경색과 조명 업데이트
-          this.updateBackgroundColor()
-          this.updateSceneBackground()
-          this.updateLights()
-          console.log('Theme change detected, background color and lights updated')
+          setTimeout(() => {
+            this.updateBackgroundColor()
+            this.updateSceneBackground()
+            this.updateLights()
+            console.log('Theme change detected, background color and lights updated')
+          }, 50) // 빌드 환경에서의 안정성을 위해 약간의 지연 추가
         }
       })
     })
@@ -279,82 +281,56 @@ export class SceneManager {
         this.updateSceneBackground()
         this.updateLights()
         console.log('System theme change detected, background color and lights updated')
-      }, 100) // 약간의 지연을 두어 CSS 변수가 업데이트된 후 실행
+      }, 100) // 약간의 지연을 두어 테마가 완전히 적용된 후 실행
     })
+
+    // 초기화 시에도 올바른 테마 적용 보장 (빌드 환경 대응)
+    setTimeout(() => {
+      this.updateBackgroundColor()
+      this.updateSceneBackground()
+      this.updateLights()
+      console.log('Initial theme applied on setupThemeObserver')
+    }, 100)
   }
 
   private updateBackgroundColor() {
-    // CSS 변수에서 배경색 가져오기
-    const backgroundColor = getComputedStyle(document.documentElement)
-      .getPropertyValue('--background')
-      .trim()
+    // CSS 변수 파싱 대신 테마 클래스를 직접 확인
+    const isDarkMode = this.getCurrentTheme() === 'dark'
     
-    if (backgroundColor) {
-      // CSS 변수 값을 THREE.Color로 변환
-      const color = new THREE.Color()
-      
-      // oklch 형식인지 확인하고 적절히 처리
-      if (backgroundColor.startsWith('oklch(')) {
-        // oklch 형식을 대략적으로 RGB로 변환 (간단한 변환)
-        const oklchMatch = backgroundColor.match(/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/)
-        if (oklchMatch) {
-          const lightness = parseFloat(oklchMatch[1])
-          // 간단한 근사치: lightness 값을 RGB로 변환
-          const rgbValue = Math.round(lightness * 255)
-          color.setRGB(rgbValue / 255, rgbValue / 255, rgbValue / 255)
-        } else {
-          // fallback: 기본값 사용
-          color.setHex(0xf3f3f3) // 라이트 모드 기본값
-        }
-      } else {
-        // 일반적인 색상 형식 (hex, rgb 등)
-        try {
-          color.setStyle(backgroundColor)
-        } catch {
-          console.warn('Failed to parse background color:', backgroundColor)
-          color.setHex(0xf3f3f3) // fallback
-        }
-      }
-      
-      // 렌더러 배경색 설정
-      this.renderer.setClearColor(color)
-      
-      console.log('Background color updated to:', backgroundColor, 'THREE.Color:', color)
+    // 테마에 따른 색상 설정 (CSS 변수 값과 동일)
+    const color = new THREE.Color()
+    if (isDarkMode) {
+      // 다크 모드: oklch(0.145 0 0) ≈ 매우 어두운 회색
+      color.setRGB(0.145, 0.145, 0.145)
+    } else {
+      // 라이트 모드: #f3f3f3
+      color.setHex(0xf3f3f3)
     }
+    
+    // 렌더러 배경색 설정
+    this.renderer.setClearColor(color)
+    
+    console.log('Background color updated to:', isDarkMode ? 'dark' : 'light', 'THREE.Color:', color)
   }
 
   private updateSceneBackground() {
-    // CSS 변수에서 배경색 가져오기
-    const backgroundColor = getComputedStyle(document.documentElement)
-      .getPropertyValue('--background')
-      .trim()
+    // CSS 변수 파싱 대신 테마 클래스를 직접 확인
+    const isDarkMode = this.getCurrentTheme() === 'dark'
     
-    if (backgroundColor && this.scene) {
+    if (this.scene) {
       const color = new THREE.Color()
-      
-      // oklch 형식인지 확인하고 적절히 처리
-      if (backgroundColor.startsWith('oklch(')) {
-        const oklchMatch = backgroundColor.match(/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/)
-        if (oklchMatch) {
-          const lightness = parseFloat(oklchMatch[1])
-          const rgbValue = Math.round(lightness * 255)
-          color.setRGB(rgbValue / 255, rgbValue / 255, rgbValue / 255)
-        } else {
-          color.setHex(0xf3f3f3)
-        }
+      if (isDarkMode) {
+        // 다크 모드: oklch(0.145 0 0) ≈ 매우 어두운 회색
+        color.setRGB(0.145, 0.145, 0.145)
       } else {
-        try {
-          color.setStyle(backgroundColor)
-        } catch {
-          console.warn('Failed to parse scene background color:', backgroundColor)
-          color.setHex(0xf3f3f3)
-        }
+        // 라이트 모드: #f3f3f3
+        color.setHex(0xf3f3f3)
       }
       
       // 씬 배경색 설정
       this.scene.background = color
       
-      console.log('Scene background color updated to:', backgroundColor)
+      console.log('Scene background color updated to:', isDarkMode ? 'dark' : 'light')
     }
   }
 
@@ -689,5 +665,21 @@ export class SceneManager {
       1000                          // far
     )
     this.camera.position.set(10, 12, 10)
+  }
+
+  // 현재 테마를 감지하는 메서드 추가
+  private getCurrentTheme(): 'light' | 'dark' {
+    // html 요소의 클래스를 확인
+    const htmlElement = document.documentElement
+    if (htmlElement.classList.contains('dark')) {
+      return 'dark'
+    }
+    
+    // prefers-color-scheme 확인
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark'
+    }
+    
+    return 'light'
   }
 } 

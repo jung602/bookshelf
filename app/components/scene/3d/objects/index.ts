@@ -3,6 +3,7 @@ import { modelMetadata as stoolMetadata } from './stool'
 import { modelMetadata as chairMetadata } from './chair'
 import { modelMetadata as bookMetadata } from './book'
 import { modelMetadata as wallcubeMetadata } from './WallCube'
+import { modelMetadata as floorlampMetadata } from './floorlamp'
 
 // 모델 메타데이터 타입 정의
 export interface ModelMetadata {
@@ -19,7 +20,8 @@ export const allModels: ModelMetadata[] = [
   stoolMetadata,
   chairMetadata,
   bookMetadata,
-  wallcubeMetadata
+  wallcubeMetadata,
+  floorlampMetadata
 ]
 
 // 모델 ID로 모델 클래스를 찾는 함수

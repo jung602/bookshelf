@@ -7,6 +7,7 @@ import { createWalls } from './scenes/createWalls'
 import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
 import { ModelManager } from './managers/ModelManager'
 import { InteractionManager, GizmoState } from './managers/InteractionManager'
+import { getModelClass } from './objects'
 
 // 타입 정의들
 export interface RoomParams {
@@ -142,8 +143,15 @@ export class SceneManager {
     // 벽들 추가 (격자 기반)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
 
-    // 초기 모델 로드 제거 - 이제 UI에서 추가할 예정
-    console.log('Scene setup completed without initial models')
+    // 중앙에 플로어 램프 추가
+    try {
+      await this.addFloorLamp(0, 0) // 중앙 위치 (0, 0)
+      console.log('Floor lamp added to center of scene')
+    } catch (error) {
+      console.error('Failed to add initial floor lamp:', error)
+    }
+
+    console.log('Scene setup completed with initial floor lamp')
   }
 
   private setupPostProcessing() {
@@ -442,6 +450,31 @@ export class SceneManager {
   // 벽 큐브 테스트용 메서드
   public async addTestWallCube(x: number = 0, z: number = 0): Promise<string | null> {
     return await this.modelManager.addWallCube(x, z)
+  }
+
+  // 플로어 램프 추가 메서드
+  public async addFloorLamp(x: number = 0, z: number = 0): Promise<string | null> {
+    try {
+      const FloorLampClass = getModelClass('floorlamp')
+      if (!FloorLampClass) {
+        console.error('FloorLamp model class not found')
+        return null
+      }
+
+      // 플로어 램프 인스턴스 생성 (중앙에 배치)
+      const floorLamp = new FloorLampClass(
+        { x, y: 0, z },
+        { x: 1.5, y: 1.5, z: 1.5 }, // 스케일
+        { x: 0, y: 0, z: 0 } // 회전
+      )
+
+      await this.modelManager.addModel(floorLamp)
+      console.log(`FloorLamp added at position (${x}, ${z})`)
+      return floorLamp.getId()
+    } catch (error) {
+      console.error('Failed to add floor lamp:', error)
+      return null
+    }
   }
 
   public rotateModel(modelId: string): void {

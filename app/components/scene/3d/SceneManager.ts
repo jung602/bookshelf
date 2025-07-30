@@ -143,15 +143,7 @@ export class SceneManager {
     // 벽들 추가 (격자 기반)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
 
-    // 중앙에 플로어 램프 추가
-    try {
-      await this.addFloorLamp(0, 0) // 중앙 위치 (0, 0)
-      console.log('Floor lamp added to center of scene')
-    } catch (error) {
-      console.error('Failed to add initial floor lamp:', error)
-    }
-
-    console.log('Scene setup completed with initial floor lamp')
+    console.log('Scene setup completed')
   }
 
   private setupPostProcessing() {

@@ -14,7 +14,7 @@ export interface ThemeColors {
 
 // 기본 반지름 값 (반응형)
 const getBaseRadius = (isMobile: boolean): number => {
-  return isMobile ? 8 : 12; // 모바일: 8px, 데스크톱: 12px
+  return isMobile ? 8 : 22; // 모바일: 8px, 데스크톱: 22px
 };
 
 // Rounded 값들 반응형 함수
@@ -246,4 +246,19 @@ export const getResponsiveContainerRounding = (isMobile: boolean): string => {
 // 반응형 그리드 컨테이너 라운드 스타일 반환 함수  
 export const getResponsiveGridRounding = (isMobile: boolean): string => {
   return isMobile ? ROUNDED_VALUES.gridContainer.mobile : ROUNDED_VALUES.gridContainer.desktop;
+};
+
+// 반응형 그리드 패딩 반환 함수
+export const getResponsiveGridPadding = (isMobile: boolean): string => {
+  return isMobile ? "p-[8px]" : "p-[12px]"; // 모바일: 8px, 데스크톱: 12px
+};
+
+// 반응형 그리드 갭 반환 함수
+export const getResponsiveGridGap = (isMobile: boolean): string => {
+  return isMobile ? "gap-[2px]" : "gap-[4px]"; // 모바일: 2px, 데스크톱: 4px
+};
+
+// 반응형 버튼 Border Radius 반환 함수
+export const getResponsiveButtonRadius = (isMobile: boolean): string => {
+  return `${getBaseRadius(isMobile)}px`; // 모바일: 8px, 데스크톱: 22px
 }; 

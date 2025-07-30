@@ -259,6 +259,44 @@ export class InteractionManager {
   private onClick(event: MouseEvent): void {
     event.preventDefault()
     console.log('Click event triggered')
+    
+    // 드래그가 발생했다면 클릭 이벤트 무시
+    if (this.isDragStarted) {
+      console.log('Click ignored - drag was initiated')
+      return
+    }
+    
+    // 클릭 시간이 너무 길면 무시 (드래그로 간주)
+    const clickDuration = Date.now() - this.clickStartTime
+    if (clickDuration > 200) { // 200ms 이상이면 드래그로 간주
+      console.log('Click ignored - too long duration:', clickDuration)
+      return
+    }
+    
+    // 클릭 위치가 시작 위치에서 너무 멀리 이동했으면 무시
+    const clickDistance = Math.sqrt(
+      Math.pow(event.clientX - this.clickStartPosition.x, 2) + 
+      Math.pow(event.clientY - this.clickStartPosition.y, 2)
+    )
+    if (clickDistance > 5) { // 5px 이상 이동했으면 드래그로 간주
+      console.log('Click ignored - too much movement:', clickDistance)
+      return
+    }
+    
+    this.updateMousePosition(event.clientX, event.clientY)
+    const intersections = this.getIntersectedModels(true)
+    
+    if (intersections.length > 0) {
+      const selectedModel = this.getModelFromIntersection(intersections[0], true)
+      
+      if (selectedModel) {
+        console.log(`Model clicked for gizmo: ${selectedModel.getId()}`)
+        this.handleModelClick(selectedModel)
+      }
+    } else {
+      console.log('No model clicked - hiding gizmo')
+      this.hideGizmo()
+    }
   }
 
   // 터치 이벤트 처리

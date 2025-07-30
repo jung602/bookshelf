@@ -35,6 +35,12 @@ export default function ModelAddControl({ onModelAdd, onBookCreate }: ModelAddCo
       description: 'High stool'
     },
     {
+      id: 'floorlamp',
+      name: 'Floor Lamp',
+      icon: '💡',
+      description: 'Floor standing lamp'
+    },
+    {
       id: 'wallcube',
       name: 'Wall Cube',
       icon: '📦',

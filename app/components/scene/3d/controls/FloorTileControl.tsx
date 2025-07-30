@@ -14,6 +14,8 @@ import {
   getResponsiveContainerRounding,
   getResponsiveGridRounding,
   getCenterBlockRounding,
+  getResponsiveGridPadding,
+  getResponsiveGridGap,
 } from "./utils/cssUtils";
 import { useResponsiveDevice } from "../../../../hooks/useResponsiveDevice";
 
@@ -439,7 +441,7 @@ export default function FloorTileControl({
     >
       <div className="relative size-full">
         <div
-          className={`box-border gap-[2px] grid grid-cols-[repeat(5,_minmax(0px,_1fr))] grid-rows-[repeat(5,_minmax(0px,_1fr))] overflow-clip p-[8px] relative size-full ${getResponsiveGridRounding(isMobile)} ${TRANSITIONS.fast}`}
+          className={`box-border ${getResponsiveGridGap(isMobile)} grid grid-cols-[repeat(5,_minmax(0px,_1fr))] grid-rows-[repeat(5,_minmax(0px,_1fr))] overflow-clip ${getResponsiveGridPadding(isMobile)} relative size-full ${getResponsiveGridRounding(isMobile)} ${TRANSITIONS.fast}`}
           style={{ backgroundColor: themeColors.gridContainer }}
         >
           {Array.from({ length: 5 }, (_, rowIndex) =>

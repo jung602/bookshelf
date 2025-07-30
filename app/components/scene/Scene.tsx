@@ -80,7 +80,7 @@ const Scene = () => {
         const browserHeight = window.innerHeight
         
         // 접혔을 때는 42px만, 펼쳤을 때는 브라우저 너비 + 42px
-        const controlsUIHeight = isCollapsed ? 36 : browserWidth + 36
+        const controlsUIHeight = isCollapsed ? 36 : browserWidth
         
         // ThreeScene 높이 = 전체 높이 - 컨트롤 UI 높이
         const threeSceneCalcHeight = browserHeight - controlsUIHeight

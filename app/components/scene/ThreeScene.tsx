@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { SceneManager, RoomParams } from './3d/SceneManager'
+import { ModelGizmo } from './3d/managers/ModelGizmo'
+import type { GizmoState } from './3d/managers/InteractionManager'
 import { useResponsiveScene } from '../../hooks/useResponsiveScene'
 
 // 전역 플래그로 SceneManager 중복 생성 방지
@@ -37,6 +39,7 @@ interface ThreeSceneProps {
 export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneManagerRef = useRef<SceneManager | null>(null)
+  const modelGizmoRef = useRef<ModelGizmo | null>(null)
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null)
   const previousRoomParamsRef = useRef<RoomParams>(roomParams)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
@@ -46,6 +49,75 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
     baseFrustumSize: 10, // 기본 frustumSize
     animationSpeed: 0.12 // 부드러운 애니메이션을 위한 속도 (0.01-1)
   }
+
+  // 기즈모 상태 변경 핸들러
+  const handleGizmoStateChange = useCallback((gizmoState: GizmoState) => {
+    console.log('ThreeScene: Gizmo state changed:', gizmoState)
+    
+    if (!modelGizmoRef.current && sceneManagerRef.current) {
+      // ModelGizmo 인스턴스 생성
+      modelGizmoRef.current = new ModelGizmo({
+        modelId: gizmoState.selectedModelId,
+        position: gizmoState.screenPosition,
+        onRotate: (modelId: string) => {
+          console.log('Rotating model:', modelId)
+          if (sceneManagerRef.current) {
+            sceneManagerRef.current.rotateModel(modelId)
+          }
+        },
+        onDelete: (modelId: string) => {
+          console.log('Deleting model:', modelId)
+          if (sceneManagerRef.current) {
+            sceneManagerRef.current.deleteModel(modelId)
+          }
+        },
+        onClose: () => {
+          console.log('Closing gizmo')
+          // 기즈모를 숨기기 위해 빈 상태로 업데이트
+          if (modelGizmoRef.current) {
+            modelGizmoRef.current.updateProps({
+              modelId: null,
+              position: null,
+              onRotate: () => {},
+              onDelete: () => {},
+              onClose: () => {}
+            })
+          }
+        }
+      })
+    } else if (modelGizmoRef.current) {
+      // 기존 ModelGizmo 인스턴스 업데이트
+      modelGizmoRef.current.updateProps({
+        modelId: gizmoState.selectedModelId,
+        position: gizmoState.screenPosition,
+        onRotate: (modelId: string) => {
+          console.log('Rotating model:', modelId)
+          if (sceneManagerRef.current) {
+            sceneManagerRef.current.rotateModel(modelId)
+          }
+        },
+        onDelete: (modelId: string) => {
+          console.log('Deleting model:', modelId)
+          if (sceneManagerRef.current) {
+            sceneManagerRef.current.deleteModel(modelId)
+          }
+        },
+        onClose: () => {
+          console.log('Closing gizmo')
+          // 기즈모를 숨기기 위해 빈 상태로 업데이트
+          if (modelGizmoRef.current) {
+            modelGizmoRef.current.updateProps({
+              modelId: null,
+              position: null,
+              onRotate: () => {},
+              onDelete: () => {},
+              onClose: () => {}
+            })
+          }
+        }
+      })
+    }
+  }, [])
 
   // SceneManager가 생성된 후에 useResponsiveScene 훅 사용
   const { forceUpdate } = useResponsiveScene(sceneManager, responsiveConfig)
@@ -109,9 +181,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
     try {
       const newSceneManager = new SceneManager(
         containerRef.current,
-        () => {
-          // Gizmo state callback - placeholder for future use
-        }
+        handleGizmoStateChange
       )
       
       // 전역 인스턴스 설정
@@ -152,6 +222,12 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
         sceneManagerRef.current.dispose()
         sceneManagerRef.current = null
         setSceneManager(null)
+      }
+      
+      // ModelGizmo 정리
+      if (modelGizmoRef.current) {
+        modelGizmoRef.current.dispose()
+        modelGizmoRef.current = null
       }
       
       // 전역 인스턴스도 정리

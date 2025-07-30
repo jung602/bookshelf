@@ -30,21 +30,23 @@ export default function ModelLayerControl({
     const currentModels = getModels()
     setModels(currentModels)
     
-    // 새로운 모델들을 기본적으로 보이도록 설정
-    const newVisibleModels = new Set(visibleModels)
-    currentModels.forEach(model => {
-      if (!newVisibleModels.has(model.id)) {
-        newVisibleModels.add(model.id)
-      }
+    // 새로운 모델들을 기본적으로 보이도록 설정 (함수형 setState 사용)
+    setVisibleModels(prevVisibleModels => {
+      const newVisibleModels = new Set(prevVisibleModels)
+      currentModels.forEach(model => {
+        if (!newVisibleModels.has(model.id)) {
+          newVisibleModels.add(model.id)
+        }
+      })
+      return newVisibleModels
     })
-    setVisibleModels(newVisibleModels)
-  }, [getModels, visibleModels])
+  }, [getModels])
 
   useEffect(() => {
     updateModels()
     const interval = setInterval(updateModels, 1000) // 1초마다 업데이트
     return () => clearInterval(interval)
-  }, [getModels, updateModels])
+  }, [updateModels])
 
   const handleModelSelect = (modelId: string) => {
     setSelectedModelId(modelId)

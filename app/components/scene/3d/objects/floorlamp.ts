@@ -38,8 +38,8 @@ export class FloorLampModel extends BaseModel {
       
       this.model.traverse((child) => {
         // Material의 emission 값 조정
-        if ((child as any).material) {
-          const material = (child as any).material
+        if (child instanceof THREE.Mesh && child.material) {
+          const material = child.material as THREE.MeshStandardMaterial
           if (material.emissive) {
             // emission 색상의 강도 조정
             material.emissive.setRGB(emissionIntensity, emissionIntensity, emissionIntensity)
@@ -51,10 +51,10 @@ export class FloorLampModel extends BaseModel {
         }
         
         // 조명 on/off 제어 (PointLight는 SpotLight로 변환되므로 제외)
-        if (child.type === 'DirectionalLight' || child.type === 'SpotLight') {
-          ;(child as any).visible = shouldLightBeOn
+        if (child instanceof THREE.DirectionalLight || child instanceof THREE.SpotLight) {
+          child.visible = shouldLightBeOn
           if (shouldLightBeOn) {
-            ;(child as any).intensity = this.lightIntensity
+            child.intensity = this.lightIntensity
           }
         }
       })
@@ -74,20 +74,20 @@ export class FloorLampModel extends BaseModel {
       const lightsToReplace: { parent: THREE.Object3D, oldLight: THREE.Light }[] = []
       
       this.model.traverse((child) => {
-        if (child.type === 'DirectionalLight' || child.type === 'SpotLight') {
+        if (child instanceof THREE.DirectionalLight || child instanceof THREE.SpotLight) {
           // DirectionalLight와 SpotLight는 기존 처리 유지
-          ;(child as any).intensity = this.lightIntensity
-          ;(child as any).color.setRGB(1, 1, 1)
-          ;(child as any).position.y -= 0.3
+          child.intensity = this.lightIntensity
+          child.color.setRGB(1, 1, 1)
+          child.position.y -= 0.3
           
-          if (child.type === 'SpotLight') {
-            ;(child as any).distance = 30
-            ;(child as any).angle = Math.PI / 2
-            ;(child as any).penumbra = 10
-            ;(child as any).decay = 1
+          if (child instanceof THREE.SpotLight) {
+            child.distance = 30
+            child.angle = Math.PI / 2
+            child.penumbra = 10
+            child.decay = 1
             
-            if ((child as any).target) {
-              ;(child as any).target.position.set(0, -2, 0)
+            if (child.target) {
+              child.target.position.set(0, -2, 0)
             }
             console.log('SpotLight set with directional lighting')
           }
@@ -96,8 +96,8 @@ export class FloorLampModel extends BaseModel {
         }
         
         // PointLight를 SpotLight로 교체하기 위해 저장
-        if (child.type === 'PointLight') {
-          lightsToReplace.push({ parent: child.parent!, oldLight: child as THREE.Light })
+        if (child instanceof THREE.PointLight) {
+          lightsToReplace.push({ parent: child.parent!, oldLight: child })
         }
       })
       
@@ -105,8 +105,9 @@ export class FloorLampModel extends BaseModel {
       lightsToReplace.forEach(({ parent, oldLight }) => {
         // 기존 PointLight 위치와 속성 저장
         const position = oldLight.position.clone()
-        const intensity = (oldLight as any).intensity || this.lightIntensity
-        const color = (oldLight as any).color || new THREE.Color(1, 1, 1)
+        const pointLight = oldLight as THREE.PointLight
+        const intensity = pointLight.intensity || this.lightIntensity
+        const color = pointLight.color || new THREE.Color(1, 1, 1)
         
         // 새로운 SpotLight 생성
         const spotLight = new THREE.SpotLight(color, intensity)
@@ -148,8 +149,8 @@ export class FloorLampModel extends BaseModel {
     this.isLightOn = !this.isLightOn
     if (this.model) {
       this.model.traverse((child) => {
-        if (child.type === 'DirectionalLight' || child.type === 'SpotLight') {
-          ;(child as any).visible = this.isLightOn
+        if (child instanceof THREE.DirectionalLight || child instanceof THREE.SpotLight) {
+          child.visible = this.isLightOn
         }
       })
     }
@@ -159,8 +160,8 @@ export class FloorLampModel extends BaseModel {
     this.lightIntensity = Math.max(0, Math.min(2, intensity)) // 0-2 범위로 제한
     if (this.model) {
       this.model.traverse((child) => {
-        if (child.type === 'DirectionalLight' || child.type === 'SpotLight') {
-          ;(child as any).intensity = this.lightIntensity
+        if (child instanceof THREE.DirectionalLight || child instanceof THREE.SpotLight) {
+          child.intensity = this.lightIntensity
         }
       })
     }

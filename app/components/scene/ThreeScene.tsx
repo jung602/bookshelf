@@ -237,7 +237,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
       
       isInitializingSceneManager = false
     }
-  }, [onSceneManagerReady, roomParams, forceUpdate]) // 빈 의존성 배열로 한 번만 실행
+  }, [onSceneManagerReady, roomParams, forceUpdate, handleGizmoStateChange])
 
   // roomParams가 변경될 때 씬 업데이트
   useEffect(() => {

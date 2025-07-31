@@ -13,7 +13,8 @@ export interface ThemeColors {
 }
 
 // 기본 반지름 값 (반응형)
-const getBaseRadius = (isMobile: boolean): number => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const getBaseRadius = (_isMobile: boolean): number => {
   return 8; // 모바일과 데스크톱 동일: 8px
 };
 
@@ -249,12 +250,14 @@ export const getResponsiveGridRounding = (isMobile: boolean): string => {
 };
 
 // 반응형 그리드 패딩 반환 함수
-export const getResponsiveGridPadding = (isMobile: boolean): string => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const getResponsiveGridPadding = (_isMobile: boolean): string => {
   return "p-[8px]"; // 모바일과 데스크톱 동일: 8px
 };
 
 // 반응형 그리드 갭 반환 함수
-export const getResponsiveGridGap = (isMobile: boolean): string => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const getResponsiveGridGap = (_isMobile: boolean): string => {
   return "gap-[4px]"; // 모바일과 데스크톱 동일: 2px
 };
 

@@ -1,5 +1,4 @@
 import { 
-  getThemeColors, 
   TRANSITIONS,
   getShadowStyles 
 } from './utils/cssUtils'
@@ -13,7 +12,6 @@ interface TopBarProps {
 }
 
 const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, onGoBack, isDarkMode = false }: TopBarProps) => {
-  const themeColors = getThemeColors(isDarkMode)
   const shadowStyles = getShadowStyles(isDarkMode)
   
   return (

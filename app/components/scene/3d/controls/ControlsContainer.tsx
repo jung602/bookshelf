@@ -153,7 +153,6 @@ export default function ControlsContainer({
     if (!sceneManager) return
 
     try {
-      const interactionManager = sceneManager.getInteractionManager()
       // InteractionManager를 통해 모델 선택 (기즈모 표시)
       // 실제 선택 로직은 InteractionManager에서 처리됩니다
       console.log('모델 선택 요청:', modelId)

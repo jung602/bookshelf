@@ -27,7 +27,8 @@ interface MenuBarProps {
 export default function MenuBar({
   isDarkMode,
   onMenuSelect,
-  selectedMenu,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  selectedMenu: _selectedMenu,
   menuItems = [
     { id: "menu1", label: "메뉴1", isActive: false },
     { id: "menu2", label: "메뉴2", isActive: false },
@@ -47,7 +48,8 @@ export default function MenuBar({
     [onMenuSelect],
   );
 
-  const renderMenuButton = (button: MenuButtonState, index: number) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const renderMenuButton = (button: MenuButtonState, _index: number) => {
     const isActive = button.isActive;
 
     return (

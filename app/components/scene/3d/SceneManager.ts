@@ -166,7 +166,7 @@ export class SceneManager {
       depthIndicatorStrength: 0.3,
       // 카메라 거리 기반 조절 파라미터 기본값
       cameraDistance: 10.0,
-      edgeScaleFactor: 0.6,
+      edgeScaleFactor: 0.8,
       adaptiveEdgeEnabled: 1.0
     } as PixelationParams
     

@@ -45,6 +45,11 @@ export default function ControlsContainer({
     setSelectedMenu((prevSelected: string | null) => prevSelected === menuId ? null : menuId)
   }
 
+  // 뒤로가기 핸들러 (메뉴로 돌아가기)
+  const handleGoBack = () => {
+    setSelectedMenu(null)
+  }
+
   // 모델 관련 핸들러들
   const handleModelAdd = async (modelType: string) => {
     console.log('모델 추가:', modelType)
@@ -190,7 +195,20 @@ export default function ControlsContainer({
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col relative">
+      {/* 모바일 전용 TopBar - position fixed */}
+      {isMobile && (
+        <div className={`fixed w-full z-50 ${isCollapsed ? 'bottom-[42px]' : 'top-1/2'}`}>
+          <TopBar 
+            isMobile={isMobile}
+            isCollapsed={isCollapsed}
+            onToggleCollapse={onToggleCollapse}
+            onGoBack={selectedMenu ? handleGoBack : undefined}
+            isDarkMode={isDarkMode}
+          />
+        </div>
+      )}
+
       {/* 데스크톱에서 메뉴가 선택되었을 때 해당 UI를 위에 표시 */}
       {selectedMenu && !isMobile && (
         <div className="w-full aspect-square">

@@ -14,7 +14,7 @@ export interface ThemeColors {
 
 // 기본 반지름 값 (반응형)
 const getBaseRadius = (isMobile: boolean): number => {
-  return isMobile ? 8 : 22; // 모바일: 8px, 데스크톱: 22px
+  return 8; // 모바일과 데스크톱 동일: 8px
 };
 
 // Rounded 값들 반응형 함수
@@ -24,12 +24,12 @@ export const getRoundedValues = (isMobile: boolean) => {
   return {
     // 컨테이너용
     container: {
-      desktop: "rounded-[30px]",
+      desktop: "rounded-[16px]",
       mobile: "rounded-0"
     },
     // 그리드 컨테이너용
     gridContainer: {
-      desktop: "rounded-[30px]", 
+      desktop: "rounded-[20px]", 
       mobile: "rounded-0"
     },
     // 센터 블록용
@@ -250,15 +250,15 @@ export const getResponsiveGridRounding = (isMobile: boolean): string => {
 
 // 반응형 그리드 패딩 반환 함수
 export const getResponsiveGridPadding = (isMobile: boolean): string => {
-  return isMobile ? "p-[8px]" : "p-[12px]"; // 모바일: 8px, 데스크톱: 12px
+  return "p-[8px]"; // 모바일과 데스크톱 동일: 8px
 };
 
 // 반응형 그리드 갭 반환 함수
 export const getResponsiveGridGap = (isMobile: boolean): string => {
-  return isMobile ? "gap-[2px]" : "gap-[4px]"; // 모바일: 2px, 데스크톱: 4px
+  return "gap-[2px]"; // 모바일과 데스크톱 동일: 2px
 };
 
 // 반응형 버튼 Border Radius 반환 함수
 export const getResponsiveButtonRadius = (isMobile: boolean): string => {
-  return `${getBaseRadius(isMobile)}px`; // 모바일: 8px, 데스크톱: 22px
+  return `${getBaseRadius(isMobile)}px`; // 모바일과 데스크톱 동일: 8px
 }; 

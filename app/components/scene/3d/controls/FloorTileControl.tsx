@@ -339,11 +339,62 @@ export default function FloorTileControl({
     setDragMode(null);
   };
 
-  // Add global mouse up listener
+  // 터치 이벤트 핸들러들 추가
+  const handleTouchStart = (
+    row: number,
+    col: number,
+    e: React.TouchEvent,
+  ) => {
+    e.preventDefault();
+    setIsDragging(true);
+    const currentState = getBlockState(row, col);
+    const newMode = currentState ? "deactivate" : "activate";
+    setDragMode(newMode);
+    toggleBlock(row, col);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !dragMode) return;
+    
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    // 터치 위치에서 해당 엘리먼트 찾기
+    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!elementBelow) return;
+
+    // 블록 엘리먼트인지 확인하고 row, col 정보 추출
+    const blockElement = elementBelow.closest('[data-block-position]') as HTMLElement;
+    if (!blockElement) return;
+
+    const position = blockElement.getAttribute('data-block-position');
+    if (!position) return;
+
+    const [row, col] = position.split('-').map(Number);
+    if (isNaN(row) || isNaN(col)) return;
+
+    const currentState = getBlockState(row, col);
+    if (dragMode === "activate" && !currentState) {
+      setBlockState(row, col, true);
+    } else if (dragMode === "deactivate" && currentState) {
+      setBlockState(row, col, false);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setDragMode(null);
+  };
+
+  // Add global mouse up and touch end listeners
   useEffect(() => {
     document.addEventListener("mouseup", handleMouseUp);
-    return () =>
+    document.addEventListener("touchend", handleTouchEnd);
+    return () => {
       document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
   }, []);
 
   // Cleanup on unmount
@@ -368,6 +419,10 @@ export default function FloorTileControl({
         className={`${gridArea} relative shrink-0 cursor-pointer ${TRANSITIONS.default} select-none`}
         onMouseDown={(e) => handleMouseDown(row, col, e)}
         onMouseEnter={() => handleMouseEnter(row, col)}
+        onTouchStart={(e) => handleTouchStart(row, col, e)}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        data-block-position={`${row}-${col}`}
       >
         {isActive ? (
           // Active state - Onclick design
@@ -438,6 +493,7 @@ export default function FloorTileControl({
       className={`relative ${getResponsiveContainerRounding(isMobile)} ${isMobile ? 'size-full' : 'w-80 aspect-square'} ${TRANSITIONS.fast}`}
       style={{ backgroundColor: themeColors.outerContainer }}
       ref={gridRef}
+      onTouchMove={handleTouchMove}
     >
       <div className="relative size-full">
         <div

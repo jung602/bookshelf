@@ -25,12 +25,12 @@ export const getRoundedValues = (isMobile: boolean) => {
     // 컨테이너용
     container: {
       desktop: "rounded-[16px]",
-      mobile: "rounded-0"
+      mobile: "rounded-[16px]"
     },
     // 그리드 컨테이너용
     gridContainer: {
-      desktop: "rounded-[20px]", 
-      mobile: "rounded-0"
+      desktop: "rounded-[16px]", 
+      mobile: "rounded-[16px]"
     },
     // 센터 블록용
     centerBlock: "rounded-[8px]",
@@ -255,7 +255,7 @@ export const getResponsiveGridPadding = (isMobile: boolean): string => {
 
 // 반응형 그리드 갭 반환 함수
 export const getResponsiveGridGap = (isMobile: boolean): string => {
-  return "gap-[2px]"; // 모바일과 데스크톱 동일: 2px
+  return "gap-[4px]"; // 모바일과 데스크톱 동일: 2px
 };
 
 // 반응형 버튼 Border Radius 반환 함수

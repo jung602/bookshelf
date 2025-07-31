@@ -242,10 +242,10 @@ export default function ControlsContainer({
           onMenuSelect={handleMenuSelect}
           selectedMenu={selectedMenu}
           menuItems={[
-            { id: "floor", label: "바닥", isActive: selectedMenu === 'floor' },
-            { id: "models", label: "모델", isActive: selectedMenu === 'models' },
-            { id: "layers", label: "레이어", isActive: selectedMenu === 'layers' },
-            { id: "settings", label: "설정", isActive: selectedMenu === 'settings' },
+            { id: "floor", label: "Floor", isActive: selectedMenu === 'floor' },
+            { id: "models", label: "Furniture", isActive: selectedMenu === 'models' },
+            { id: "layers", label: "Collection", isActive: selectedMenu === 'layers' },
+            { id: "settings", label: "Tiles", isActive: selectedMenu === 'settings' },
           ]}
         />
       )}

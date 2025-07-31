@@ -152,12 +152,22 @@ export class SceneManager {
     
     // 픽셀화 해상도 계산 (기본값 사용)
     const defaultParams = { 
-      pixelSize: 3.5, 
+      pixelSize: 2, 
       ditherStrength: 0, 
       ditherScale: 1.0, 
       normalEdgeStrength: 0.5,
       useUIPalette: 0.3,
-      useMSPaintPalette: 0.2
+      useMSPaintPalette: 0.2,
+      // Unity 방식 파라미터 기본값
+      depthEdgeStrength: 0.8,
+      edgeThreshold: 0.05,
+      outlineDarknessAmount: 0.2,
+      useColorAwareOutline: 1.0,
+      depthIndicatorStrength: 0.3,
+      // 카메라 거리 기반 조절 파라미터 기본값
+      cameraDistance: 10.0,
+      edgeScaleFactor: 0.6,
+      adaptiveEdgeEnabled: 1.0
     } as PixelationParams
     
     // 컨테이너 크기 가져오기

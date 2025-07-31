@@ -8,6 +8,16 @@ interface BasePixelationParams {
   normalEdgeStrength: number
   ditherStrength: number
   ditherScale: number
+  // Unity 방식 파라미터 추가
+  depthEdgeStrength: number
+  edgeThreshold: number
+  outlineDarknessAmount: number
+  useColorAwareOutline: number
+  depthIndicatorStrength: number
+  // 카메라 거리 기반 조절 파라미터
+  cameraDistance: number
+  edgeScaleFactor: number
+  adaptiveEdgeEnabled: number
 }
 
 // 팔레트 파라미터 타입 자동 생성
@@ -78,6 +88,18 @@ export class RenderPixelatedPass extends Pass {
     uniforms.normalEdgeStrength.value = this.params.normalEdgeStrength
     uniforms.ditherStrength.value = this.params.ditherStrength
     uniforms.ditherScale.value = this.params.ditherScale
+    uniforms.depthEdgeStrength.value = this.params.depthEdgeStrength
+    uniforms.edgeThreshold.value = this.params.edgeThreshold
+    uniforms.outlineDarknessAmount.value = this.params.outlineDarknessAmount
+    uniforms.useColorAwareOutline.value = this.params.useColorAwareOutline
+    uniforms.depthIndicatorStrength.value = this.params.depthIndicatorStrength
+    
+    // 카메라 거리 계산 (scene 중심점을 기준으로)
+    const sceneCenter = new THREE.Vector3(0, 0, 0) // 씬 중심점
+    const cameraDistance = this.camera.position.distanceTo(sceneCenter)
+    uniforms.cameraDistance.value = cameraDistance
+    uniforms.edgeScaleFactor.value = this.params.edgeScaleFactor
+    uniforms.adaptiveEdgeEnabled.value = this.params.adaptiveEdgeEnabled
     
     // 팔레트 유니폼 자동 업데이트
     ColorPalettes.PALETTE_METADATA.forEach(palette => {
@@ -143,7 +165,17 @@ export class RenderPixelatedPass extends Pass {
       },
       normalEdgeStrength: { value: this.params.normalEdgeStrength },
       ditherStrength: { value: this.params.ditherStrength },
-      ditherScale: { value: this.params.ditherScale }
+      ditherScale: { value: this.params.ditherScale },
+      // Unity 방식 파라미터 추가
+      depthEdgeStrength: { value: this.params.depthEdgeStrength },
+      edgeThreshold: { value: this.params.edgeThreshold },
+      outlineDarknessAmount: { value: this.params.outlineDarknessAmount },
+      useColorAwareOutline: { value: this.params.useColorAwareOutline },
+      depthIndicatorStrength: { value: this.params.depthIndicatorStrength },
+      // 카메라 거리 기반 조절 파라미터
+      cameraDistance: { value: this.params.cameraDistance },
+      edgeScaleFactor: { value: this.params.edgeScaleFactor },
+      adaptiveEdgeEnabled: { value: this.params.adaptiveEdgeEnabled }
     }
 
     // 팔레트 유니폼 자동 생성
@@ -174,6 +206,14 @@ export class RenderPixelatedPass extends Pass {
         uniform float normalEdgeStrength;
         uniform float ditherStrength;
         uniform float ditherScale;
+        uniform float depthEdgeStrength;
+        uniform float edgeThreshold;
+        uniform float outlineDarknessAmount;
+        uniform float useColorAwareOutline;
+        uniform float depthIndicatorStrength;
+        uniform float cameraDistance;
+        uniform float edgeScaleFactor;
+        uniform float adaptiveEdgeEnabled;
         ${paletteUniformDeclarations}
         varying vec2 vUv;
 
@@ -201,77 +241,156 @@ export class RenderPixelatedPass extends Pass {
           return clamp(dithered, 0.0, 1.0);
         }
 
+        // RGB to HSV conversion
+        vec3 rgb2hsv(vec3 c) {
+          vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+          vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+          vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+          
+          float d = q.x - min(q.w, q.y);
+          float e = 1.0e-10;
+          return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+        }
+
+        // HSV to RGB conversion
+        vec3 hsv2rgb(vec3 c) {
+          vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+          vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+          return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+        }
+
+        // 카메라 거리 기반 적응적 스케일 계산
+        float getAdaptiveScale() {
+          if (adaptiveEdgeEnabled < 0.5) return 1.0;
+          
+          // 카메라 거리에 따라 0.2 ~ 1.8 범위로 스케일 조절 (더 얇게)
+          float minScale = 0.2;
+          float maxScale = 1.8;
+          float normalizedDistance = smoothstep(2.0, 30.0, cameraDistance);
+          float baseScale = mix(maxScale, minScale, normalizedDistance);
+          
+          return baseScale * edgeScaleFactor;
+        }
+
         vec3 getNormal(int x, int y) {
-          return texture2D(tNormal, vUv + vec2(x, y) * resolution.zw).rgb * 2.0 - 1.0;
+          float scale = getAdaptiveScale();
+          vec2 offset = vec2(float(x), float(y)) * resolution.zw * scale;
+          return texture2D(tNormal, vUv + offset).rgb * 2.0 - 1.0;
         }
 
-        // 깊이 값을 가져오는 함수
         float getDepth(int x, int y) {
-          return texture2D(tDepth, vUv + vec2(x, y) * resolution.zw).r;
+          float scale = getAdaptiveScale();
+          vec2 offset = vec2(float(x), float(y)) * resolution.zw * scale;
+          return texture2D(tDepth, vUv + offset).r;
         }
 
-        // 주변 픽셀의 실제 RGB 색상을 가져오는 함수 추가
         vec3 getRGBColor(int x, int y) {
-          return texture2D(tDiffuse, vUv + vec2(x, y) * resolution.zw).rgb;
+          float scale = getAdaptiveScale();
+          vec2 offset = vec2(float(x), float(y)) * resolution.zw * scale;
+          return texture2D(tDiffuse, vUv + offset).rgb;
         }
 
-        // Normal과 Depth를 모두 고려한 엣지 감지
-        float simpleEdge() {
+        // Unity 방식의 고급 Edge Detection
+        vec2 getAdvancedEdge() {
           vec3 centerNormal = getNormal(0, 0);
           float centerDepth = getDepth(0, 0);
+          vec3 directionVector = vec3(1.0, 1.0, 1.0);
           
-          // Normal 차이 계산
-          float normalRightDiff = distance(centerNormal, getNormal(1, 0));
-          float normalDownDiff = distance(centerNormal, getNormal(0, 1));
-          float maxNormalDiff = max(normalRightDiff, normalDownDiff);
+          float depthStrength = 0.0;
+          float normalStrength = 0.0;
+          float avgDepthBias = 0.0;
+          int neighborCount = 0;
           
-          // Depth 차이 계산 (더 민감하게 설정)
-          float depthRightDiff = abs(centerDepth - getDepth(1, 0));
-          float depthDownDiff = abs(centerDepth - getDepth(0, 1));
-          float maxDepthDiff = max(depthRightDiff, depthDownDiff);
+          // 8방향 모든 neighbor 체크 (Unity 방식)
+          for(int x = -1; x <= 1; x++) {
+            for(int y = -1; y <= 1; y++) {
+              if(x == 0 && y == 0) continue;
+              
+              vec3 neighborNormal = getNormal(x, y);
+              float neighborDepth = getDepth(x, y);
+              
+              // Depth edge detection with bias clamping (1픽셀 두께)
+              float depthBias = neighborDepth - centerDepth;
+              depthStrength += clamp(depthBias, 0.0, 1.0);
+              avgDepthBias += depthBias;
+              
+              // Normal edge detection with direction indicator
+              vec3 normalBias = neighborNormal - centerNormal;
+              float sharpness = 1.0 - dot(centerNormal, neighborNormal);
+              float normalIndicator = smoothstep(-0.01, 0.01, dot(normalBias, directionVector));
+              normalStrength += sharpness * normalIndicator;
+              
+              neighborCount++;
+            }
+          }
           
-          // Normal 엣지 (기존 로직)
-          float normalEdge = maxNormalDiff > 0.5 ? 1.0 : 0.0;
+          avgDepthBias /= float(neighborCount);
           
-          // Depth 엣지 (깊이 차이가 0.001 이상이면 엣지로 판정)
-          float depthEdge = maxDepthDiff > 0.001 ? 1.0 : 0.0;
+          // 부드러운 edge 강도 계산 (임계값 민감하게 조정)
+          float depthEdge = smoothstep(0.001, 0.003, depthStrength) * depthEdgeStrength;
+          float normalEdge = smoothstep(0.05, 0.1, normalStrength) * normalEdgeStrength;
           
-          // 둘 중 하나라도 엣지면 최종 엣지로 판정
-          return max(normalEdge, depthEdge);
+          // Depth indicator로 concave edge 제거 (완화된 버전)
+          float depthIndicator = smoothstep(-0.02, 0.02, avgDepthBias);
+          
+          // 완전히 제거하지 말고 강도 조절로 변경
+          float originalNormalEdge = normalEdge;
+          float suppressedNormalEdge = normalEdge * depthIndicator;
+          normalEdge = mix(originalNormalEdge, suppressedNormalEdge, depthIndicatorStrength);
+          
+          return vec2(depthEdge, normalEdge);
+        }
+
+        // 주변 색상 기반 아웃라인 색상 계산
+        vec3 getColorAwareOutline(vec3 centerColor) {
+          if (useColorAwareOutline < 0.5) {
+            // 기존 방식: 단순히 어둡게
+            return centerColor * (1.0 - outlineDarknessAmount);
+          }
+          
+          // 주변 픽셀들의 색상 샘플링
+          vec3 avgColor = vec3(0.0);
+          int sampleCount = 0;
+          
+          // 3x3 영역의 색상 평균 계산
+          for(int x = -1; x <= 1; x++) {
+            for(int y = -1; y <= 1; y++) {
+              vec3 neighborColor = getRGBColor(x, y);
+              avgColor += neighborColor;
+              sampleCount++;
+            }
+          }
+          avgColor /= float(sampleCount);
+          
+          // 중심 색상과 주변 평균 색상 혼합
+          vec3 targetColor = mix(centerColor, avgColor, 0.7);
+          
+          // HSV 변환 후 명도 조절
+          vec3 hsv = rgb2hsv(targetColor);
+          hsv.z *= (1.0 - outlineDarknessAmount); // Value(명도) 낮추기
+          hsv.y = min(hsv.y * 1.2, 1.0); // 채도 약간 높이기 (더 생생한 색상)
+          
+          return hsv2rgb(hsv);
         }
 
         void main() {
           vec4 texel = texture2D(tDiffuse, vUv);
           vec3 finalColor = texel.rgb;
           
-          float edge = simpleEdge();
+          // Unity 방식의 고급 edge detection (임계값 개선됨)
+          vec2 edgeStrengths = getAdvancedEdge();
+          float totalEdgeStrength = max(edgeStrengths.x, edgeStrengths.y);
           
-          // 엣지가 감지되면 색상별로 명확하게 다른 어두운 색상
-          if (edge > 0.5) {
-            // 빨간색 계열
-            if (texel.r > 0.6 && texel.g < 0.4 && texel.b < 0.4) {
-              finalColor = vec3(0.5, 0.1, 0.1); // 어두운 빨강
-            }
-            // 파란색 계열
-            else if (texel.r < 0.4 && texel.g < 0.4 && texel.b > 0.6) {
-              finalColor = vec3(0.1, 0.1, 0.5); // 어두운 파랑
-            }
-            // 노란색 계열 (의자)
-            else if (texel.r > 0.6 && texel.g > 0.6 && texel.b < 0.4) {
-              finalColor = vec3(0.8, 0.6, 0.0); // 어두운 노란색/갈색
-            }
-            // 흰색 계열 (바닥)
-            else if (texel.r > 0.8 && texel.g > 0.8 && texel.b > 0.8) {
-              finalColor = vec3(0.7, 0.7, 0.7); // 회색
-            }
-            // 회색 계열 (벽)
-            else if (texel.r > 0.4 && texel.g > 0.4 && texel.b > 0.4) {
-              finalColor = vec3(0.5, 0.5, 0.5); // 진한 회색
-            }
-            // 기타
-            else {
-              finalColor = texel.rgb * 0.3; // 30% 어둡게
-            }
+          // Edge threshold 적용
+          float isEdge = step(edgeThreshold, totalEdgeStrength);
+          
+          // 주변 색상 기반 아웃라인 적용
+          if (isEdge > 0.5) {
+            vec3 outlineColor = getColorAwareOutline(texel.rgb);
+            
+            // 부드러운 혼합을 위한 강도 계산
+            float blendAmount = smoothstep(edgeThreshold, edgeThreshold + 0.1, totalEdgeStrength);
+            finalColor = mix(texel.rgb, outlineColor, blendAmount);
           }
           
           // 디더링 적용 (픽셀 좌표 사용)

@@ -37,6 +37,7 @@ export class RenderPixelatedPass extends Pass {
   private normalRenderTarget: THREE.WebGLRenderTarget
   private normalMaterial: THREE.Material
   private params: PixelationParams
+  private currentScreenResolution: THREE.Vector2
 
   constructor(
     resolution: THREE.Vector2,
@@ -50,6 +51,7 @@ export class RenderPixelatedPass extends Pass {
     this.scene = scene
     this.camera = camera
     this.params = params
+    this.currentScreenResolution = new THREE.Vector2(window.innerWidth, window.innerHeight)
     
     this.fsQuad = new FullScreenQuad(this.createMaterial())
     
@@ -122,8 +124,7 @@ export class RenderPixelatedPass extends Pass {
     
     // 픽셀 크기가 변경되면 해상도 업데이트
     if (params.pixelSize) {
-      const screenResolution = new THREE.Vector2(window.innerWidth, window.innerHeight)
-      this.resolution = screenResolution.clone().divideScalar(params.pixelSize)
+      this.resolution = this.currentScreenResolution.clone().divideScalar(params.pixelSize)
       this.resolution.x = Math.floor(this.resolution.x)
       this.resolution.y = Math.floor(this.resolution.y)
       
@@ -147,6 +148,34 @@ export class RenderPixelatedPass extends Pass {
         1 / this.resolution.y
       )
     }
+  }
+
+  updateScreenResolution(width: number, height: number) {
+    this.currentScreenResolution.set(width, height)
+    // 현재 픽셀 사이즈로 해상도 다시 계산
+    this.resolution = this.currentScreenResolution.clone().divideScalar(this.params.pixelSize)
+    this.resolution.x = Math.floor(this.resolution.x)
+    this.resolution.y = Math.floor(this.resolution.y)
+    
+    // 렌더 타겟 재생성
+    this.rgbRenderTarget.dispose()
+    this.normalRenderTarget.dispose()
+    this.rgbRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBAFormat)
+    this.normalRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBFormat)
+    
+    // RGB 렌더 타겟에 depth texture 재추가
+    this.rgbRenderTarget.depthTexture = new THREE.DepthTexture(this.resolution.x, this.resolution.y)
+    this.rgbRenderTarget.depthTexture.format = THREE.DepthFormat
+    this.rgbRenderTarget.depthTexture.type = THREE.UnsignedShortType
+    
+    // 해상도 유니폼 업데이트
+    const uniforms = (this.fsQuad.material as THREE.ShaderMaterial).uniforms
+    uniforms.resolution.value.set(
+      this.resolution.x,
+      this.resolution.y,
+      1 / this.resolution.x,
+      1 / this.resolution.y
+    )
   }
 
   private createMaterial(): THREE.ShaderMaterial {

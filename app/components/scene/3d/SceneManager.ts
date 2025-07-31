@@ -152,12 +152,12 @@ export class SceneManager {
     
     // 픽셀화 해상도 계산 (기본값 사용)
     const defaultParams = { 
-      pixelSize: 2, 
+      pixelSize: 3, 
       ditherStrength: 0, 
-      ditherScale: 1.0, 
-      normalEdgeStrength: 0.5,
-      useUIPalette: 0.3,
-      useMSPaintPalette: 0.2,
+      ditherScale: 0, 
+      normalEdgeStrength: 0.3,
+      useUIPalette: 0.1,
+      useMSPaintPalette: 0.3,
       // Unity 방식 파라미터 기본값
       depthEdgeStrength: 0.8,
       edgeThreshold: 0.05,
@@ -165,7 +165,7 @@ export class SceneManager {
       useColorAwareOutline: 1.0,
       depthIndicatorStrength: 0.3,
       // 카메라 거리 기반 조절 파라미터 기본값
-      cameraDistance: 10.0,
+      cameraDistance: 10,
       edgeScaleFactor: 0.8,
       adaptiveEdgeEnabled: 1.0
     } as PixelationParams
@@ -186,6 +186,9 @@ export class SceneManager {
     this.pixelatedPass = new RenderPixelatedPass(renderResolution, this.scene, this.camera, defaultParams)
     this.pixelatedPass.renderToScreen = true
     this.composer.addPass(this.pixelatedPass)
+    
+    // 화면 해상도 업데이트
+    this.pixelatedPass.updateScreenResolution(width, height)
   }
 
   private setupControls() {
@@ -604,8 +607,8 @@ export class SceneManager {
 
     // 픽셀화 패스의 해상도 업데이트
     if (this.pixelatedPass) {
-      // 픽셀 사이즈 변경으로 해상도 업데이트 트리거
-      this.pixelatedPass.updateParams({ pixelSize: 3.5 })
+      // 화면 해상도 업데이트 후 픽셀 사이즈 적용
+      this.pixelatedPass.updateScreenResolution(width, height)
     }
   }
 
@@ -685,7 +688,7 @@ export class SceneManager {
 
     // 픽셀화 패스의 해상도 업데이트
     if (this.pixelatedPass) {
-      this.pixelatedPass.updateParams({ pixelSize: 3.5 })
+      this.pixelatedPass.updateScreenResolution(width, height)
     }
   }
 

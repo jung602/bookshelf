@@ -161,9 +161,9 @@ export class ModelManager {
       
       console.log(`Model ${modelId} removed, remaining models:`, Array.from(this.models.keys()))
       
-      // 모델 제거 후 재계산 임시 비활성화 (사용자 배치 보존)
-      console.log('Model removed - skipping position recalculation to preserve user arrangements')
-      // this.recalculateAllModelPositions() // 임시 비활성화
+      // 모델 제거 후 나머지 모델들의 위치 재계산 (떨어뜨리기)
+      console.log('Model removed - recalculating positions for remaining models...')
+      this.recalculateAllModelPositions()
       
       console.log(`Model ${modelId} removed from scene and all model positions recalculated`)
     } else {

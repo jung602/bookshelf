@@ -617,9 +617,9 @@ export class InteractionManager {
           
           console.log(`Floor model positioned at (${clampedPosition.x}, ${surfaceY}, ${clampedPosition.z})`)
           
-          // 드래그 후 재계산 임시 비활성화 (바닥 변경 시 충돌 방지)
-          console.log('Drag completed - skipping other model recalculation to preserve user arrangements')
-          // this.modelManager.recalculateOtherModelPositions(selectedModel.getId()) // 임시 비활성화
+          // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
+          console.log('Recalculating positions for other models after drag...')
+          this.modelManager.recalculateOtherModelPositions(selectedModel.getId())
         }
       }
       

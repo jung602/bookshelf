@@ -155,7 +155,7 @@ export class SceneManager {
       pixelSize: 2, 
       ditherStrength: 0, 
       ditherScale: 0, 
-      normalEdgeStrength: 0.5,
+      normalEdgeStrength: 0.2,
       useUIPalette: 0.1,
       useMSPaintPalette: 0.3,
       // Unity 방식 파라미터 기본값

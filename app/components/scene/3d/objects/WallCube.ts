@@ -62,7 +62,7 @@ export class WallCube extends BaseModel {
     this.collider = colliderMesh
   }
 
-  public attachToWall(scene: THREE.Scene, targetX: number, targetZ: number): boolean {
+  public attachToWall(scene: THREE.Scene, targetX: number, targetZ: number, targetY?: number): boolean {
     const wall = this.findNearestWall(scene, targetX, targetZ)
     
     if (!wall) {
@@ -73,7 +73,7 @@ export class WallCube extends BaseModel {
     this.attachedWall = wall
     this.wallDirection = this.determineWallDirection(wall)
     
-    const wallPosition = this.calculateWallAttachmentPosition(wall, targetX, targetZ)
+    const wallPosition = this.calculateWallAttachmentPosition(wall, targetX, targetZ, targetY)
     
     this.setPosition({
       x: wallPosition.x,
@@ -81,7 +81,7 @@ export class WallCube extends BaseModel {
       z: wallPosition.z
     })
 
-    console.log(`WallCube attached to ${this.wallDirection} wall`)
+    console.log(`WallCube attached to ${this.wallDirection} wall at Y: ${wallPosition.y.toFixed(3)}`)
     return true
   }
 
@@ -125,14 +125,21 @@ export class WallCube extends BaseModel {
     return 'unknown'
   }
 
-  private calculateWallAttachmentPosition(wall: THREE.Mesh, targetX: number, targetZ: number): THREE.Vector3 {
+  private calculateWallAttachmentPosition(wall: THREE.Mesh, targetX: number, targetZ: number, targetY?: number): THREE.Vector3 {
     const wallPos = wall.position
     const wallScale = wall.scale
     const cubeSize = 0.1
     
     let attachX = wallPos.x
-    const attachY = wallPos.y
+    let attachY = wallPos.y // 기본값은 벽 중앙
     let attachZ = wallPos.z
+
+    // Y 위치 계산 - targetY가 제공되면 벽의 범위 내에서 조정
+    if (targetY !== undefined) {
+      const wallMinY = wallPos.y - wallScale.y/2 + cubeSize/2
+      const wallMaxY = wallPos.y + wallScale.y/2 - cubeSize/2
+      attachY = Math.max(wallMinY, Math.min(wallMaxY, targetY))
+    }
 
     switch (this.wallDirection) {
       case 'north':

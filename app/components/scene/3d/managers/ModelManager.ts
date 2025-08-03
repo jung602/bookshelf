@@ -161,8 +161,9 @@ export class ModelManager {
       
       console.log(`Model ${modelId} removed, remaining models:`, Array.from(this.models.keys()))
       
-      // 모델 제거 후 나머지 모든 모델들의 위치 재계산
-      this.recalculateAllModelPositions()
+      // 모델 제거 후 재계산 임시 비활성화 (사용자 배치 보존)
+      console.log('Model removed - skipping position recalculation to preserve user arrangements')
+      // this.recalculateAllModelPositions() // 임시 비활성화
       
       console.log(`Model ${modelId} removed from scene and all model positions recalculated`)
     } else {
@@ -178,13 +179,13 @@ export class ModelManager {
     return Array.from(this.models.values())
   }
 
-  public moveModel(modelId: string, x: number, z: number): void {
+  public moveModel(modelId: string, x: number, z: number, y?: number): void {
     const model = this.models.get(modelId)
     if (!model) return
 
     // 벽 가구인지 확인
     if (model.getType() === 'wallcube') {
-      this.moveWallModel(modelId, x, z)
+      this.moveWallModel(modelId, x, z, y)
       return
     }
 
@@ -205,18 +206,18 @@ export class ModelManager {
     console.log(`Model ${modelId} moved to (${clampedPosition.x}, ${modelY}, ${clampedPosition.z})`)
   }
 
-  // 벽 가구 이동 전용 메서드
-  private moveWallModel(modelId: string, x: number, z: number): void {
+  // 벽 가구 이동 전용 메서드 (Y 위치 포함)
+  private moveWallModel(modelId: string, x: number, z: number, y?: number): void {
     const model = this.models.get(modelId)
     if (!model || model.getType() !== 'wallcube') return
 
     const wallCube = model as WallCube
     
-    // 새로운 위치에서 벽에 다시 부착 시도
-    const attached = wallCube.attachToWall(this.scene, x, z)
+    // 새로운 위치에서 벽에 다시 부착 시도 (Y 위치 포함)
+    const attached = wallCube.attachToWall(this.scene, x, z, y)
     
     if (attached) {
-      console.log(`Wall model ${modelId} moved and reattached to wall`)
+      console.log(`Wall model ${modelId} moved and reattached to wall at Y: ${y?.toFixed(3) || 'default'}`)
     } else {
       console.log(`Failed to reattach wall model ${modelId} to wall`)
     }
@@ -650,7 +651,7 @@ export class ModelManager {
     
     let hasChanges = true
     let iterations = 0
-    const maxIterations = 3 // 무한 루프 방지 (줄임)
+    const maxIterations = 6 // 무한 루프 방지 (증가 - 복잡한 스택 구조 고려)
     
     // 연쇄적으로 떨어질 수 있는 모델들을 고려하여 여러 번 재계산
     while (hasChanges && iterations < maxIterations) {
@@ -694,8 +695,29 @@ export class ModelManager {
           
           // Y 위치가 변경되었을 때만 업데이트
           if (Math.abs(currentPosition.y - newY) > 0.001) {
-            // 새로운 Y 위치가 현재보다 아래에 있을 때만 이동 (떨어지기만 허용)
-            if (newY <= currentPosition.y + 0.001) {
+            // 더 스마트한 이동 허용 로직
+            const isMovingDown = newY < currentPosition.y - 0.001
+            const isMovingUp = newY > currentPosition.y + 0.001
+            const upwardDistance = newY - currentPosition.y
+            
+            let shouldMove = false
+            let moveReason = ""
+            
+            if (isMovingDown) {
+              // 아래로 이동은 항상 허용 (떨어지는 것)
+              shouldMove = true
+              moveReason = "falling down"
+            } else if (isMovingUp && upwardDistance < 0.5) {
+              // 위로 이동은 0.5 이하의 작은 거리만 허용 (새로운 지지대 위로)
+              shouldMove = true
+              moveReason = "small upward adjustment"
+            } else if (isMovingUp) {
+              // 큰 위로 이동은 거부
+              shouldMove = false
+              moveReason = "large upward movement blocked"
+            }
+            
+            if (shouldMove) {
               model.setPosition({
                 x: currentPosition.x,
                 y: newY,
@@ -703,24 +725,51 @@ export class ModelManager {
               })
               
               hasChanges = true // 변경이 있었음을 표시
-              console.log(`  -> ✅ Model ${model.getId()} repositioned from Y:${currentPosition.y.toFixed(3)} to Y:${newY.toFixed(3)}`)
-              
-              // 위치가 변경된 모델을 다시 정렬에 반영하기 위해 배열 재정렬
-              modelsToRecalculate.sort((a, b) => {
-                const aY = a.getPosition().y
-                const bY = b.getPosition().y
-                return aY - bY
-              })
+              console.log(`  -> ✅ Model ${model.getId()} repositioned from Y:${currentPosition.y.toFixed(3)} to Y:${newY.toFixed(3)} (${moveReason})`)
             } else {
-              console.log(`  -> ⚠️ Model ${model.getId()} would move up (from ${currentPosition.y.toFixed(3)} to ${newY.toFixed(3)}), preventing upward movement`)
+              console.log(`  -> ⚠️ Model ${model.getId()} movement blocked: ${moveReason} (from ${currentPosition.y.toFixed(3)} to ${newY.toFixed(3)})`)
             }
           } else {
             console.log(`  -> ⏸️ Model ${model.getId()} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
           }
         } catch {
-          console.log(`  -> ⚠️ Cannot calculate surface Y for model ${model.getId()}: No floor available`)
-          // 바닥이 없으면 현재 위치 유지
+          console.log(`  -> ⚠️ Cannot calculate surface Y for model ${model.getId()}: Attempting fallback to floor`)
+          // 표면 계산 실패 시 바닥으로 떨어뜨리기 (지지를 잃었을 가능성)
+          try {
+            const floorY = this.calculateModelFloorY(model)
+            if (Math.abs(currentPosition.y - floorY) > 0.01) {
+              model.setPosition({
+                x: currentPosition.x,
+                y: floorY,
+                z: currentPosition.z
+              })
+              hasChanges = true
+              console.log(`  -> 🆘 Model ${model.getId()} fallen to floor Y: ${floorY.toFixed(3)}`)
+            }
+          } catch (fallbackError) {
+            console.log(`  -> ❌ Complete failure for model ${model.getId()}: ${fallbackError}`)
+            // 마지막 수단: Y=0 위에 배치
+            const modelBottomOffset = this.getModelBottomOffset(model)
+            const emergencyY = 0 - modelBottomOffset
+            model.setPosition({
+              x: currentPosition.x,
+              y: emergencyY,
+              z: currentPosition.z
+            })
+            hasChanges = true
+            console.log(`  -> 🚨 Model ${model.getId()} emergency positioned at Y: ${emergencyY.toFixed(3)}`)
+          }
         }
+      }
+      
+      // 반복이 끝날 때마다 변경된 위치에 따라 모델 재정렬
+      if (hasChanges) {
+        modelsToRecalculate.sort((a, b) => {
+          const aY = a.getPosition().y
+          const bY = b.getPosition().y
+          return aY - bY
+        })
+        console.log(`    -> Models re-sorted after iteration ${iterations}`)
       }
     }
     
@@ -899,97 +948,95 @@ export class ModelManager {
   }
 
   /**
-   * 바닥 변경 시 모든 가구를 자동으로 재배치하는 메서드
-   * 바닥이 없어진 위치의 가구들만 가장 가까운 바닥 위치로 이동시키고,
-   * 기존 위치에 바닥이 있는 가구들은 그 위치를 유지합니다.
+   * 바닥 변경 시 스마트한 모델 재배치
+   * - 바닥이 여전히 있는 위치: 완전 보존 (collision 재계산 안함)
+   * - 바닥이 사라진 위치만: 근처 바닥이나 가구 위로 이동 (collision 고려)
    */
   public repositionModelsAfterFloorChange(): void {
-    console.log('=== Starting conservative model repositioning after floor change ===')
+    console.log('=== Starting smart repositioning after floor change ===')
     
     const allModels = Array.from(this.models.values()).filter(model => 
-      model.isModelLoaded() && model.getType() !== 'wallcube' // 벽 가구는 바닥 변경 시 재배치에서 제외
+      model.isModelLoaded() && model.getType() !== 'wallcube'
     )
     
     if (allModels.length === 0) {
-      console.log('No models to reposition')
+      console.log('No models to check')
       return
     }
 
     console.log(`Found ${allModels.length} models to check`)
 
-    // 바닥이 없으면 모든 모델 제거 또는 경고
     if (!this.hasFloorMeshes()) {
-      console.log('⚠️ No floor available after change - models cannot be repositioned')
+      console.log('⚠️ No floor available after change - all models need repositioning to default')
       return
     }
 
-    let repositionedCount = 0
+    let movedCount = 0
+    let preservedCount = 0
     
     allModels.forEach((model) => {
       const currentPosition = model.getPosition()
       console.log(`Checking model ${model.getId()} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
       
-      // 현재 위치에 바닥이 있는지 확인
-      const hasFloorAtCurrentPosition = this.hasFloorTileAt(currentPosition.x, currentPosition.z)
+      // 현재 위치에 바닥이 있는지 정확히 체크
+      const hasFloor = this.hasFloorTileAt(currentPosition.x, currentPosition.z)
       
-      if (!hasFloorAtCurrentPosition) {
-        // 바닥이 없는 위치에 있는 가구만 가장 가까운 바닥으로 이동
-        console.log(`  -> Model ${model.getId()} has no floor at current position, finding nearest floor tile`)
+      if (!hasFloor) {
+        // 바닥이 사라진 경우만: 근처 바닥이나 가구 위로 이동 (collision 고려)
+        console.log(`  -> ⚠️ Model ${model.getId()} lost its floor - moving to nearest surface (floor or stacked)`)
         
-        const nearestFloorPosition = this.findNearestFloorTile(currentPosition.x, currentPosition.z)
+        const nearestFloor = this.findNearestFloorTile(currentPosition.x, currentPosition.z)
         
-        if (nearestFloorPosition) {
-          // 모델의 바운딩 박스를 고려한 위치 조정
-          const adjustedPosition = this.clampToFloorWithBounds(model, nearestFloorPosition.x, nearestFloorPosition.z)
+        if (nearestFloor) {
+          const adjustedPosition = this.clampToFloorWithBounds(model, nearestFloor.x, nearestFloor.z)
           
           try {
-            // 바닥 변경 시에는 단순히 바닥 Y 위치 계산 (레이캐스팅 없이)
-            const floorY = this.calculateModelFloorY(model)
-            
+            // 바닥이 사라진 가구는 근처 바닥이나 가구 위로 이동 (collision 고려)
+            const surfaceY = this.calculateSurfaceY(model, adjustedPosition.x, adjustedPosition.z)
             model.setPosition({
               x: adjustedPosition.x,
-              y: floorY,
+              y: surfaceY,
               z: adjustedPosition.z
             })
-            
-            repositionedCount++
-            console.log(`  -> ✅ Model ${model.getId()} repositioned to nearest floor at (${adjustedPosition.x.toFixed(3)}, ${floorY.toFixed(3)}, ${adjustedPosition.z.toFixed(3)})`)
+            movedCount++
+            console.log(`  -> 🚚 Model ${model.getId()} moved to nearest surface at (${adjustedPosition.x.toFixed(3)}, ${surfaceY.toFixed(3)}, ${adjustedPosition.z.toFixed(3)}) - stacking considered`)
           } catch (error) {
-            console.log(`  -> ❌ Failed to calculate floor Y for model ${model.getId()}: ${error}`)
-            
-            // 대안: 간단한 Y=0 기준 계산
-            const modelBottomOffset = this.getModelBottomOffset(model)
-            const simpleY = 0 - modelBottomOffset
-            
-            model.setPosition({
-              x: adjustedPosition.x,
-              y: simpleY,
-              z: adjustedPosition.z
-            })
-            
-            repositionedCount++
-            console.log(`  -> ⚡ Model ${model.getId()} positioned using simple Y calculation at (${adjustedPosition.x.toFixed(3)}, ${simpleY.toFixed(3)}, ${adjustedPosition.z.toFixed(3)})`)
+            // 1차 대안: 단순 바닥 Y
+            try {
+              const floorY = this.calculateModelFloorY(model)
+              model.setPosition({
+                x: adjustedPosition.x,
+                y: floorY,
+                z: adjustedPosition.z
+              })
+              movedCount++
+              console.log(`  -> 🆘 Model ${model.getId()} fallback to floor Y: ${floorY.toFixed(3)}`)
+            } catch (fallbackError) {
+              // 2차 대안: 비상 조치
+              const modelBottomOffset = this.getModelBottomOffset(model)
+              const emergencyY = 0 - modelBottomOffset
+              model.setPosition({
+                x: adjustedPosition.x,
+                y: emergencyY,
+                z: adjustedPosition.z
+              })
+              movedCount++
+              console.log(`  -> 🚨 Model ${model.getId()} emergency positioned at Y: ${emergencyY.toFixed(3)}`)
+            }
           }
         } else {
-          console.log(`  -> ⚠️ No valid floor tile found for model ${model.getId()}`)
+          console.log(`  -> ❌ No valid floor found for model ${model.getId()}`)
         }
       } else {
-        // 바닥이 있는 위치에 있는 가구는 위치를 유지 (Y 좌표 재계산하지 않음)
-        console.log(`  -> ✅ Model ${model.getId()} has floor at current position, keeping current position unchanged`)
+        // 바닥이 여전히 있는 경우: 절대 건드리지 않음 (쌓임 구조 보존)
+        preservedCount++
+        console.log(`  -> 🔒 Model ${model.getId()} has floor - position completely preserved`)
       }
     })
     
-    console.log(`=== Conservative floor change repositioning completed: ${repositionedCount} models repositioned ===`)
-    
-    // 재배치된 모델이 있는 경우에만 최소한의 위치 재계산 수행
-    if (repositionedCount > 0) {
-      console.log('Running minimal position recalculation for repositioned models only...')
-      
-      // 약간의 지연 후 실행하여 위치 변경이 완전히 적용된 후 재계산
-      setTimeout(() => {
-        // 전체 재계산 대신 재배치된 모델들에 대해서만 최소한의 조정
-        console.log('Minimal position adjustment completed')
-      }, 100)
-    }
+    console.log(`=== Smart repositioning completed ===`)
+    console.log(`🔒 ${preservedCount} models preserved (floor still exists - no collision recalc)`)
+    console.log(`🚚 ${movedCount} models moved to nearest surface (floor disappeared - stacking considered)`)
+    console.log('✨ No collision recalculation for preserved models - existing stacking maintained')
   }
 } 

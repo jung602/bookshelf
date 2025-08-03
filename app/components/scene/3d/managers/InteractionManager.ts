@@ -7,6 +7,8 @@ export interface DragState {
   selectedModel: BaseModel | null
   dragOffset: THREE.Vector3
   dragPlane: THREE.Plane
+  startMouseY: number // 벽 가구 Y축 드래그를 위한 시작 마우스 Y 위치
+  startModelY: number // 벽 가구 Y축 드래그를 위한 시작 모델 Y 위치
 }
 
 export interface GizmoState {
@@ -66,7 +68,9 @@ export class InteractionManager {
       isDragging: false,
       selectedModel: null,
       dragOffset: new THREE.Vector3(),
-      dragPlane: this.floorPlane.clone()
+      dragPlane: this.floorPlane.clone(),
+      startMouseY: 0,
+      startModelY: 0
     }
 
     // 기즈모 상태 초기화
@@ -400,18 +404,32 @@ export class InteractionManager {
   private prepareForDrag(model: BaseModel, intersectionPoint: THREE.Vector3): void {
     this.dragState.selectedModel = model
     
-    // 모델의 현재 위치와 클릭 지점 간의 오프셋 계산 (X, Z축만)
+    // 모델의 현재 위치와 클릭 지점 간의 오프셋 계산
     const modelPosition = model.getPosition()
-    this.dragState.dragOffset.set(
-      modelPosition.x - intersectionPoint.x,
-      0, // Y축 오프셋 제거
-      modelPosition.z - intersectionPoint.z
-    )
+    
+    if (model.getType() === 'wallcube') {
+      // 벽 가구는 3D 공간에서 자유롭게 이동 (Y축은 마우스 세로 움직임으로 제어)
+      this.dragState.dragOffset.set(
+        modelPosition.x - intersectionPoint.x,
+        0, // Y축 오프셋은 별도로 처리
+        modelPosition.z - intersectionPoint.z
+      )
+      // 벽 가구 Y축 드래그를 위한 시작 위치 기록
+      this.dragState.startMouseY = this.mouse.y
+      this.dragState.startModelY = modelPosition.y
+      console.log(`Prepared for dragging wall cube ${model.getId()} in 3D space (Y: ${modelPosition.y.toFixed(3)})`)
+    } else {
+      // 바닥 가구는 수평 평면에서만 이동 (Y축 오프셋 제거)
+      this.dragState.dragOffset.set(
+        modelPosition.x - intersectionPoint.x,
+        0, // Y축 오프셋 제거
+        modelPosition.z - intersectionPoint.z
+      )
+      console.log(`Prepared for dragging floor model ${model.getId()} on horizontal plane`)
+    }
 
-    // 드래그 평면을 바닥 평면(Y=0)으로 고정
+    // 드래그 평면을 바닥 평면(Y=0)으로 고정 (바닥 가구용)
     this.dragState.dragPlane = this.floorPlane.clone()
-
-    console.log(`Prepared for dragging model ${model.getId()} on horizontal plane`)
   }
 
   private updateDrag(): void {
@@ -427,13 +445,30 @@ export class InteractionManager {
 
     // 벽 가구인지 확인
     if (this.dragState.selectedModel.getType() === 'wallcube') {
-      // 벽 가구는 Y 위치를 유지하면서 X, Z만 업데이트 (드래그 중에는 벽 재부착 없이)
-      const currentPosition = this.dragState.selectedModel.getPosition()
-      this.dragState.selectedModel.setPosition({
-        x: newX,
-        y: currentPosition.y, // Y 위치 유지
-        z: newZ
-      })
+      // 벽 가구는 벽 표면에서만 이동 가능
+      const wallSurfacePosition = this.findNearestWallSurface(newX, newZ)
+      
+      if (wallSurfacePosition) {
+        // 마우스 Y 변화량을 3D 공간 Y 변화로 변환 (벽 높이 범위 내에서)
+        const mouseYDelta = this.mouse.y - this.dragState.startMouseY
+        const yScale = 2.0 // 마우스 움직임 대비 Y축 변화 비율
+        const desiredY = this.dragState.startModelY - (mouseYDelta * yScale)
+        
+        // 벽 높이 범위 내로 제한
+        const wallHeight = wallSurfacePosition.wallHeight
+        const constrainedY = Math.max(0.1, Math.min(wallHeight - 0.1, desiredY))
+        
+        this.dragState.selectedModel.setPosition({
+          x: wallSurfacePosition.x,
+          y: constrainedY,
+          z: wallSurfacePosition.z
+        })
+        
+        console.log(`Wall cube constrained to wall surface at (${wallSurfacePosition.x.toFixed(3)}, ${constrainedY.toFixed(3)}, ${wallSurfacePosition.z.toFixed(3)})`)
+      } else {
+        // 벽 표면을 찾을 수 없으면 현재 위치 유지
+        console.log('No wall surface found - keeping current position')
+      }
     } else {
       // 바닥 가구는 기존 충돌 감지 로직 적용
       const currentTime = Date.now()
@@ -476,6 +511,83 @@ export class InteractionManager {
     return intersected ? intersectionPoint : null
   }
 
+  // 가장 가까운 벽 표면 위치를 찾는 메서드
+  private findNearestWallSurface(targetX: number, targetZ: number): { x: number, z: number, wallHeight: number } | null {
+    const wallMeshes: THREE.Mesh[] = []
+    this.scene.traverse((child) => {
+      if (child.userData.isWall && child instanceof THREE.Mesh) {
+        wallMeshes.push(child)
+      }
+    })
+
+    if (wallMeshes.length === 0) {
+      return null
+    }
+
+    let nearestWall: THREE.Mesh | null = null
+    let minDistance = Infinity
+    let nearestPosition = { x: targetX, z: targetZ }
+
+    wallMeshes.forEach(wall => {
+      const wallPos = wall.position
+      const wallScale = wall.scale
+      const wallRotation = wall.rotation.y
+      
+      // 벽의 방향에 따라 표면 위치 계산
+      let surfacePosition: { x: number, z: number }
+      
+      if (Math.abs(wallRotation) < 0.1 || Math.abs(wallRotation - Math.PI) < 0.1) {
+        // 수직 벽 (north/south)
+        const wallMinX = wallPos.x - wallScale.x/2
+        const wallMaxX = wallPos.x + wallScale.x/2
+        const clampedX = Math.max(wallMinX, Math.min(wallMaxX, targetX))
+        
+        if (wallRotation < 0.1) {
+          // North wall (Z+)
+          surfacePosition = { x: clampedX, z: wallPos.z + 0.1 }
+        } else {
+          // South wall (Z-)
+          surfacePosition = { x: clampedX, z: wallPos.z - 0.1 }
+        }
+      } else {
+        // 수평 벽 (east/west)
+        const wallMinZ = wallPos.z - wallScale.x/2 // wallScale.x는 폭
+        const wallMaxZ = wallPos.z + wallScale.x/2
+        const clampedZ = Math.max(wallMinZ, Math.min(wallMaxZ, targetZ))
+        
+        if (Math.abs(wallRotation - Math.PI/2) < 0.1) {
+          // West wall (X+)
+          surfacePosition = { x: wallPos.x + 0.1, z: clampedZ }
+        } else {
+          // East wall (X-)
+          surfacePosition = { x: wallPos.x - 0.1, z: clampedZ }
+        }
+      }
+      
+      // 표면까지의 거리 계산
+      const distance = Math.sqrt(
+        Math.pow(targetX - surfacePosition.x, 2) + 
+        Math.pow(targetZ - surfacePosition.z, 2)
+      )
+      
+      if (distance < minDistance) {
+        minDistance = distance
+        nearestWall = wall
+        nearestPosition = surfacePosition
+      }
+    })
+
+    if (nearestWall) {
+      return {
+        x: nearestPosition.x,
+        z: nearestPosition.z,
+        wallHeight: nearestWall.scale.y || 2.0 // 기본 벽 높이
+      }
+    }
+
+    return null
+  }
+
   private endDrag(): void {
     const wasDragging = this.dragState.isDragging
     const selectedModel = this.dragState.selectedModel
@@ -490,8 +602,8 @@ export class InteractionManager {
         
         // 벽 가구인지 확인
         if (selectedModel.getType() === 'wallcube') {
-          // 벽 가구는 ModelManager의 moveModel을 통해 벽 재부착
-          this.modelManager.moveModel(selectedModel.getId(), currentPosition.x, currentPosition.z)
+          // 벽 가구는 드래그 완료 후 현재 위치를 유지 (자동 재부착하지 않음)
+          console.log(`Wall cube positioned at (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)}) - no auto-attachment`)
         } else {
           // 바닥 가구는 기존 로직 적용
           const clampedPosition = this.modelManager.clampToFloorWithBounds(selectedModel, currentPosition.x, currentPosition.z)
@@ -505,9 +617,9 @@ export class InteractionManager {
           
           console.log(`Floor model positioned at (${clampedPosition.x}, ${surfaceY}, ${clampedPosition.z})`)
           
-          // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
-          console.log('Recalculating positions for other models after drag...')
-          this.modelManager.recalculateOtherModelPositions(selectedModel.getId())
+          // 드래그 후 재계산 임시 비활성화 (바닥 변경 시 충돌 방지)
+          console.log('Drag completed - skipping other model recalculation to preserve user arrangements')
+          // this.modelManager.recalculateOtherModelPositions(selectedModel.getId()) // 임시 비활성화
         }
       }
       
@@ -551,6 +663,8 @@ export class InteractionManager {
     this.dragState.isDragging = false
     this.dragState.selectedModel = null
     this.dragState.dragOffset.set(0, 0, 0)
+    this.dragState.startMouseY = 0
+    this.dragState.startModelY = 0
     this.isDragStarted = false
   }
 

@@ -229,9 +229,8 @@ export class SceneManager {
       // 바닥 재생성
       createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
       
-      // 바닥 텍스처 변경 후 가구들을 자동으로 재배치 (바닥 메시가 새로 생성되므로)
-      console.log('Custom texture applied to floor, repositioning models...')
-      this.modelManager.repositionModelsAfterFloorChange()
+      // 바닥 텍스처 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
+      console.log('Custom texture applied to floor - no model repositioning needed')
       
       console.log('Custom texture applied to floor')
     })
@@ -361,9 +360,8 @@ export class SceneManager {
     // 바닥 재생성
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     
-    // 바닥 텍스처 변경 후 가구들을 자동으로 재배치 (바닥 메시가 새로 생성되므로)
-    console.log('Custom texture applied to floor, repositioning models...')
-    this.modelManager.repositionModelsAfterFloorChange()
+    // 바닥 텍스처 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
+    console.log('Custom texture applied to floor - no model repositioning needed')
     
     console.log('Custom texture applied to floor')
   }
@@ -394,13 +392,12 @@ export class SceneManager {
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
-    // 바닥 변경 후 바닥 가구들을 자동으로 재배치
-    console.log('Floor updated, repositioning floor models...')
-    this.modelManager.repositionModelsAfterFloorChange()
-    
-    // 벽 변경 후 벽 가구들을 자동으로 재부착
-    console.log('Walls updated, repositioning wall models...')
-    this.modelManager.repositionWallModelsAfterWallChange()
+    // 바닥/벽 생성 완료 후 지연된 모델 재배치 (타이밍 문제 해결)
+    console.log('Floor/walls updated - scheduling delayed model repositioning...')
+    setTimeout(() => {
+      console.log('Executing delayed model repositioning after floor/wall generation...')
+      this.modelManager.repositionModelsAfterFloorChange()
+    }, 100) // 100ms 지연으로 바닥/벽 생성 완료 보장
     
     // 카메라 위치 조정 (격자 크기 기반)
     const maxSize = Math.max(5, this.roomParams.wallHeight) // 5x5 격자 고정
@@ -422,9 +419,12 @@ export class SceneManager {
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
-    // 바닥과 벽 변경 후 모델들 재배치
-    this.modelManager.repositionModelsAfterFloorChange()
-    this.modelManager.repositionWallModelsAfterWallChange()
+    // 바닥 생성 완료 후 지연된 모델 재배치 (타이밍 문제 해결)
+    console.log('Floor tiles updated - scheduling delayed model repositioning...')
+    setTimeout(() => {
+      console.log('Executing delayed model repositioning after floor generation...')
+      this.modelManager.repositionModelsAfterFloorChange()
+    }, 100) // 100ms 지연으로 바닥 생성 완료 보장
   }
 
   private updateColors(params: ColorParams) {
@@ -435,9 +435,8 @@ export class SceneManager {
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
-    // 바닥 재생성 후 바닥 가구들을 자동으로 재배치 (바닥 색상 변경 시에도 바닥 메시가 새로 생성되므로)
-    console.log('Floor/walls color updated, repositioning floor models...')
-    this.modelManager.repositionModelsAfterFloorChange()
+    // 바닥/벽 색상 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
+    console.log('Floor/walls color updated - no model repositioning needed')
     
     // 벽 재생성 후 벽 가구들을 자동으로 재부착
     console.log('Walls color updated, repositioning wall models...')

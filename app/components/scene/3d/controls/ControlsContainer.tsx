@@ -80,11 +80,11 @@ export default function ControlsContainer({
         return
       }
 
-      // 모델 인스턴스 생성 (기본 위치에 배치)
+      // 모델 인스턴스 생성 (각 모델의 기본값 사용)
       const modelInstance = new ModelClass(
         { x: 0, y: 0, z: 0 }, // 위치
-        { x: 1, y: 1, z: 1 }, // 스케일
-        { x: 0, y: 0, z: 0 }  // 회전
+        undefined, // 스케일 - 각 모델의 기본값 사용
+        undefined  // 회전 - 각 모델의 기본값 사용
       )
 
       // 모델 매니저를 통해 추가

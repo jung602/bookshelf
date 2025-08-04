@@ -785,7 +785,7 @@ export class ModelManager {
       }
       
       console.log('🔧 All affected models rebuilt from floor - final positions:')
-      sortedModels.forEach(({ id, model }, i) => {
+      sortedModels.forEach(({ id, model }) => {
         const pos = model.getPosition()
         console.log(`  -> Model ${id}: Y = ${pos.y.toFixed(3)}`)
       })

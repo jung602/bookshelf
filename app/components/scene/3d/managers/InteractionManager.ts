@@ -581,7 +581,7 @@ export class InteractionManager {
       return {
         x: nearestPosition.x,
         z: nearestPosition.z,
-        wallHeight: nearestWall.scale.y || 2.0 // 기본 벽 높이
+        wallHeight: (nearestWall as THREE.Mesh).scale.y || 2.0 // 기본 벽 높이
       }
     }
 

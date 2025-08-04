@@ -1000,7 +1000,8 @@ export class ModelManager {
             })
             movedCount++
             console.log(`  -> 🚚 Model ${model.getId()} moved to nearest surface at (${adjustedPosition.x.toFixed(3)}, ${surfaceY.toFixed(3)}, ${adjustedPosition.z.toFixed(3)}) - stacking considered`)
-          } catch (error) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (_error) {
             // 1차 대안: 단순 바닥 Y
             try {
               const floorY = this.calculateModelFloorY(model)
@@ -1011,7 +1012,8 @@ export class ModelManager {
               })
               movedCount++
               console.log(`  -> 🆘 Model ${model.getId()} fallback to floor Y: ${floorY.toFixed(3)}`)
-            } catch (fallbackError) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            } catch (_fallbackError) {
               // 2차 대안: 비상 조치
               const modelBottomOffset = this.getModelBottomOffset(model)
               const emergencyY = 0 - modelBottomOffset

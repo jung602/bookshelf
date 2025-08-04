@@ -29,6 +29,12 @@ export default function ModelAddControl({ onModelAdd, onBookCreate }: ModelAddCo
       description: 'Standard chair'
     },
     {
+      id: 'desk',
+      name: 'Desk',
+      icon: '🗄️',
+      description: 'Standard desk'
+    },
+    {
       id: 'stool',
       name: 'Stool',
       icon: '🔲',

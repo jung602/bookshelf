@@ -1,6 +1,7 @@
 // 모든 모델들을 자동으로 import하고 메타데이터를 수집
 import { modelMetadata as stoolMetadata } from './stool'
 import { modelMetadata as chairMetadata } from './chair'
+import { modelMetadata as deskMetadata } from './desk'
 import { modelMetadata as bookMetadata } from './book'
 import { modelMetadata as wallcubeMetadata } from './WallCube'
 import { modelMetadata as floorlampMetadata } from './floorlamp'
@@ -19,6 +20,7 @@ export interface ModelMetadata {
 export const allModels: ModelMetadata[] = [
   stoolMetadata,
   chairMetadata,
+  deskMetadata,
   bookMetadata,
   wallcubeMetadata,
   floorlampMetadata

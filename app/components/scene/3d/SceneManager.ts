@@ -485,8 +485,8 @@ export class SceneManager {
     this.modelManager.rotateModel(modelId)
   }
 
-  public deleteModel(modelId: string): void {
-    this.modelManager.removeModel(modelId)
+  public async deleteModel(modelId: string): Promise<void> {
+    await this.modelManager.removeModel(modelId)
     // 모델 삭제 후 기즈모 숨기기
     if (this.gizmoState.selectedModelId === modelId) {
       this.gizmoState = { selectedModelId: null, screenPosition: null }

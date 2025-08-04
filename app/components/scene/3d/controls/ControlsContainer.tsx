@@ -161,12 +161,12 @@ export default function ControlsContainer({
     }
   }
 
-  const handleModelDelete = (modelId: string) => {
+  const handleModelDelete = async (modelId: string) => {
     console.log('모델 삭제:', modelId)
     if (!sceneManager) return
 
     try {
-      sceneManager.deleteModel(modelId)
+      await sceneManager.deleteModel(modelId)
       console.log('모델 삭제 성공:', modelId)
     } catch (error) {
       console.error('모델 삭제 실패:', error)

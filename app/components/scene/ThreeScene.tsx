@@ -65,10 +65,14 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
             sceneManagerRef.current.rotateModel(modelId)
           }
         },
-        onDelete: (modelId: string) => {
+        onDelete: async (modelId: string) => {
           console.log('Deleting model:', modelId)
           if (sceneManagerRef.current) {
-            sceneManagerRef.current.deleteModel(modelId)
+            try {
+              await sceneManagerRef.current.deleteModel(modelId)
+            } catch (error) {
+              console.error('Failed to delete model:', error)
+            }
           }
         },
         onClose: () => {
@@ -96,10 +100,14 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
             sceneManagerRef.current.rotateModel(modelId)
           }
         },
-        onDelete: (modelId: string) => {
+        onDelete: async (modelId: string) => {
           console.log('Deleting model:', modelId)
           if (sceneManagerRef.current) {
-            sceneManagerRef.current.deleteModel(modelId)
+            try {
+              await sceneManagerRef.current.deleteModel(modelId)
+            } catch (error) {
+              console.error('Failed to delete model:', error)
+            }
           }
         },
         onClose: () => {

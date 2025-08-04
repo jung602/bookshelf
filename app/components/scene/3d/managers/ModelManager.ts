@@ -149,11 +149,18 @@ export class ModelManager {
     }
   }
 
-  public removeModel(modelId: string): void {
+  public async removeModel(modelId: string): Promise<void> {
     const model = this.models.get(modelId)
     if (model) {
       console.log(`Starting removal of model ${modelId}`)
       console.log(`Current models before removal:`, Array.from(this.models.keys()))
+      
+      // 삭제 전에 모델 위치 저장
+      const removedPosition = model.getPosition()
+      
+      // 삭제될 모델 위에 있는 모델들을 찾기
+      const affectedModels = this.findModelsAffectedByRemoval(modelId)
+      console.log(`Found ${affectedModels.length} models affected by removal of ${modelId}:`, affectedModels)
       
       model.removeFromScene(this.scene)
       model.dispose()
@@ -161,11 +168,15 @@ export class ModelManager {
       
       console.log(`Model ${modelId} removed, remaining models:`, Array.from(this.models.keys()))
       
-      // 모델 제거 후 나머지 모델들의 위치 재계산 (떨어뜨리기)
-      console.log('Model removed - recalculating positions for remaining models...')
-      this.recalculateAllModelPositions()
+      // 영향받는 모델들만 선택적으로 재계산
+      if (affectedModels.length > 0) {
+        console.log('Model removed - recalculating positions for affected models...')
+        await this.recalculateAffectedModelPositions(affectedModels, removedPosition)
+      } else {
+        console.log('No models affected by removal - skipping recalculation')
+      }
       
-      console.log(`Model ${modelId} removed from scene and all model positions recalculated`)
+      console.log(`Model ${modelId} removed from scene and affected model positions recalculated`)
     } else {
       console.log(`Model ${modelId} not found for removal`)
     }
@@ -562,6 +573,262 @@ export class ModelManager {
     
     console.log(`      -> Model ${model.getId()} bottom offset: ${bottomOffset.toFixed(3)} (box.min.y: ${box.min.y.toFixed(3)}, model.position.y: ${threeModel.position.y.toFixed(3)})`)
     return bottomOffset
+  }
+
+  // 삭제될 모델에 의해 영향받는 모델들을 찾는 메서드
+  private findModelsAffectedByRemoval(removedModelId: string): string[] {
+    const removedModel = this.models.get(removedModelId)
+    if (!removedModel) return []
+
+    const affectedModels: string[] = []
+    const removedPosition = removedModel.getPosition()
+
+    console.log(`=== Finding models affected by removal of ${removedModelId} ===`)
+    console.log(`Removed model position: (${removedPosition.x.toFixed(3)}, ${removedPosition.y.toFixed(3)}, ${removedPosition.z.toFixed(3)})`)
+
+    // 가장 아래 모델인지 확인 (삭제될 모델을 제외한 바닥 가구들과 비교)
+    const floorModels = Array.from(this.models.values()).filter(model => 
+      model.getType() !== 'wallcube' && model.getId() !== removedModelId
+    )
+    
+    const isLowestModel = floorModels.length === 0 || 
+      floorModels.every(model => model.getPosition().y >= removedPosition.y - 0.1)
+
+    console.log(`Is ${removedModelId} the lowest model? ${isLowestModel}`)
+
+    if (isLowestModel) {
+      // 가장 아래 모델이면 위의 모든 바닥 가구들이 영향받음
+      console.log(`  -> ${removedModelId} is the lowest model - all models above will be affected`)
+      console.log(`  -> Checking all remaining models:`)
+      
+      this.models.forEach((model, modelId) => {
+        if (modelId === removedModelId || model.getType() === 'wallcube') return
+        
+        const modelPosition = model.getPosition()
+        console.log(`    -> Model ${modelId} at Y: ${modelPosition.y.toFixed(3)} (removed was at Y: ${removedPosition.y.toFixed(3)})`)
+        
+        // 삭제될 모델과 같은 위치 또는 위에 있는 모든 모델들 (조건을 더 관대하게)
+        if (modelPosition.y >= removedPosition.y - 0.2) {
+          affectedModels.push(modelId)
+          console.log(`      ✅ Model ${modelId} is affected (above lowest model) at Y: ${modelPosition.y.toFixed(3)}`)
+        } else {
+          console.log(`      ❌ Model ${modelId} is NOT affected (too low) at Y: ${modelPosition.y.toFixed(3)}`)
+        }
+      })
+      
+      console.log(`  -> Total affected models found: ${affectedModels.length}`)
+    } else {
+      // 일반적인 경우: 직접 지지 관계 확인
+      this.models.forEach((model, modelId) => {
+        if (modelId === removedModelId || model.getType() === 'wallcube') return
+
+        const modelPosition = model.getPosition()
+        
+        // 삭제될 모델보다 위에 있는 모델들만 확인
+        if (modelPosition.y > removedPosition.y + 0.1) {
+          // 삭제될 모델이 이 모델을 지지하고 있는지 확인
+          if (this.isModelSupportedBy(model, removedModel)) {
+            affectedModels.push(modelId)
+            console.log(`  -> Model ${modelId} is affected (supported by removed model)`)
+          }
+        }
+      })
+
+      // 연쇄적으로 영향받는 모델들도 찾기 (재귀적으로, 더 강화된 로직)
+      const allAffected = new Set(affectedModels)
+      const findChainReaction = (affectedIds: string[], depth: number = 0) => {
+        if (depth > 10) return // 무한 재귀 방지
+        
+        const newAffected: string[] = []
+        
+        affectedIds.forEach(affectedId => {
+          const affectedModel = this.models.get(affectedId)
+          if (!affectedModel) return
+
+          const affectedPosition = affectedModel.getPosition()
+
+          // 이 모델 위에 있는 다른 모든 모델들 찾기 (지지 관계 확인)
+          this.models.forEach((model, modelId) => {
+            if (allAffected.has(modelId) || modelId === removedModelId || model.getType() === 'wallcube') return
+
+            const modelPosition = model.getPosition()
+            
+            // 위에 있고 지지 관계가 있는지 확인
+            if (modelPosition.y > affectedPosition.y + 0.1) {
+              if (this.isModelSupportedBy(model, affectedModel)) {
+                allAffected.add(modelId)
+                newAffected.push(modelId)
+                console.log(`  -> Model ${modelId} is affected by chain reaction (depth ${depth + 1}) - supported by ${affectedId}`)
+              }
+            }
+          })
+        })
+
+        if (newAffected.length > 0) {
+          findChainReaction(newAffected, depth + 1)
+        }
+      }
+
+      findChainReaction(affectedModels)
+      return Array.from(allAffected)
+    }
+
+    return affectedModels
+  }
+
+  // 한 모델이 다른 모델에 의해 지지되고 있는지 확인
+  private isModelSupportedBy(supportedModel: BaseModel, supportingModel: BaseModel): boolean {
+    const supportedPos = supportedModel.getPosition()
+    const supportingPos = supportingModel.getPosition()
+
+    // Y 위치 차이가 적절한 범위 내에 있는지 확인 (지지 관계)
+    const yDiff = supportedPos.y - supportingPos.y
+    if (yDiff < 0.1 || yDiff > 4.0) return false // 범위를 넓혀서 더 많은 지지 관계 감지
+
+    // X, Z 위치에서 겹침이 있는지 확인
+    return this.canModelSupportAnother(supportingModel, supportedModel, supportedPos.x, supportedPos.z)
+  }
+
+  // 영향받는 모델들만 재계산하는 메서드
+  private async recalculateAffectedModelPositions(affectedModelIds: string[], removedPosition: { x: number; y: number; z: number }): Promise<void> {
+    console.log('=== Starting position recalculation for affected models ===')
+    console.log(`Affected models to recalculate: ${affectedModelIds.length}`, affectedModelIds)
+    console.log(`Removed model was at position: (${removedPosition.x.toFixed(3)}, ${removedPosition.y.toFixed(3)}, ${removedPosition.z.toFixed(3)})`)
+    
+    // Y 위치 순으로 정렬 (아래에서 위로 재계산)
+    const sortedModels = affectedModelIds
+      .map(id => ({ id, model: this.models.get(id)! }))
+      .filter(item => item.model && item.model.isModelLoaded())
+      .sort((a, b) => a.model.getPosition().y - b.model.getPosition().y)
+
+    console.log(`Sorted models for recalculation:`, sortedModels.map(item => 
+      `${item.id} (Y: ${item.model.getPosition().y.toFixed(3)})`))
+
+    // 가장 아래 모델이 삭제된 경우인지 확인
+    const remainingFloorModels = Array.from(this.models.values()).filter(model => 
+      model.getType() !== 'wallcube'
+    )
+    
+    let isLowestModelRemoved = false
+    if (remainingFloorModels.length === 0) {
+      // 모든 바닥 모델이 삭제됨
+      isLowestModelRemoved = true
+    } else {
+      // 삭제된 모델이 남은 모델들보다 낮거나 같은 위치에 있었다면 가장 아래 모델이 삭제된 것
+      const lowestRemainingY = Math.min(...remainingFloorModels.map(m => m.getPosition().y))
+      isLowestModelRemoved = removedPosition.y <= lowestRemainingY + 0.1
+    }
+    
+    console.log(`Is lowest model removed? ${isLowestModelRemoved} (removed Y: ${removedPosition.y.toFixed(3)}, lowest remaining Y: ${remainingFloorModels.length > 0 ? Math.min(...remainingFloorModels.map(m => m.getPosition().y)).toFixed(3) : 'none'})`)
+
+    if (isLowestModelRemoved) {
+      // 가장 아래 모델이 삭제된 경우: 모든 모델을 바닥부터 다시 쌓기
+      console.log('🔧 Lowest model removed - rebuilding all affected models from floor')
+      console.log(`🔧 Rebuilding ${sortedModels.length} models in order:`)
+      
+      for (let i = 0; i < sortedModels.length; i++) {
+        const { id, model } = sortedModels[i]
+        const currentPosition = model.getPosition()
+        console.log(`🔧 [${i + 1}/${sortedModels.length}] Rebuilding model ${id} (current Y: ${currentPosition.y.toFixed(3)})`)
+        
+        if (i === 0) {
+          // 첫 번째 모델: 바닥에 직접 배치
+          try {
+            const floorY = this.calculateModelFloorY(model)
+            console.log(`  -> 🔧 Placing first model ${id} on floor Y: ${floorY.toFixed(3)}`)
+            model.setPosition({
+              x: currentPosition.x,
+              y: floorY,
+              z: currentPosition.z
+            })
+            
+            // 강제로 world matrix 업데이트 (다음 모델 계산을 위해)
+            const threeModel = model.getModel()
+            if (threeModel) {
+              threeModel.updateMatrixWorld(true)
+            }
+            
+            const newPosition = model.getPosition()
+            console.log(`  -> ✅ First model ${id} now at Y: ${newPosition.y.toFixed(3)}`)
+          } catch (error) {
+            console.log(`  -> ⚠️ Cannot calculate floor Y for first model ${id}:`, error)
+          }
+        } else {
+          // 나머지 모델들: 이미 배치된 모델들을 고려하여 배치
+          try {
+            // 이전 모델들의 collider가 업데이트되었는지 확인
+            console.log(`  -> 🔍 Calculating surface Y for model ${id} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
+            
+            // 약간의 지연을 추가하여 이전 모델의 위치 업데이트가 완전히 반영되도록 함
+            await new Promise(resolve => setTimeout(resolve, 10))
+            
+            const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
+            console.log(`  -> 🔧 Placing model ${id} on calculated surface Y: ${newY.toFixed(3)} (was at Y: ${currentPosition.y.toFixed(3)})`)
+            model.setPosition({
+              x: currentPosition.x,
+              y: newY,
+              z: currentPosition.z
+            })
+            
+            // 이 모델도 world matrix 업데이트
+            const threeModel = model.getModel()
+            if (threeModel) {
+              threeModel.updateMatrixWorld(true)
+            }
+            
+            const finalPosition = model.getPosition()
+            console.log(`  -> ✅ Model ${id} now at Y: ${finalPosition.y.toFixed(3)}`)
+          } catch (error) {
+            console.log(`  -> ⚠️ Cannot calculate surface Y for model ${id}:`, error)
+          }
+        }
+      }
+      
+      console.log('🔧 All affected models rebuilt from floor - final positions:')
+      sortedModels.forEach(({ id, model }, i) => {
+        const pos = model.getPosition()
+        console.log(`  -> Model ${id}: Y = ${pos.y.toFixed(3)}`)
+      })
+    } else {
+      // 일반적인 경우: 기존 로직 사용
+      let hasChanges = true
+      let iterations = 0
+      const maxIterations = 10
+      
+      while (hasChanges && iterations < maxIterations) {
+        hasChanges = false
+        iterations++
+        
+        console.log(`=== Affected models recalculation iteration ${iterations} ===`)
+        
+        for (const { id, model } of sortedModels) {
+          const currentPosition = model.getPosition()
+          console.log(`Checking affected model ${id} at position (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)})`)
+          
+          try {
+            const newY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z)
+            console.log(`  -> Calculated surface Y: ${newY.toFixed(3)}`)
+            
+            if (Math.abs(currentPosition.y - newY) > 0.001) {
+              model.setPosition({
+                x: currentPosition.x,
+                y: newY,
+                z: currentPosition.z
+              })
+              
+              hasChanges = true
+              console.log(`  -> ✅ Affected model ${id} repositioned from Y:${currentPosition.y.toFixed(3)} to Y:${newY.toFixed(3)}`)
+            } else {
+              console.log(`  -> ⏸️ Affected model ${id} position unchanged (difference: ${Math.abs(currentPosition.y - newY).toFixed(3)})`)
+            }
+          } catch {
+            console.log(`  -> ⚠️ Cannot calculate surface Y for affected model ${id}: No floor available`)
+          }
+        }
+      }
+      
+      console.log(`=== Affected models recalculation completed after ${iterations} iterations ===`)
+    }
   }
 
   private recalculateAllModelPositions(): void {

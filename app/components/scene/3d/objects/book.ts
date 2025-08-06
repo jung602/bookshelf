@@ -30,7 +30,7 @@ export class Book extends BaseModel {
       this.createBookCollider()
       this.isLoaded = true
       
-      console.log(`Book loaded successfully at position (${this.position.x}, ${this.position.y}, ${this.position.z})`)
+
     } catch (error) {
       console.error('Failed to load Book:', error)
       throw error
@@ -235,7 +235,7 @@ export class Book extends BaseModel {
     
     this.model.add(this.collider)
     
-    console.log(`Book collider created for ${this.id}`)
+
   }
 
   protected setupModel(): void {

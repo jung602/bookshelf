@@ -56,7 +56,7 @@ export abstract class BaseModel {
       this.createCollider()
       this.isLoaded = true
       
-      console.log(`${this.constructor.name} loaded successfully at position (${this.position.x}, ${this.position.y}, ${this.position.z})`)
+
     } catch (error) {
       console.error(`Failed to load ${this.constructor.name}:`, error)
       throw error
@@ -104,7 +104,7 @@ export abstract class BaseModel {
     // 첫 번째 콜라이더 메시를 참조용으로 저장 (기존 코드 호환성)
     this.collider = colliderGroup.children[0] as THREE.Mesh
     
-    console.log(`Mesh collider created for ${this.id} with ${colliderGroup.children.length} mesh(es)`)
+
   }
 
   protected applyTransforms(): void {
@@ -164,7 +164,7 @@ export abstract class BaseModel {
   public rotateY90(): void {
     const newRotationY = this.rotation.y + Math.PI / 2
     this.setRotation({ y: newRotationY })
-    console.log(`Model ${this.id} rotated 90 degrees. New Y rotation: ${newRotationY}`)
+
   }
 
   public getId(): string {

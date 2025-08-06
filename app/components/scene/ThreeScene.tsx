@@ -52,7 +52,6 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
 
   // 기즈모 상태 변경 핸들러
   const handleGizmoStateChange = useCallback((gizmoState: GizmoState) => {
-    console.log('ThreeScene: Gizmo state changed:', gizmoState)
     
     if (!modelGizmoRef.current && sceneManagerRef.current) {
       // ModelGizmo 인스턴스 생성
@@ -60,13 +59,13 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
         modelId: gizmoState.selectedModelId,
         position: gizmoState.screenPosition,
         onRotate: (modelId: string) => {
-          console.log('Rotating model:', modelId)
+          
           if (sceneManagerRef.current) {
             sceneManagerRef.current.rotateModel(modelId)
           }
         },
         onDelete: async (modelId: string) => {
-          console.log('Deleting model:', modelId)
+          
           if (sceneManagerRef.current) {
             try {
               await sceneManagerRef.current.deleteModel(modelId)
@@ -76,7 +75,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
           }
         },
         onClose: () => {
-          console.log('Closing gizmo')
+          
           // 기즈모를 숨기기 위해 빈 상태로 업데이트
           if (modelGizmoRef.current) {
             modelGizmoRef.current.updateProps({
@@ -95,13 +94,13 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
         modelId: gizmoState.selectedModelId,
         position: gizmoState.screenPosition,
         onRotate: (modelId: string) => {
-          console.log('Rotating model:', modelId)
+          
           if (sceneManagerRef.current) {
             sceneManagerRef.current.rotateModel(modelId)
           }
         },
         onDelete: async (modelId: string) => {
-          console.log('Deleting model:', modelId)
+          
           if (sceneManagerRef.current) {
             try {
               await sceneManagerRef.current.deleteModel(modelId)
@@ -111,7 +110,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
           }
         },
         onClose: () => {
-          console.log('Closing gizmo')
+          
           // 기즈모를 숨기기 위해 빈 상태로 업데이트
           if (modelGizmoRef.current) {
             modelGizmoRef.current.updateProps({
@@ -133,7 +132,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
   // roomParams 업데이트 함수를 useCallback으로 메모화
   const updateRoomParams = useCallback(() => {
     if (sceneManagerRef.current && !deepEqual(previousRoomParamsRef.current, roomParams)) {
-      console.log('ThreeScene: Updating room with params:', roomParams);
+
       sceneManagerRef.current.updateRoom(roomParams);
       previousRoomParamsRef.current = roomParams;
     }
@@ -149,7 +148,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
     resizeObserverRef.current = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect
-        console.log(`ThreeScene: Container size changed to ${width}x${height}`)
+
         
         // forceUpdate 호출하여 3D 씬 크기 업데이트
         if (forceUpdate) {
@@ -174,7 +173,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
     
     // 이미 초기화 중이거나 완료된 경우 건너뛰기
     if (isInitializingSceneManager || globalSceneManagerInstance) {
-      console.log('ThreeScene: Skipping initialization - already exists or in progress')
+
       if (globalSceneManagerInstance && !sceneManagerRef.current) {
         sceneManagerRef.current = globalSceneManagerInstance
         setSceneManager(globalSceneManagerInstance)
@@ -183,7 +182,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
       return
     }
 
-    console.log('ThreeScene: Initializing SceneManager...')
+
     isInitializingSceneManager = true
 
     try {
@@ -201,10 +200,7 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
       newSceneManager.updateRoom(roomParams)
       
       onSceneManagerReady(newSceneManager)
-      console.log('ThreeScene: SceneManager initialized')
-      
       // 초기 리사이즈 호출
-      console.log('ThreeScene: Calling initial resize...')
       setTimeout(() => {
         if (forceUpdate) forceUpdate()
       }, 100)
@@ -221,11 +217,11 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
       const isStrictModeCleanup = sceneManagerRef.current === globalSceneManagerInstance
       
       if (isStrictModeCleanup) {
-        console.log('ThreeScene: Ignoring StrictMode cleanup')
+
         return // StrictMode 클린업은 무시
       }
       
-      console.log('ThreeScene: Disposing SceneManager...')
+
       if (sceneManagerRef.current) {
         sceneManagerRef.current.dispose()
         sceneManagerRef.current = null

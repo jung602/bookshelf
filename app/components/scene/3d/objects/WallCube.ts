@@ -20,7 +20,7 @@ export class WallCube extends BaseModel {
       this.createCubeCollider()
       this.isLoaded = true
       
-      console.log(`WallCube loaded successfully at position (${this.position.x}, ${this.position.y}, ${this.position.z})`)
+
     } catch (error) {
       console.error('Failed to load WallCube:', error)
       throw error
@@ -66,7 +66,7 @@ export class WallCube extends BaseModel {
     const wall = this.findNearestWall(scene, targetX, targetZ)
     
     if (!wall) {
-      console.log('No wall found at target position')
+
       return false
     }
 
@@ -81,7 +81,7 @@ export class WallCube extends BaseModel {
       z: wallPosition.z
     })
 
-    console.log(`WallCube attached to ${this.wallDirection} wall at Y: ${wallPosition.y.toFixed(3)}`)
+
     return true
   }
 
@@ -179,7 +179,7 @@ export class WallCube extends BaseModel {
   }
 
   protected setupModel(): void {
-    console.log('WallCube model setup completed')
+
   }
 
   public update(): void {

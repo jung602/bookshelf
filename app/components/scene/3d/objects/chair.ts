@@ -13,7 +13,6 @@ export class ChairModel extends BaseModel {
 
   protected setupModel(): void {
     // 추가적인 모델 설정이 필요한 경우 여기에 구현
-    console.log('Chair model setup completed')
   }
 
   public update(): void {

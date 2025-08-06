@@ -40,7 +40,7 @@ export default function ControlsContainer({
 
   // 메뉴 선택 핸들러
   const handleMenuSelect = (menuId: string) => {
-    console.log('선택된 메뉴:', menuId)
+
     // 같은 메뉴를 다시 클릭하면 닫기, 다른 메뉴 클릭하면 전환
     setSelectedMenu((prevSelected: string | null) => prevSelected === menuId ? null : menuId)
   }
@@ -52,7 +52,7 @@ export default function ControlsContainer({
 
   // 모델 관련 핸들러들
   const handleModelAdd = async (modelType: string) => {
-    console.log('모델 추가:', modelType)
+
     if (!sceneManager) {
       console.error('SceneManager가 없습니다.')
       return
@@ -65,9 +65,7 @@ export default function ControlsContainer({
       if (modelType === 'wallcube') {
         // 벽 큐브는 특별한 메서드 사용
         const modelId = await sceneManager.addTestWallCube(0, 0)
-        if (modelId) {
-          console.log('벽 큐브 추가 성공:', modelId)
-        } else {
+        if (!modelId) {
           console.error('벽 큐브 추가 실패')
         }
         return
@@ -89,7 +87,7 @@ export default function ControlsContainer({
 
       // 모델 매니저를 통해 추가
       await modelManager.addModel(modelInstance)
-      console.log('모델 추가 성공:', modelType, modelInstance.getId())
+
     } catch (error) {
       console.error('모델 추가 실패:', error)
       alert(`모델 추가에 실패했습니다: ${error}`)
@@ -97,7 +95,7 @@ export default function ControlsContainer({
   }
 
   const handleBookCreate = async (imageUrl: string, thickness: number, aspectRatio: number, title: string) => {
-    console.log('책 생성:', { imageUrl, thickness, aspectRatio, title })
+
     if (!sceneManager) {
       console.error('SceneManager가 없습니다.')
       return
@@ -122,7 +120,7 @@ export default function ControlsContainer({
 
       // 모델 매니저를 통해 추가
       await modelManager.addModel(bookInstance)
-      console.log('책 생성 성공:', title, bookInstance.getId())
+
     } catch (error) {
       console.error('책 생성 실패:', error)
       alert(`책 생성에 실패했습니다: ${error}`)
@@ -149,32 +147,32 @@ export default function ControlsContainer({
   }
 
   const handleModelSelect = (modelId: string) => {
-    console.log('모델 선택:', modelId)
+
     if (!sceneManager) return
 
     try {
       // InteractionManager를 통해 모델 선택 (기즈모 표시)
       // 실제 선택 로직은 InteractionManager에서 처리됩니다
-      console.log('모델 선택 요청:', modelId)
+
     } catch (error) {
       console.error('모델 선택 실패:', error)
     }
   }
 
   const handleModelDelete = async (modelId: string) => {
-    console.log('모델 삭제:', modelId)
+
     if (!sceneManager) return
 
     try {
       await sceneManager.deleteModel(modelId)
-      console.log('모델 삭제 성공:', modelId)
+
     } catch (error) {
       console.error('모델 삭제 실패:', error)
     }
   }
 
   const handleModelVisibilityToggle = (modelId: string, visible: boolean) => {
-    console.log('모델 가시성 토글:', modelId, visible)
+
     if (!sceneManager) return
 
     try {
@@ -185,7 +183,7 @@ export default function ControlsContainer({
         const threeModel = model.getModel()
         if (threeModel) {
           threeModel.visible = visible
-          console.log('모델 가시성 변경 성공:', modelId, visible)
+
         }
       }
     } catch (error) {

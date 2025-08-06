@@ -21,7 +21,7 @@ export async function loadGLBModel(path: string): Promise<THREE.Group> {
         resolve(model)
       },
       (progress) => {
-        console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%')
+
       },
       (error) => {
         console.error('Error loading GLB model:', error)

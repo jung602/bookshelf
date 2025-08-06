@@ -211,7 +211,7 @@ export default function FloorTileControl({
       audioContextRef.current = new (window.AudioContext ||
         (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
     } catch {
-      console.log("Web Audio API not supported");
+
     }
 
     return () => {
@@ -249,7 +249,7 @@ export default function FloorTileControl({
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.1);
     } catch (e) {
-      console.log("Sound play failed:", e);
+
     }
   }, []);
 

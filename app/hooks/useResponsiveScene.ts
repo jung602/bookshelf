@@ -84,7 +84,6 @@ export function useResponsiveScene(
   // 씬 크기 및 frustumSize 업데이트 함수
   const updateScene = useCallback((width?: number, height?: number) => {
     if (!sceneManager) {
-      console.log('useResponsiveScene: SceneManager is null, skipping update')
       return
     }
 
@@ -100,7 +99,7 @@ export function useResponsiveScene(
       return
     }
 
-    console.log(`useResponsiveScene: Updating scene - Size: ${actualSize.width}x${actualSize.height}, FrustumSize: ${newFrustumSize.toFixed(2)}, Mode: ${isLandscape ? 'Landscape' : 'Portrait'}`)
+
     
     lastSizeRef.current = actualSize
     prevFrustumSizeRef.current = newFrustumSize
@@ -153,7 +152,7 @@ export function useResponsiveScene(
       return
     }
 
-    console.log('useResponsiveScene: Setting up with SceneManager')
+
 
     // 애니메이션 속도 설정
     sceneManager.setResizeAnimationSpeed(configRef.current.animationSpeed)
@@ -186,7 +185,6 @@ export function useResponsiveScene(
 
   // forceUpdate 함수를 useCallback으로 메모이제이션하여 불필요한 재생성 방지
   const forceUpdate = useCallback(() => {
-    console.log('useResponsiveScene: Force update called')
     updateScene()
   }, [updateScene])
 

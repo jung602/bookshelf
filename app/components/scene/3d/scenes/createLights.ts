@@ -65,5 +65,5 @@ export function createLights(scene: THREE.Scene) {
   const ambientLight = new THREE.AmbientLight(0xf3f3f3, ambientIntensity)
   scene.add(ambientLight)
   
-  console.log(`Lights created for ${currentTheme} theme - Hemisphere: ${hemisphereIntensity}, Ambient: ${ambientIntensity}`)
+
 } 

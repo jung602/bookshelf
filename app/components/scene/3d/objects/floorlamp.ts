@@ -60,13 +60,13 @@ export class FloorLampModel extends BaseModel {
       })
       
       this.isLightOn = shouldLightBeOn
-      console.log(`Theme updated: ${this.isDarkMode ? 'dark' : 'light'} mode, light: ${shouldLightBeOn}, emission: ${emissionIntensity}`)
+
     }
   }
 
   protected setupModel(): void {
     // 플로어 램프 설정
-    console.log('Floor lamp model setup completed')
+
     
     // 조명이 포함된 모델이므로 추가적인 조명 설정이 필요할 수 있음
     if (this.model) {
@@ -89,10 +89,10 @@ export class FloorLampModel extends BaseModel {
             if (child.target) {
               child.target.position.set(0, -2, 0)
             }
-            console.log('SpotLight set with directional lighting')
+
           }
           
-          console.log('Light color set to white and position lowered')
+
         }
         
         // PointLight를 SpotLight로 교체하기 위해 저장
@@ -132,7 +132,7 @@ export class FloorLampModel extends BaseModel {
         parent.add(spotLight)
         parent.add(spotLight.target)  // SpotLight의 타겟도 추가
         
-        console.log('PointLight converted to SpotLight')
+
       })
       
       // 테마에 따른 초기 설정 적용

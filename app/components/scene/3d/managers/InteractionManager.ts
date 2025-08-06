@@ -86,7 +86,7 @@ export class InteractionManager {
     this.boundContextMenu = (event: Event) => event.preventDefault()
 
     this.setupEventListeners()
-    console.log('InteractionManager initialized')
+
   }
 
   private setupEventListeners(): void {
@@ -101,7 +101,7 @@ export class InteractionManager {
     canvas.addEventListener('touchend', this.boundTouchEnd)
     canvas.addEventListener('contextmenu', this.boundContextMenu)
 
-    console.log('Event listeners attached to canvas')
+
   }
 
   private updateMousePosition(clientX: number, clientY: number): void {
@@ -117,7 +117,7 @@ export class InteractionManager {
     const allModels = this.modelManager.getAllModels()
     
     if (isInteraction) {
-      console.log(`Checking ${allModels.length} models for intersection`)
+  
     }
     
     allModels.forEach((model: BaseModel, index: number) => {
@@ -125,22 +125,22 @@ export class InteractionManager {
       if (modelColliders.length > 0) {
         colliders.push(...modelColliders)
         if (isInteraction) {
-          console.log(`Model ${index}: ${model.getId()}, ${modelColliders.length} collider(s) available`)
+    
         }
       }
     })
 
     if (isInteraction) {
-      console.log(`Total colliders for raycasting: ${colliders.length}`)
+  
     }
     
     const intersections = this.raycaster.intersectObjects(colliders, false)
     
     if (isInteraction) {
-      console.log(`Raycasting found ${intersections.length} intersections`)
+  
       
       if (intersections.length > 0) {
-        console.log(`First intersection at: (${intersections[0].point.x.toFixed(3)}, ${intersections[0].point.y.toFixed(3)}, ${intersections[0].point.z.toFixed(3)})`)
+
       }
     }
     
@@ -154,13 +154,13 @@ export class InteractionManager {
     if (modelId) {
       const model = this.modelManager.getModel(modelId)
       if (isInteraction) {
-        console.log(`Found model from intersection: ${modelId}`)
+
       }
       return model || null
     }
     
     if (isInteraction) {
-      console.log('No modelId found in intersection userData')
+      
     }
     return null
   }
@@ -176,7 +176,7 @@ export class InteractionManager {
 
   private onMouseDown(event: MouseEvent): void {
     event.preventDefault()
-    console.log('Mouse down event triggered')
+
     this.updateMousePosition(event.clientX, event.clientY)
 
     this.clickStartTime = Date.now()
@@ -189,11 +189,11 @@ export class InteractionManager {
       const selectedModel = this.getModelFromIntersection(intersections[0], true)
       
       if (selectedModel) {
-        console.log(`Model selected: ${selectedModel.getId()}`)
+  
         this.prepareForDrag(selectedModel, intersections[0].point)
       }
     } else {
-      console.log('No model intersections found')
+
       this.hideGizmo()
     }
   }
@@ -224,7 +224,7 @@ export class InteractionManager {
 
   private onMouseUp(event: MouseEvent): void {
     event.preventDefault()
-    console.log('Mouse up event triggered')
+    
     
     const clickDuration = Date.now() - this.clickStartTime
     const moveDistance = Math.sqrt(
@@ -241,16 +241,16 @@ export class InteractionManager {
 
   private onClick(event: MouseEvent): void {
     event.preventDefault()
-    console.log('Click event triggered')
+    
     
     if (this.isDragStarted) {
-      console.log('Click ignored - drag was initiated')
+      
       return
     }
     
     const clickDuration = Date.now() - this.clickStartTime
     if (clickDuration > 200) {
-      console.log('Click ignored - too long duration:', clickDuration)
+      
       return
     }
     
@@ -259,7 +259,7 @@ export class InteractionManager {
       Math.pow(event.clientY - this.clickStartPosition.y, 2)
     )
     if (clickDistance > 5) {
-      console.log('Click ignored - too much movement:', clickDistance)
+      
       return
     }
     
@@ -270,11 +270,11 @@ export class InteractionManager {
       const selectedModel = this.getModelFromIntersection(intersections[0], true)
       
       if (selectedModel) {
-        console.log(`Model clicked for gizmo: ${selectedModel.getId()}`)
+  
         this.handleModelClick(selectedModel)
       }
     } else {
-      console.log('No model clicked - hiding gizmo')
+
       this.hideGizmo()
     }
   }
@@ -282,7 +282,7 @@ export class InteractionManager {
   // 터치 이벤트 처리
   private onTouchStart(event: TouchEvent): void {
     event.preventDefault()
-    console.log('Touch start event triggered')
+    
     if (event.touches.length === 1) {
       const touch = event.touches[0]
       this.updateMousePosition(touch.clientX, touch.clientY)
@@ -297,11 +297,11 @@ export class InteractionManager {
         const selectedModel = this.getModelFromIntersection(intersections[0], true)
         
         if (selectedModel) {
-          console.log(`Model selected via touch: ${selectedModel.getId()}`)
+    
           this.prepareForDrag(selectedModel, intersections[0].point)
         }
       } else {
-        console.log('No model intersections found via touch')
+  
         this.hideGizmo()
       }
     }
@@ -336,7 +336,7 @@ export class InteractionManager {
 
   private onTouchEnd(event: TouchEvent): void {
     event.preventDefault()
-    console.log('Touch end event triggered')
+    
     
     const clickDuration = Date.now() - this.clickStartTime
     const touch = event.changedTouches[0]
@@ -365,14 +365,14 @@ export class InteractionManager {
       )
       this.dragState.startMouseY = this.mouse.y
       this.dragState.startModelY = modelPosition.y
-      console.log(`Prepared for dragging wall cube ${model.getId()} in 3D space (Y: ${modelPosition.y.toFixed(3)})`)
+
     } else {
       this.dragState.dragOffset.set(
         modelPosition.x - intersectionPoint.x,
         0,
         modelPosition.z - intersectionPoint.z
       )
-      console.log(`Prepared for dragging floor model ${model.getId()} on horizontal plane`)
+
     }
 
     this.dragState.dragPlane = this.floorPlane.clone()
@@ -404,9 +404,9 @@ export class InteractionManager {
           z: wallSurfacePosition.z
         })
         
-        console.log(`Wall cube constrained to wall surface at (${wallSurfacePosition.x.toFixed(3)}, ${constrainedY.toFixed(3)}, ${wallSurfacePosition.z.toFixed(3)})`)
+
       } else {
-        console.log('No wall surface found - keeping current position')
+
       }
     } else {
       const currentTime = Date.now()
@@ -519,20 +519,20 @@ export class InteractionManager {
     const wasActuallyDragged = this.isDragStarted
 
     if (wasDragging && selectedModel) {
-      console.log(`Ended dragging model ${selectedModel.getId()}`)
+
       
       if (wasActuallyDragged) {
         const currentPosition = selectedModel.getPosition()
         
         if (selectedModel.getType() === 'wallcube') {
-          console.log(`Wall cube positioned at (${currentPosition.x.toFixed(3)}, ${currentPosition.y.toFixed(3)}, ${currentPosition.z.toFixed(3)}) - no auto-attachment`)
+  
         } else {
           // 개선된 바닥 가구 배치 로직 적용
           try {
             this.modelManager.placeOnFloor(selectedModel, currentPosition.x, currentPosition.z)
-            console.log(`Floor model positioned using improved placement logic`)
+    
           } catch {
-            console.log('Failed to place on floor, using fallback positioning')
+  
             const clampedPosition = this.modelManager.clampToFloorWithBounds(selectedModel, currentPosition.x, currentPosition.z)
             const surfaceY = this.modelManager.calculateSurfaceY(selectedModel, clampedPosition.x, clampedPosition.z)
             
@@ -544,7 +544,7 @@ export class InteractionManager {
           }
           
           // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
-          console.log('Recalculating positions for other models after drag...')
+    
           this.modelManager.recalculateOtherModelPositions(selectedModel.getId())
         }
       }
@@ -574,7 +574,7 @@ export class InteractionManager {
   }
 
   private handleModelClick(model: BaseModel): void {
-    console.log(`Model clicked: ${model.getId()}`)
+
     this.showGizmoAtModelTop(model)
   }
 
@@ -600,7 +600,7 @@ export class InteractionManager {
       const gizmoScreenX = (topPosition.x + 1) * rect.width / 2 + rect.left
       const gizmoScreenY = (-topPosition.y + 1) * rect.height / 2 + rect.top
       
-      console.log(`Showing gizmo at screen position: (${gizmoScreenX.toFixed(1)}, ${gizmoScreenY.toFixed(1)}) for model top Y: ${boundingBox.max.y.toFixed(3)}`)
+  
       
       this.gizmoState.selectedModelId = model.getId()
       this.gizmoState.screenPosition = { x: gizmoScreenX, y: gizmoScreenY }
@@ -640,6 +640,6 @@ export class InteractionManager {
     canvas.removeEventListener('touchend', this.boundTouchEnd)
     canvas.removeEventListener('contextmenu', this.boundContextMenu)
 
-    console.log('InteractionManager disposed')
+
   }
 }

@@ -93,7 +93,7 @@ export class SceneManager {
     const width = containerRect.width || window.innerWidth
     const height = containerRect.height || window.innerHeight
     
-    console.log(`SceneManager.init: Container size: ${width}x${height}`)
+
     
     // 초기 크기 설정
     this.currentSize = { width, height }
@@ -143,7 +143,7 @@ export class SceneManager {
     // 벽들 추가 (격자 기반)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
 
-    console.log('Scene setup completed')
+
   }
 
   private setupPostProcessing() {
@@ -180,7 +180,7 @@ export class SceneManager {
     renderResolution.x = Math.floor(renderResolution.x)
     renderResolution.y = Math.floor(renderResolution.y)
 
-    console.log(`SceneManager.setupPostProcessing: Screen resolution: ${width}x${height}, Render resolution: ${renderResolution.x}x${renderResolution.y}`)
+
 
     // 픽셀화 패스 추가
     this.pixelatedPass = new RenderPixelatedPass(renderResolution, this.scene, this.camera, defaultParams)
@@ -204,13 +204,13 @@ export class SceneManager {
       this.renderer,
       this.modelManager,
       (gizmoState: GizmoState) => {
-        console.log('SceneManager received gizmo state change:', gizmoState)
+    
         this.gizmoState = gizmoState
         if (this.onGizmoStateChange) {
-          console.log('SceneManager calling onGizmoStateChange callback')
+    
           this.onGizmoStateChange(gizmoState)
         } else {
-          console.log('SceneManager: onGizmoStateChange callback is not set')
+    
         }
       }
     )
@@ -230,9 +230,9 @@ export class SceneManager {
       createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
       
       // 바닥 텍스처 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
-      console.log('Custom texture applied to floor - no model repositioning needed')
       
-      console.log('Custom texture applied to floor')
+      
+      
     })
     
     // 커스텀 텍스처 리셋 이벤트 리스너
@@ -242,7 +242,7 @@ export class SceneManager {
       // 기본 텍스처로 바닥 재생성
       createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
       
-      console.log('Floor texture reset to default')
+      
     })
     
     // 색상 리셋 이벤트 리스너
@@ -257,7 +257,7 @@ export class SceneManager {
       // updateColors 메서드 호출하여 3D 씬 업데이트
       this.updateColors(this.colorParams)
       
-      console.log('Colors reset to default:', { wallColor, floorColor })
+      
     })
   }
 
@@ -271,7 +271,7 @@ export class SceneManager {
             this.updateBackgroundColor()
             this.updateSceneBackground()
             this.updateLights()
-            console.log('Theme change detected, background color and lights updated')
+            
           }, 50) // 빌드 환경에서의 안정성을 위해 약간의 지연 추가
         }
       })
@@ -292,7 +292,7 @@ export class SceneManager {
         this.updateBackgroundColor()
         this.updateSceneBackground()
         this.updateLights()
-        console.log('System theme change detected, background color and lights updated')
+        
       }, 100) // 약간의 지연을 두어 테마가 완전히 적용된 후 실행
     })
 
@@ -301,7 +301,7 @@ export class SceneManager {
       this.updateBackgroundColor()
       this.updateSceneBackground()
       this.updateLights()
-      console.log('Initial theme applied on setupThemeObserver')
+  
     }, 100)
   }
 
@@ -322,7 +322,7 @@ export class SceneManager {
     // 렌더러 배경색 설정
     this.renderer.setClearColor(color)
     
-    console.log('Background color updated to:', isDarkMode ? 'dark' : 'light', 'THREE.Color:', color)
+
   }
 
   private updateSceneBackground() {
@@ -342,7 +342,7 @@ export class SceneManager {
       // 씬 배경색 설정
       this.scene.background = color
       
-      console.log('Scene background color updated to:', isDarkMode ? 'dark' : 'light')
+  
     }
   }
 
@@ -350,7 +350,7 @@ export class SceneManager {
     // 조명을 테마에 맞게 업데이트
     if (this.scene) {
       createLights(this.scene)
-      console.log('Lights updated for theme change')
+  
     }
   }
 
@@ -361,9 +361,9 @@ export class SceneManager {
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     
     // 바닥 텍스처 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
-    console.log('Custom texture applied to floor - no model repositioning needed')
     
-    console.log('Custom texture applied to floor')
+    
+    
   }
 
   private setupControlsInteraction() {
@@ -393,9 +393,9 @@ export class SceneManager {
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
     // 바닥/벽 생성 완료 후 지연된 모델 재배치 (타이밍 문제 해결)
-    console.log('Floor/walls updated - scheduling delayed model repositioning...')
+    
     setTimeout(() => {
-      console.log('Executing delayed model repositioning after floor/wall generation...')
+      
       // TODO: repositionModelsAfterFloorChange 메서드 구현 필요
       // this.modelManager.repositionModelsAfterFloorChange()
     }, 100) // 100ms 지연으로 바닥/벽 생성 완료 보장
@@ -411,7 +411,7 @@ export class SceneManager {
 
   // 간단한 바닥만 업데이트 (카메라 위치 유지)
   public updateFloorOnly(customGrid: boolean[][]) {
-    console.log('SceneManager: Updating floor and walls, preserving camera state')
+
     
     // roomParams 업데이트
     this.roomParams.customGrid = customGrid
@@ -421,9 +421,9 @@ export class SceneManager {
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
     // 바닥 생성 완료 후 지연된 모델 재배치 (타이밍 문제 해결)
-    console.log('Floor tiles updated - scheduling delayed model repositioning...')
+
     setTimeout(() => {
-      console.log('Executing delayed model repositioning after floor generation...')
+      
       // TODO: repositionModelsAfterFloorChange 메서드 구현 필요
       // this.modelManager.repositionModelsAfterFloorChange()
     }, 100) // 100ms 지연으로 바닥 생성 완료 보장
@@ -438,10 +438,10 @@ export class SceneManager {
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
     
     // 바닥/벽 색상 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
-    console.log('Floor/walls color updated - no model repositioning needed')
+
     
     // 벽 재생성 후 벽 가구들을 자동으로 재부착
-    console.log('Walls color updated, repositioning wall models...')
+
     // TODO: repositionWallModelsAfterWallChange 메서드 구현 필요
     // this.modelManager.repositionWallModelsAfterWallChange()
   }
@@ -476,7 +476,7 @@ export class SceneManager {
       )
 
       await this.modelManager.addModel(floorLamp)
-      console.log(`FloorLamp added at position (${x}, ${z})`)
+  
       return floorLamp.getId()
     } catch (error) {
       console.error('Failed to add floor lamp:', error)
@@ -573,7 +573,7 @@ export class SceneManager {
 
   // 반응형 기능을 위한 새로운 메서드들
   public updateSize(width: number, height: number): void {
-    console.log(`SceneManager.updateSize: Called with ${width}x${height}`)
+    
     
     // 목표 크기 설정
     this.targetSize = { width, height }
@@ -585,7 +585,7 @@ export class SceneManager {
     } else {
       // 애니메이션 시작
       this.isResizing = true
-      console.log(`SceneManager.updateSize: Starting resize animation from ${this.currentSize.width}x${this.currentSize.height} to ${width}x${height}`)
+      
     }
   }
 
@@ -628,7 +628,7 @@ export class SceneManager {
       this.currentFrustumSize = this.targetFrustumSize
       this.applySizeAndFrustum(this.currentSize.width, this.currentSize.height, this.currentFrustumSize)
       this.isResizing = false
-      console.log(`SceneManager: Animation completed at ${this.currentSize.width}x${this.currentSize.height}, frustum: ${this.currentFrustumSize.toFixed(2)}`)
+      
       return
     }
 
@@ -649,12 +649,12 @@ export class SceneManager {
 
   public setResizeAnimationSpeed(speed: number): void {
     this.resizeAnimationSpeed = Math.max(0.01, Math.min(1, speed)) // 0.01 ~ 1 사이로 제한
-    console.log(`SceneManager: Resize animation speed set to ${this.resizeAnimationSpeed}`)
+    
   }
 
   // 크기와 frustumSize를 함께 업데이트하는 메서드
   public updateSizeAndFrustum(width: number, height: number, frustumSize: number): void {
-    console.log(`SceneManager.updateSizeAndFrustum: Called with ${width}x${height}, frustumSize: ${frustumSize}`)
+    
     
     // 목표 크기와 frustumSize 설정
     this.targetSize = { width, height }
@@ -668,7 +668,7 @@ export class SceneManager {
     } else {
       // 애니메이션 시작
       this.isResizing = true
-      console.log(`SceneManager.updateSizeAndFrustum: Starting animation from ${this.currentSize.width}x${this.currentSize.height}, frustum: ${this.currentFrustumSize} to ${width}x${height}, frustum: ${frustumSize}`)
+
     }
   }
 

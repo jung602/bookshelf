@@ -37,7 +37,7 @@ export class ModelManager {
       z: clampedPosition.z
     })
 
-    console.log(`Model positioned on surface at (${clampedPosition.x}, ${modelY}, ${clampedPosition.z})`)
+
   }
 
   // 기존 방식과의 호환성을 위한 오버로드
@@ -69,7 +69,7 @@ export class ModelManager {
         model.addToScene(this.scene)
         this.models.set(model.getId(), model)
         
-        console.log(`Model ${model.getId()} added to scene at optimal position (${optimalPosition.x.toFixed(2)}, ${optimalPosition.y.toFixed(2)}, ${optimalPosition.z.toFixed(2)})`)
+    
         return
       } catch (error) {
         console.error('Failed to add model:', error)
@@ -106,7 +106,7 @@ export class ModelManager {
       model.addToScene(this.scene)
       this.models.set(model.getId(), model)
       
-      console.log(`Model ${modelType} (${model.getId()}) added to scene`)
+  
       return model.getId()
     } catch (error) {
       console.error('Failed to add model:', error)
@@ -124,7 +124,7 @@ export class ModelManager {
       const attached = wallCube.attachToWall(this.scene, targetX, targetZ)
       
       if (!attached) {
-        console.log('Failed to attach wall cube to any wall')
+  
         wallCube.dispose()
         return null
       }
@@ -132,7 +132,7 @@ export class ModelManager {
       wallCube.addToScene(this.scene)
       this.models.set(wallCube.getId(), wallCube)
       
-      console.log(`WallCube ${wallCube.getId()} added and attached to wall`)
+  
       return wallCube.getId()
     } catch (error) {
       console.error('Failed to add wall cube:', error)
@@ -144,7 +144,7 @@ export class ModelManager {
   public canPlaceOnFloor(model: BaseModel, x: number, z: number): boolean {
     // 바닥 타일이 있는지 확인
     if (!this.hasFloorAt(x, z)) {
-      console.log('No floor tile at target position')
+
       return false
     }
 
@@ -171,9 +171,7 @@ export class ModelManager {
     if (validCorners.length !== corners.length) {
       const modelWidth = boundingBox.max.x - boundingBox.min.x
       const modelDepth = boundingBox.max.z - boundingBox.min.z
-      console.log(`Model ${model.getId()} is too large for available floor space:`)
-      console.log(`  Model size: ${modelWidth.toFixed(2)} x ${modelDepth.toFixed(2)}`)
-      console.log(`  Valid corners: ${validCorners.length}/${corners.length}`)
+      
       return false
     }
 
@@ -194,7 +192,7 @@ export class ModelManager {
   public canPlaceOnWall(model: BaseModel, x: number, z: number): boolean {
     const nearestWall = this.findNearestWall(x, z)
     if (!nearestWall) {
-      console.log('No wall found near target position')
+
       return false
     }
 
@@ -265,9 +263,10 @@ export class ModelManager {
     const canFit = modelWidth < wallWidth && modelHeight < wallHeight
     
     if (!canFit) {
-      console.log(`Model ${model.getId()} is too large for wall:`)
-      console.log(`  Model size: ${modelWidth.toFixed(2)} x ${modelHeight.toFixed(2)} (W x H)`)
-      console.log(`  Wall size: ${wallWidth.toFixed(2)} x ${wallHeight.toFixed(2)} (W x H)`)
+      
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`  Wall size: ${wallWidth.toFixed(2)} x ${wallHeight.toFixed(2)} (W x H)`)
+      }
     }
 
     return canFit
@@ -299,9 +298,9 @@ export class ModelManager {
     const rayDirection = new THREE.Vector3(0, -1, 0)
     raycaster.set(rayOrigin, rayDirection)
 
-    console.log(`📍 Calculating surface Y for ${targetModel.getId()} at (${x.toFixed(3)}, ${z.toFixed(3)})`)
+
     if (excludeModelIds.length > 0) {
-      console.log(`  Excluding models: ${excludeModelIds.join(', ')}`)
+
     }
 
     // 다른 모든 모델의 콜라이더 수집 (자기 자신과 제외 목록 제외)
@@ -319,7 +318,7 @@ export class ModelManager {
           })
           if (validColliders.length > 0) {
             colliders.push(...validColliders)
-            console.log(`  Added ${validColliders.length} valid colliders from model ${modelId}`)
+
           }
         }
       }
@@ -333,12 +332,11 @@ export class ModelManager {
       }
     })
     colliders.push(...floorMeshes)
-    console.log(`  Added ${floorMeshes.length} floor meshes`)
-    console.log(`  Total colliders: ${colliders.length}`)
+
 
     // 레이캐스팅 실행
     const intersections = raycaster.intersectObjects(colliders, false)
-    console.log(`  Found ${intersections.length} intersections`)
+
     
     if (intersections.length > 0) {
       // 가장 높은 유효한 표면 찾기
@@ -351,7 +349,7 @@ export class ModelManager {
         if (isFloorMesh) {
           // 바닥이면 항상 유효
           bestSurfaceY = Math.max(bestSurfaceY, surfaceY)
-          console.log(`  Floor surface at Y: ${surfaceY.toFixed(3)}`)
+    
         } else {
           // 다른 가구의 표면인 경우 지지 가능한지 확인
           const surfaceModelId = intersection.object.userData.modelId
@@ -359,9 +357,13 @@ export class ModelManager {
           
           if (surfaceModel && this.canModelSupportAnother(surfaceModel, targetModel, x, z)) {
             bestSurfaceY = Math.max(bestSurfaceY, surfaceY)
-            console.log(`  Valid model surface at Y: ${surfaceY.toFixed(3)} from ${surfaceModelId}`)
-          } else {
-            console.log(`  Invalid surface at Y: ${surfaceY.toFixed(3)} from ${surfaceModelId}`)
+                    if (process.env.NODE_ENV !== 'production') {
+          console.log(`  Valid model surface at Y: ${surfaceY.toFixed(3)} from ${surfaceModelId}`)
+        }
+      } else {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`  Invalid surface at Y: ${surfaceY.toFixed(3)} from ${surfaceModelId}`)
+        }
           }
         }
       }
@@ -371,12 +373,10 @@ export class ModelManager {
         const modelBottomOffset = this.getModelBottomOffset(targetModel)
         const finalY = bestSurfaceY - modelBottomOffset
         
-        console.log(`  Best surface Y: ${bestSurfaceY.toFixed(3)}, bottom offset: ${modelBottomOffset.toFixed(3)}, final Y: ${finalY.toFixed(3)}`)
+
         
         // 바닥 높이 검증 추가 (개선사항)
-        if (bestSurfaceY <= 0.01 && modelBottomOffset < 0) {
-          console.log(`  ✓ Correct floor placement`)
-        } else if (finalY > 2) {
+        if (finalY > 2) {
           console.log(`  ⚠️ WARNING: Suspiciously high Y position!`)
         }
         
@@ -389,9 +389,11 @@ export class ModelManager {
     const modelBottomOffset = this.getModelBottomOffset(targetModel)
     const finalY = floorY - modelBottomOffset
     
-    console.log(`  No valid model surface found`)
-    console.log(`  Floor Y: ${floorY.toFixed(3)}, Model bottom offset: ${modelBottomOffset.toFixed(3)}`)
-    console.log(`  Final Y position: ${finalY.toFixed(3)}`)
+          if (process.env.NODE_ENV !== 'production') {
+        console.log(`  No valid model surface found`)
+        console.log(`  Floor Y: ${floorY.toFixed(3)}, Model bottom offset: ${modelBottomOffset.toFixed(3)}`)
+        console.log(`  Final Y position: ${finalY.toFixed(3)}`)
+      }
     
     return finalY
   }
@@ -406,7 +408,9 @@ export class ModelManager {
     // floorlamp 같은 특정 모델들은 다른 모델을 지지할 수 없음
     const unsupportableTypes = ['floorlamp', 'wallcube']
     if (unsupportableTypes.includes(supportModel.getType())) {
-      console.log(`    Support model ${supportModel.getId()} (type: ${supportModel.getType()}) cannot support other models`)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`    Support model ${supportModel.getId()} (type: ${supportModel.getType()}) cannot support other models`)
+      }
       return false
     }
 
@@ -425,7 +429,9 @@ export class ModelManager {
     
     // 겹침이 없으면 지지할 수 없음
     if (xOverlap <= 0 || zOverlap <= 0) {
-      console.log(`    No overlap between models (xOverlap=${xOverlap.toFixed(3)}, zOverlap=${zOverlap.toFixed(3)})`)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`    No overlap between models (xOverlap=${xOverlap.toFixed(3)}, zOverlap=${zOverlap.toFixed(3)})`)
+      }
       return false
     }
     
@@ -437,7 +443,9 @@ export class ModelManager {
     // 타겟 모델의 30% 이상이 지지 모델 위에 있어야 함
     const canSupport = overlapRatio >= 0.3
     
-    console.log(`    Support check: ${supportModel.getId()} (type: ${supportModel.getType()}) -> ${targetModel.getId()}: overlap ratio=${overlapRatio.toFixed(2)}, can support=${canSupport}`)
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`    Support check: ${supportModel.getId()} (type: ${supportModel.getType()}) -> ${targetModel.getId()}: overlap ratio=${overlapRatio.toFixed(2)}, can support=${canSupport}`)
+      }
     
     return canSupport
   }
@@ -446,21 +454,20 @@ export class ModelManager {
   private getModelBottomOffset(model: BaseModel): number {
     const modelGroup = model.getModel()
     if (!modelGroup) {
-      console.log(`  Warning: No model group found for ${model.getId()}`)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`  Warning: No model group found for ${model.getId()}`)
+      }
       return 0
     }
 
     const boundingBox = new THREE.Box3().setFromObject(modelGroup)
     const bottomOffset = boundingBox.min.y - modelGroup.position.y
     
-    console.log(`  Model ${model.getId()} bottom calculation:`)
-    console.log(`    Bounding box min.y: ${boundingBox.min.y.toFixed(3)}`)
-    console.log(`    Model position.y: ${modelGroup.position.y.toFixed(3)}`)
-    console.log(`    Bottom offset: ${bottomOffset.toFixed(3)}`)
+
     
     // 오프셋이 양수라면 문제가 있음 (개선된 경고)
     if (bottomOffset > 0.1) {
-      console.log(`    ⚠️ Unusual positive bottom offset: ${bottomOffset.toFixed(3)}`)
+
     }
     
     return bottomOffset
@@ -488,33 +495,34 @@ export class ModelManager {
   public async removeModel(modelId: string): Promise<void> {
     const model = this.models.get(modelId)
     if (model) {
-      console.log(`Starting removal of model ${modelId}`)
-      console.log(`Current models before removal:`, Array.from(this.models.keys()))
+      
       
       // 삭제 전에 모델 위치 저장
       const removedPosition = model.getPosition()
       
       // 삭제될 모델 위에 있는 모델들을 찾기
       const affectedModels = this.findModelsAffectedByRemoval(modelId)
-      console.log(`Found ${affectedModels.length} models affected by removal of ${modelId}:`, affectedModels)
+
       
       model.removeFromScene(this.scene)
       model.dispose()
       this.models.delete(modelId)
       
-      console.log(`Model ${modelId} removed, remaining models:`, Array.from(this.models.keys()))
+
       
       // 영향받는 모델들만 선택적으로 재계산
       if (affectedModels.length > 0) {
-        console.log('Model removed - recalculating positions for affected models...')
+
         await this.recalculateAffectedModelPositions(affectedModels, removedPosition)
       } else {
-        console.log('No models affected by removal - skipping recalculation')
+
       }
       
-      console.log(`Model ${modelId} removed from scene and affected model positions recalculated`)
+
     } else {
-      console.log(`Model ${modelId} not found for removal`)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`Model ${modelId} not found for removal`)
+      }
     }
   }
 
@@ -539,7 +547,7 @@ export class ModelManager {
     const model = this.models.get(modelId)
     if (model) {
       model.rotateY90()
-      console.log(`Model ${modelId} rotated 90 degrees`)
+
     }
   }
 
@@ -549,7 +557,7 @@ export class ModelManager {
     if (!model || model.getType() !== 'wallcube') return
 
     // TODO: WallCube 클래스의 attachToWall 메서드 구현 필요
-    console.log(`Moving wall model ${modelId} to (${x}, ${y || 'default'}, ${z})`)
+
     
     // 임시로 직접 위치 설정
     model.setPosition({ x, y: y || 1, z })
@@ -568,7 +576,9 @@ export class ModelManager {
 
     // 바닥 가구 이동 로직
     if (!this.hasFloorMeshes()) {
+      if (process.env.NODE_ENV !== 'production') {
       console.log('No floor available - cannot move model')
+    }
       return
     }
 
@@ -580,12 +590,12 @@ export class ModelManager {
       z: clampedPosition.z
     })
 
-    console.log(`Model ${modelId} moved to (${clampedPosition.x}, ${modelY}, ${clampedPosition.z})`)
+
   }
 
   // 드래그 후 다른 모델들 재계산 (InteractionManager에서 호출)
   public async recalculateOtherModelPositions(excludeModelId: string): Promise<void> {
-    console.log(`Recalculating positions for other models (excluding ${excludeModelId})`)
+
     
     const otherModels = Array.from(this.models.keys()).filter(id => 
       id !== excludeModelId && this.models.get(id)?.getType() !== 'wallcube'
@@ -625,19 +635,23 @@ export class ModelManager {
 
   // 스마트 배치: 최적의 위치 찾기 메서드
   private findOptimalPlacement(model: BaseModel): { x: number, y: number, z: number } | null {
-    console.log(`🎯 Finding optimal placement for model ${model.getId()}`)
+
     
     // 바닥 경계 확인
     const floorBounds = this.getFloorBounds()
     if (!floorBounds) {
+      if (process.env.NODE_ENV !== 'production') {
       console.log('❌ No floor bounds found')
+    }
       return null
     }
     
     // 모델의 바운딩박스 크기 확인 (임시 위치에서)
     const modelGroup = model.getModel()
     if (!modelGroup) {
+      if (process.env.NODE_ENV !== 'production') {
       console.log('❌ No model group found')
+    }
       return null
     }
     
@@ -675,10 +689,12 @@ export class ModelManager {
         // 원래 위치 복원
         modelGroup.position.copy(originalPos)
         
-        console.log(`✅ Found optimal position: (${testPos.x.toFixed(2)}, ${surfaceY.toFixed(2)}, ${testPos.z.toFixed(2)})`)
+
         return { x: testPos.x, y: surfaceY, z: testPos.z }
       } catch (error) {
-        console.log(`⚠️ Cannot calculate surface Y at (${testPos.x.toFixed(2)}, ${testPos.z.toFixed(2)}): ${error}`)
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`⚠️ Cannot calculate surface Y at (${testPos.x.toFixed(2)}, ${testPos.z.toFixed(2)}): ${error}`)
+        }
         continue
       }
     }
@@ -686,7 +702,9 @@ export class ModelManager {
     // 원래 위치 복원
     modelGroup.position.copy(originalPos)
     
-    console.log('❌ No suitable placement found')
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('❌ No suitable placement found')
+    }
     return null
   }
 
@@ -722,7 +740,7 @@ export class ModelManager {
       radius += gridSize
     }
     
-    console.log(`🎯 Generated ${positions.length} search positions`)
+
     return positions
   }
 
@@ -754,9 +772,11 @@ export class ModelManager {
       if (xOverlap && zOverlap) {
         // floorlamp 같은 지지 불가능한 모델 위에는 배치하지 않음
         if (this.canModelSupportAnother(existingModel, testModel, x, z)) {
-          console.log(`📍 Model can be placed on top of ${existingModel.getId()}`)
+
         } else {
+          if (process.env.NODE_ENV !== 'production') {
           console.log(`⚠️ Cannot place on ${existingModel.getId()} (type: ${existingModel.getType()}) - collision detected`)
+        }
           hasCollision = true
         }
       }
@@ -777,8 +797,7 @@ export class ModelManager {
     const affectedModels: string[] = []
     const removedPosition = removedModel.getPosition()
 
-    console.log(`=== Finding models affected by removal of ${removedModelId} ===`)
-    console.log(`Removed model position: (${removedPosition.x.toFixed(3)}, ${removedPosition.y.toFixed(3)}, ${removedPosition.z.toFixed(3)})`)
+
 
     // 가장 아래 모델인지 확인 (삭제될 모델을 제외한 바닥 가구들과 비교)
     const floorModels = Array.from(this.models.values()).filter(model => 
@@ -977,7 +996,9 @@ export class ModelManager {
 
     // 바닥이 없으면 원래 위치 유지 (개선된 에러 처리)
     if (!this.hasFloorMeshes()) {
+      if (process.env.NODE_ENV !== 'production') {
       console.log('No floor available - keeping original position')
+    }
       const currentPosition = targetModel.getPosition()
       return { 
         x: currentPosition.x, 
@@ -1001,7 +1022,9 @@ export class ModelManager {
       }
     } catch {
       // 개선된 폴백 처리
+      if (process.env.NODE_ENV !== 'production') {
       console.log('Cannot find valid surface - keeping original position')
+    }
       const currentPosition = targetModel.getPosition()
       return { 
         x: currentPosition.x, 
@@ -1020,7 +1043,9 @@ export class ModelManager {
     // 바닥 메시들의 경계 계산
     const floorBounds = this.getFloorBounds()
     if (!floorBounds) {
+      if (process.env.NODE_ENV !== 'production') {
       console.log('No floor bounds found, returning original position')
+    }
       return { x, z }
     }
 
@@ -1048,7 +1073,7 @@ export class ModelManager {
       clampedZ = z - (modelBoundingBox.max.z - floorBounds.maxZ)
     }
 
-    console.log(`Clamping model from (${x.toFixed(2)}, ${z.toFixed(2)}) to (${clampedX.toFixed(2)}, ${clampedZ.toFixed(2)})`)
+
     
     return { x: clampedX, z: clampedZ }
   }

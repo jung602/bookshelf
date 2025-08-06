@@ -56,13 +56,20 @@ export class ModelManager {
       try {
         await model.load()
         
-        // 모델을 바닥 위에 올바르게 배치
-        this.positionModelOnFloor(model)
+        // 스마트 배치: 최적의 위치 찾기
+        const optimalPosition = this.findOptimalPlacement(model)
+        if (!optimalPosition) {
+          model.dispose()
+          throw new Error('바닥이 너무 좁아서 가구를 배치할 수 없습니다. 바닥을 넓히거나 다른 가구를 제거해주세요.')
+        }
+        
+        // 최적 위치에 배치
+        model.setPosition(optimalPosition)
         
         model.addToScene(this.scene)
         this.models.set(model.getId(), model)
         
-        console.log(`Model ${model.getId()} added to scene`)
+        console.log(`Model ${model.getId()} added to scene at optimal position (${optimalPosition.x.toFixed(2)}, ${optimalPosition.y.toFixed(2)}, ${optimalPosition.z.toFixed(2)})`)
         return
       } catch (error) {
         console.error('Failed to add model:', error)
@@ -396,6 +403,13 @@ export class ModelManager {
     
     if (!supportModelGroup || !targetModelGroup) return false
 
+    // floorlamp 같은 특정 모델들은 다른 모델을 지지할 수 없음
+    const unsupportableTypes = ['floorlamp', 'wallcube']
+    if (unsupportableTypes.includes(supportModel.getType())) {
+      console.log(`    Support model ${supportModel.getId()} (type: ${supportModel.getType()}) cannot support other models`)
+      return false
+    }
+
     // 지지 모델의 바운딩 박스
     const supportBox = new THREE.Box3().setFromObject(supportModelGroup)
     
@@ -423,7 +437,7 @@ export class ModelManager {
     // 타겟 모델의 30% 이상이 지지 모델 위에 있어야 함
     const canSupport = overlapRatio >= 0.3
     
-    console.log(`    Support check: ${supportModel.getId()} -> ${targetModel.getId()}: overlap ratio=${overlapRatio.toFixed(2)}, can support=${canSupport}`)
+    console.log(`    Support check: ${supportModel.getId()} (type: ${supportModel.getType()}) -> ${targetModel.getId()}: overlap ratio=${overlapRatio.toFixed(2)}, can support=${canSupport}`)
     
     return canSupport
   }
@@ -608,6 +622,151 @@ export class ModelManager {
   }
 
 
+
+  // 스마트 배치: 최적의 위치 찾기 메서드
+  private findOptimalPlacement(model: BaseModel): { x: number, y: number, z: number } | null {
+    console.log(`🎯 Finding optimal placement for model ${model.getId()}`)
+    
+    // 바닥 경계 확인
+    const floorBounds = this.getFloorBounds()
+    if (!floorBounds) {
+      console.log('❌ No floor bounds found')
+      return null
+    }
+    
+    // 모델의 바운딩박스 크기 확인 (임시 위치에서)
+    const modelGroup = model.getModel()
+    if (!modelGroup) {
+      console.log('❌ No model group found')
+      return null
+    }
+    
+    // 원래 위치 저장
+    const originalPos = modelGroup.position.clone()
+    
+    // 우선순위 위치들: 중앙 → 모서리 → 나선형 확장
+    const priorityPositions = this.generateSearchPositions(floorBounds)
+    
+    for (const testPos of priorityPositions) {
+      // 임시로 모델을 테스트 위치에 배치
+      modelGroup.position.set(testPos.x, 0, testPos.z)
+      const modelBounds = new THREE.Box3().setFromObject(modelGroup)
+      
+      // 1. 바닥 경계 내에 있는지 확인
+      if (modelBounds.min.x < floorBounds.minX || modelBounds.max.x > floorBounds.maxX ||
+          modelBounds.min.z < floorBounds.minZ || modelBounds.max.z > floorBounds.maxZ) {
+        continue
+      }
+      
+      // 2. 바닥 타일이 모든 모서리에 있는지 확인
+      if (!this.canPlaceOnFloor(model, testPos.x, testPos.z)) {
+        continue
+      }
+      
+      // 3. 다른 모델들과 겹치지 않는지 확인
+      if (this.hasCollisionWithExistingModels(model, testPos.x, testPos.z)) {
+        continue
+      }
+      
+      // 4. 올바른 Y 위치 계산
+      try {
+        const surfaceY = this.calculateSurfaceY(model, testPos.x, testPos.z)
+        
+        // 원래 위치 복원
+        modelGroup.position.copy(originalPos)
+        
+        console.log(`✅ Found optimal position: (${testPos.x.toFixed(2)}, ${surfaceY.toFixed(2)}, ${testPos.z.toFixed(2)})`)
+        return { x: testPos.x, y: surfaceY, z: testPos.z }
+      } catch (error) {
+        console.log(`⚠️ Cannot calculate surface Y at (${testPos.x.toFixed(2)}, ${testPos.z.toFixed(2)}): ${error}`)
+        continue
+      }
+    }
+    
+    // 원래 위치 복원
+    modelGroup.position.copy(originalPos)
+    
+    console.log('❌ No suitable placement found')
+    return null
+  }
+
+  // 우선순위 위치 생성: 중앙부터 시작해서 나선형으로 확장
+  private generateSearchPositions(bounds: { minX: number, maxX: number, minZ: number, maxZ: number }): { x: number, z: number }[] {
+    const positions: { x: number, z: number }[] = []
+    
+    const centerX = (bounds.minX + bounds.maxX) / 2
+    const centerZ = (bounds.minZ + bounds.maxZ) / 2
+    const gridSize = 0.5 // 50cm 간격
+    
+    // 1. 중앙 위치
+    positions.push({ x: centerX, z: centerZ })
+    
+    // 2. 나선형 확장
+    let radius = gridSize
+    const maxRadius = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2
+    
+    while (radius <= maxRadius) {
+      const steps = Math.max(8, Math.floor(radius * 4)) // 반지름에 따라 단계 수 증가
+      
+      for (let i = 0; i < steps; i++) {
+        const angle = (i / steps) * Math.PI * 2
+        const x = centerX + Math.cos(angle) * radius
+        const z = centerZ + Math.sin(angle) * radius
+        
+        // 바운드 내에 있는 위치만 추가
+        if (x >= bounds.minX && x <= bounds.maxX && z >= bounds.minZ && z <= bounds.maxZ) {
+          positions.push({ x, z })
+        }
+      }
+      
+      radius += gridSize
+    }
+    
+    console.log(`🎯 Generated ${positions.length} search positions`)
+    return positions
+  }
+
+  // 기존 모델들과의 충돌 확인
+  private hasCollisionWithExistingModels(testModel: BaseModel, x: number, z: number): boolean {
+    const testModelGroup = testModel.getModel()
+    if (!testModelGroup) return false
+    
+    // 임시로 테스트 위치에 배치
+    const originalPos = testModelGroup.position.clone()
+    testModelGroup.position.set(x, 0, z)
+    const testBounds = new THREE.Box3().setFromObject(testModelGroup)
+    
+    // 기존 모델들과 겹침 확인
+    let hasCollision = false
+    
+    this.models.forEach((existingModel) => {
+      if (existingModel.getId() === testModel.getId()) return
+      
+      const existingGroup = existingModel.getModel()
+      if (!existingGroup) return
+      
+      const existingBounds = new THREE.Box3().setFromObject(existingGroup)
+      
+      // 3D 바운딩박스 겹침 확인 (특히 XZ 평면에서)
+      const xOverlap = testBounds.max.x >= existingBounds.min.x && testBounds.min.x <= existingBounds.max.x
+      const zOverlap = testBounds.max.z >= existingBounds.min.z && testBounds.min.z <= existingBounds.max.z
+      
+      if (xOverlap && zOverlap) {
+        // floorlamp 같은 지지 불가능한 모델 위에는 배치하지 않음
+        if (this.canModelSupportAnother(existingModel, testModel, x, z)) {
+          console.log(`📍 Model can be placed on top of ${existingModel.getId()}`)
+        } else {
+          console.log(`⚠️ Cannot place on ${existingModel.getId()} (type: ${existingModel.getType()}) - collision detected`)
+          hasCollision = true
+        }
+      }
+    })
+    
+    // 원래 위치 복원
+    testModelGroup.position.copy(originalPos)
+    
+    return hasCollision
+  }
 
   // 기존 04a630c 커밋의 나머지 복잡한 로직들
   

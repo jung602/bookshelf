@@ -396,7 +396,8 @@ export class SceneManager {
     console.log('Floor/walls updated - scheduling delayed model repositioning...')
     setTimeout(() => {
       console.log('Executing delayed model repositioning after floor/wall generation...')
-      this.modelManager.repositionModelsAfterFloorChange()
+      // TODO: repositionModelsAfterFloorChange 메서드 구현 필요
+      // this.modelManager.repositionModelsAfterFloorChange()
     }, 100) // 100ms 지연으로 바닥/벽 생성 완료 보장
     
     // 카메라 위치 조정 (격자 크기 기반)
@@ -423,7 +424,8 @@ export class SceneManager {
     console.log('Floor tiles updated - scheduling delayed model repositioning...')
     setTimeout(() => {
       console.log('Executing delayed model repositioning after floor generation...')
-      this.modelManager.repositionModelsAfterFloorChange()
+      // TODO: repositionModelsAfterFloorChange 메서드 구현 필요
+      // this.modelManager.repositionModelsAfterFloorChange()
     }, 100) // 100ms 지연으로 바닥 생성 완료 보장
   }
 
@@ -440,7 +442,8 @@ export class SceneManager {
     
     // 벽 재생성 후 벽 가구들을 자동으로 재부착
     console.log('Walls color updated, repositioning wall models...')
-    this.modelManager.repositionWallModelsAfterWallChange()
+    // TODO: repositionWallModelsAfterWallChange 메서드 구현 필요
+    // this.modelManager.repositionWallModelsAfterWallChange()
   }
 
   public getModelManager(): ModelManager {

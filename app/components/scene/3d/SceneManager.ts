@@ -230,7 +230,8 @@ export class SceneManager {
       createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
       
       // 바닥 텍스처 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
-      
+      // 인덱스 재빌드
+      this.modelManager.rebuildIndex()
       
       
     })
@@ -242,7 +243,8 @@ export class SceneManager {
       // 기본 텍스처로 바닥 재생성
       createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
       
-      
+      // 인덱스 재빌드
+      this.modelManager.rebuildIndex()
     })
     
     // 색상 리셋 이벤트 리스너
@@ -391,13 +393,26 @@ export class SceneManager {
     // 바닥과 벽 다시 생성 (격자 기반)
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    this.modelManager.rebuildIndex()
     
     // 바닥/벽 생성 완료 후 지연된 모델 재배치 (타이밍 문제 해결)
     
-    setTimeout(() => {
-      
-      // TODO: repositionModelsAfterFloorChange 메서드 구현 필요
-      // this.modelManager.repositionModelsAfterFloorChange()
+    setTimeout(async () => {
+      const floorDeleteIds = await this.modelManager.repositionModelsAfterFloorChange()
+      if (floorDeleteIds.length > 0) {
+        for (const id of floorDeleteIds) {
+          await this.modelManager.removeModel(id)
+        }
+        alert(`${floorDeleteIds.length}개의 가구가 바닥이 없어 삭제되었습니다.`)
+      }
+      // 벽도 동시에 재배치/삭제 처리
+      const wallDeleteIds = this.modelManager.repositionWallModelsAfterWallChange()
+      if (wallDeleteIds.length > 0) {
+        for (const id of wallDeleteIds) {
+          await this.modelManager.removeModel(id)
+        }
+        alert(`${wallDeleteIds.length}개의 벽 가구가 벽이 없어 삭제되었습니다.`)
+      }
     }, 100) // 100ms 지연으로 바닥/벽 생성 완료 보장
     
     // 카메라 위치 조정 (격자 크기 기반)
@@ -419,13 +434,25 @@ export class SceneManager {
     // 바닥과 벽 모두 재생성 (카메라는 건드리지 않음)
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    this.modelManager.rebuildIndex()
     
     // 바닥 생성 완료 후 지연된 모델 재배치 (타이밍 문제 해결)
 
-    setTimeout(() => {
-      
-      // TODO: repositionModelsAfterFloorChange 메서드 구현 필요
-      // this.modelManager.repositionModelsAfterFloorChange()
+    setTimeout(async () => {
+      const floorDeleteIds = await this.modelManager.repositionModelsAfterFloorChange()
+      if (floorDeleteIds.length > 0) {
+        for (const id of floorDeleteIds) {
+          await this.modelManager.removeModel(id)
+        }
+        alert(`${floorDeleteIds.length}개의 가구가 바닥이 없어 삭제되었습니다.`)
+      }
+      const wallDeleteIds = this.modelManager.repositionWallModelsAfterWallChange()
+      if (wallDeleteIds.length > 0) {
+        for (const id of wallDeleteIds) {
+          await this.modelManager.removeModel(id)
+        }
+        alert(`${wallDeleteIds.length}개의 벽 가구가 벽이 없어 삭제되었습니다.`)
+      }
     }, 100) // 100ms 지연으로 바닥 생성 완료 보장
   }
 
@@ -436,14 +463,17 @@ export class SceneManager {
     // 바닥과 벽 다시 생성 (격자 기반)
     createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    this.modelManager.rebuildIndex()
     
     // 바닥/벽 색상 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
 
     
     // 벽 재생성 후 벽 가구들을 자동으로 재부착
-
-    // TODO: repositionWallModelsAfterWallChange 메서드 구현 필요
-    // this.modelManager.repositionWallModelsAfterWallChange()
+    const wallDeleteIds = this.modelManager.repositionWallModelsAfterWallChange()
+    if (wallDeleteIds.length > 0) {
+      wallDeleteIds.forEach(async (id) => await this.modelManager.removeModel(id))
+      alert(`${wallDeleteIds.length}개의 벽 가구가 벽이 없어 삭제되었습니다.`)
+    }
   }
 
   public getModelManager(): ModelManager {

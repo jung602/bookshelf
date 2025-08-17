@@ -388,26 +388,10 @@ export class InteractionManager {
     const newZ = dragIntersection.z + this.dragState.dragOffset.z
 
     if (this.dragState.selectedModel.getType() === 'wallcube') {
-      const wallSurfacePosition = this.findNearestWallSurface(newX, newZ)
-      
-      if (wallSurfacePosition) {
-        const mouseYDelta = this.mouse.y - this.dragState.startMouseY
-        const yScale = 2.0
-        const desiredY = this.dragState.startModelY - (mouseYDelta * yScale)
-        
-        const wallHeight = wallSurfacePosition.wallHeight
-        const constrainedY = Math.max(0.1, Math.min(wallHeight - 0.1, desiredY))
-        
-        this.dragState.selectedModel.setPosition({
-          x: wallSurfacePosition.x,
-          y: constrainedY,
-          z: wallSurfacePosition.z
-        })
-        
-
-      } else {
-
-      }
+      const mouseYDelta = this.mouse.y - this.dragState.startMouseY
+      const yScale = 2.0
+      const desiredY = this.dragState.startModelY - (mouseYDelta * yScale)
+      this.modelManager.attachToNearestWall(this.dragState.selectedModel, newX, newZ, desiredY)
     } else {
       const currentTime = Date.now()
       const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
@@ -421,6 +405,11 @@ export class InteractionManager {
           0,
           newZ
         )
+        // 드래그 가능 영역을 바닥 경계 안쪽으로 제한 (벽/경계 깜빡임 방지)
+        const inset = 0.05
+        const clamped = this.modelManager.clampToFloorWithBounds(this.dragState.selectedModel, adjustedPosition.x, adjustedPosition.z)
+        adjustedPosition.x = clamped.x
+        adjustedPosition.z = clamped.z
         
         this.lastCollisionCheckTime = currentTime
       } else {
@@ -445,73 +434,7 @@ export class InteractionManager {
     return intersected ? intersectionPoint : null
   }
 
-  private findNearestWallSurface(targetX: number, targetZ: number): { x: number, z: number, wallHeight: number } | null {
-    const wallMeshes: THREE.Mesh[] = []
-    this.scene.traverse((child) => {
-      if (child.userData.isWall && child instanceof THREE.Mesh) {
-        wallMeshes.push(child)
-      }
-    })
-
-    if (wallMeshes.length === 0) {
-      return null
-    }
-
-    let nearestWall: THREE.Mesh | null = null
-    let minDistance = Infinity
-    let nearestPosition = { x: targetX, z: targetZ }
-
-    wallMeshes.forEach(wall => {
-      const wallPos = wall.position
-      const wallScale = wall.scale
-      const wallRotation = wall.rotation.y
-      
-      let surfacePosition: { x: number, z: number }
-      
-      if (Math.abs(wallRotation) < 0.1 || Math.abs(wallRotation - Math.PI) < 0.1) {
-        const wallMinX = wallPos.x - wallScale.x/2
-        const wallMaxX = wallPos.x + wallScale.x/2
-        const clampedX = Math.max(wallMinX, Math.min(wallMaxX, targetX))
-        
-        if (wallRotation < 0.1) {
-          surfacePosition = { x: clampedX, z: wallPos.z + 0.1 }
-        } else {
-          surfacePosition = { x: clampedX, z: wallPos.z - 0.1 }
-        }
-      } else {
-        const wallMinZ = wallPos.z - wallScale.x/2
-        const wallMaxZ = wallPos.z + wallScale.x/2
-        const clampedZ = Math.max(wallMinZ, Math.min(wallMaxZ, targetZ))
-        
-        if (Math.abs(wallRotation - Math.PI/2) < 0.1) {
-          surfacePosition = { x: wallPos.x + 0.1, z: clampedZ }
-        } else {
-          surfacePosition = { x: wallPos.x - 0.1, z: clampedZ }
-        }
-      }
-      
-      const distance = Math.sqrt(
-        Math.pow(targetX - surfacePosition.x, 2) + 
-        Math.pow(targetZ - surfacePosition.z, 2)
-      )
-      
-      if (distance < minDistance) {
-        minDistance = distance
-        nearestWall = wall
-        nearestPosition = surfacePosition
-      }
-    })
-
-    if (nearestWall) {
-      return {
-        x: nearestPosition.x,
-        z: nearestPosition.z,
-        wallHeight: (nearestWall as THREE.Mesh).scale.y || 2.0
-      }
-    }
-
-    return null
-  }
+  // 벽 스냅 계산은 WallModelManager로 위임됨
 
   private endDrag(): void {
     const wasDragging = this.dragState.isDragging

@@ -2,6 +2,9 @@ import * as THREE from 'three'
 import { BaseModel } from '../objects/BaseModel'
 import { SceneIndex } from './SceneIndex'
 
+// 상수 정의
+const CUBE_SIZE = 0.1
+
 export class WallModelManager {
   private scene: THREE.Scene
   private models: Map<string, BaseModel>
@@ -11,6 +14,60 @@ export class WallModelManager {
     this.scene = scene
     this.models = models
     this.sceneIndex = sceneIndex
+  }
+
+  // 벽 가구 추가 메소드
+  public async addWallModel(model: BaseModel, position?: { x: number; y: number; z: number }): Promise<string> {
+    try {
+      await model.load()
+      
+      const defaultPosition = position || { x: 0, y: 0, z: 0 }
+      
+      // 벽 가구 배치 가능 여부 검사
+      if (!this.canPlaceOnWall(model, defaultPosition.x, defaultPosition.z)) {
+        model.dispose()
+        throw new Error(`벽 가구를 배치할 수 없습니다. 벽이 가구보다 작거나 벽이 없습니다.`)
+      }
+      
+      // 가장 가까운 벽에 부착
+      const attached = this.attachToNearestWall(model, defaultPosition.x, defaultPosition.z, defaultPosition.y)
+      if (!attached) {
+        model.dispose()
+        throw new Error('벽에 부착할 수 없습니다.')
+      }
+      
+      model.addToScene(this.scene)
+      this.models.set(model.getId(), model)
+      
+      return model.getId()
+    } catch (error) {
+      console.error('Failed to add wall model:', error)
+      throw error
+    }
+  }
+
+  // 벽 가구 회전
+  public rotateWallModel(modelId: string): void {
+    const model = this.models.get(modelId)
+    if (model && model.getType() === 'wallcube') {
+      model.rotateY90()
+      // 회전 후 벽에 다시 부착
+      const pos = model.getPosition()
+      this.attachToNearestWall(model, pos.x, pos.z, pos.y)
+    }
+  }
+
+  // 벽 가구 이동
+  public moveWallModel(modelId: string, x: number, z: number, y?: number): void {
+    const model = this.models.get(modelId)
+    if (!model || model.getType() !== 'wallcube') return
+
+    // 벽에 부착하도록 개선
+    const attached = this.attachToNearestWall(model, x, z, y)
+    if (!attached) {
+      // 부착 실패 시 원래 위치 유지
+      console.warn(`Failed to attach wallcube ${modelId} to nearest wall`)
+    }
   }
 
   public findNearestWall(x: number, z: number): THREE.Mesh | null {
@@ -57,7 +114,7 @@ export class WallModelManager {
     const wallPos = wall.position
     const wallScale = wall.scale
     const wallRotation = wall.rotation.y
-    const cubeSize = 0.1
+    const cubeSize = CUBE_SIZE
     let attachX = wallPos.x
     let attachY = wallPos.y
     let attachZ = wallPos.z

@@ -486,7 +486,8 @@ export class SceneManager {
 
   // 벽 큐브 테스트용 메서드
   public async addTestWallCube(x: number = 0, z: number = 0): Promise<string | null> {
-    return await this.modelManager.addWallCube(x, z)
+    const { WallCube } = await import('./objects/WallCube')
+    return await this.modelManager.addModel('wallcube', WallCube, { x, y: 0, z })
   }
 
   // 플로어 램프 추가 메서드

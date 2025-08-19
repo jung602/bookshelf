@@ -66,7 +66,6 @@ export class WallCube extends BaseModel {
     const wall = this.findNearestWall(scene, targetX, targetZ)
     
     if (!wall) {
-
       return false
     }
 
@@ -80,7 +79,6 @@ export class WallCube extends BaseModel {
       y: wallPosition.y,
       z: wallPosition.z
     })
-
 
     return true
   }

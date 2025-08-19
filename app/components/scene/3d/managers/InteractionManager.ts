@@ -2,6 +2,12 @@ import * as THREE from 'three'
 import { ModelManager } from './ModelManager'
 import { BaseModel } from '../objects/BaseModel'
 
+// 상수 정의
+const Y_SCALE = 2.0
+const DRAG_THRESHOLD = 5
+const CLICK_DURATION_THRESHOLD = 300
+const COLLISION_CHECK_INTERVAL = 16
+
 export interface DragState {
   isDragging: boolean
   selectedModel: BaseModel | null
@@ -30,7 +36,7 @@ export class InteractionManager {
   private clickStartTime: number = 0
   private clickStartPosition: { x: number; y: number } = { x: 0, y: 0 }
   private lastCollisionCheckTime: number = 0
-  private collisionCheckInterval: number = 16
+  private collisionCheckInterval: number = COLLISION_CHECK_INTERVAL
 
   // 이벤트 리스너 참조 저장
   private boundMouseDown: (event: MouseEvent) => void
@@ -116,33 +122,14 @@ export class InteractionManager {
     const colliders: THREE.Mesh[] = []
     const allModels = this.modelManager.getAllModels()
     
-    if (isInteraction) {
-  
-    }
-    
     allModels.forEach((model: BaseModel, index: number) => {
       const modelColliders = model.getAllColliders()
       if (modelColliders.length > 0) {
         colliders.push(...modelColliders)
-        if (isInteraction) {
-    
-        }
       }
     })
-
-    if (isInteraction) {
-  
-    }
     
     const intersections = this.raycaster.intersectObjects(colliders, false)
-    
-    if (isInteraction) {
-  
-      
-      if (intersections.length > 0) {
-
-      }
-    }
     
     return intersections
   }
@@ -153,26 +140,13 @@ export class InteractionManager {
     
     if (modelId) {
       const model = this.modelManager.getModel(modelId)
-      if (isInteraction) {
-
-      }
       return model || null
     }
     
-    if (isInteraction) {
-      
-    }
     return null
   }
 
-  private getFloorIntersection(): THREE.Vector3 | null {
-    this.raycaster.setFromCamera(this.mouse, this.camera)
-    
-    const intersectionPoint = new THREE.Vector3()
-    const intersected = this.raycaster.ray.intersectPlane(this.floorPlane, intersectionPoint)
-    
-    return intersected ? intersectionPoint : null
-  }
+
 
   private onMouseDown(event: MouseEvent): void {
     event.preventDefault()
@@ -208,7 +182,7 @@ export class InteractionManager {
         Math.pow(event.clientY - this.clickStartPosition.y, 2)
       )
       
-      if (moveDistance > 5) {
+      if (moveDistance > DRAG_THRESHOLD) {
         this.isDragStarted = true
         this.dragState.isDragging = true
         this.hideGizmo()
@@ -319,7 +293,7 @@ export class InteractionManager {
           Math.pow(touch.clientY - this.clickStartPosition.y, 2)
         )
         
-        if (moveDistance > 5) {
+        if (moveDistance > DRAG_THRESHOLD) {
           this.isDragStarted = true
           this.dragState.isDragging = true
           this.hideGizmo()
@@ -389,9 +363,9 @@ export class InteractionManager {
 
     if (this.dragState.selectedModel.getType() === 'wallcube') {
       const mouseYDelta = this.mouse.y - this.dragState.startMouseY
-      const yScale = 2.0
+              const yScale = Y_SCALE
       const desiredY = this.dragState.startModelY - (mouseYDelta * yScale)
-      this.modelManager.attachToNearestWall(this.dragState.selectedModel, newX, newZ, desiredY)
+      this.modelManager.getWallManager().attachToNearestWall(this.dragState.selectedModel, newX, newZ, desiredY)
     } else {
       const currentTime = Date.now()
       const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
@@ -399,7 +373,7 @@ export class InteractionManager {
       let adjustedPosition = { x: newX, y: 0, z: newZ }
 
       if (shouldCheckCollision) {
-        adjustedPosition = this.modelManager.checkCollisionAndAdjust(
+        adjustedPosition = this.modelManager.getFloorManager().checkCollisionAndAdjust(
           this.dragState.selectedModel, 
           newX, 
           0,
@@ -407,7 +381,7 @@ export class InteractionManager {
         )
         // 드래그 가능 영역을 바닥 경계 안쪽으로 제한 (벽/경계 깜빡임 방지)
         const inset = 0.05
-        const clamped = this.modelManager.clampToFloorWithBounds(this.dragState.selectedModel, adjustedPosition.x, adjustedPosition.z)
+        const clamped = this.modelManager.getFloorManager().clampToBounds(this.dragState.selectedModel, adjustedPosition.x, adjustedPosition.z)
         adjustedPosition.x = clamped.x
         adjustedPosition.z = clamped.z
         
@@ -452,12 +426,12 @@ export class InteractionManager {
         } else {
           // 개선된 바닥 가구 배치 로직 적용
           try {
-            this.modelManager.placeOnFloor(selectedModel, currentPosition.x, currentPosition.z)
+            this.modelManager.getFloorManager().placeOnFloor(selectedModel, currentPosition.x, currentPosition.z)
     
           } catch {
   
-            const clampedPosition = this.modelManager.clampToFloorWithBounds(selectedModel, currentPosition.x, currentPosition.z)
-            const surfaceY = this.modelManager.calculateSurfaceY(selectedModel, clampedPosition.x, clampedPosition.z)
+            const clampedPosition = this.modelManager.getFloorManager().clampToBounds(selectedModel, currentPosition.x, currentPosition.z)
+            const surfaceY = this.modelManager.getFloorManager().calculateSurfaceY(selectedModel, clampedPosition.x, clampedPosition.z)
             
             selectedModel.setPosition({
               x: clampedPosition.x,

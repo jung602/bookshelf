@@ -58,14 +58,6 @@ export class ModelManager {
     }
   }
 
-
-
-
-
-
-
-
-
   public async removeModel(modelId: string): Promise<void> {
     const model = this.models.get(modelId)
     if (model) {
@@ -163,8 +155,8 @@ export class ModelManager {
   }
 
   // 드래그 후 다른 모델들 재계산 (InteractionManager에서 호출)
-  public async recalculateOtherModelPositions(excludeModelId: string): Promise<void> {
-    return this.floorManager.recalculateOtherModelPositions(excludeModelId)
+  public async recalculateOtherModelPositions(excludeModelId: string, previousPosition?: { x: number, y: number, z: number }): Promise<void> {
+    return this.floorManager.recalculateOtherModelPositions(excludeModelId, previousPosition)
   }
 
   public setModelVisibility(modelId: string, visible: boolean): void {

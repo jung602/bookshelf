@@ -15,6 +15,7 @@ export interface DragState {
   dragPlane: THREE.Plane
   startMouseY: number
   startModelY: number
+  previousPosition: { x: number, y: number, z: number } | null
 }
 
 export interface GizmoState {
@@ -73,7 +74,8 @@ export class InteractionManager {
       dragOffset: new THREE.Vector3(),
       dragPlane: this.floorPlane.clone(),
       startMouseY: 0,
-      startModelY: 0
+      startModelY: 0,
+      previousPosition: null
     }
 
     this.gizmoState = {
@@ -331,6 +333,13 @@ export class InteractionManager {
     
     const modelPosition = model.getPosition()
     
+    // 드래그 시작 시 이전 위치 저장
+    this.dragState.previousPosition = {
+      x: modelPosition.x,
+      y: modelPosition.y,
+      z: modelPosition.z
+    }
+    
     if (model.getType() === 'wallcube') {
       this.dragState.dragOffset.set(
         modelPosition.x - intersectionPoint.x,
@@ -441,8 +450,8 @@ export class InteractionManager {
           }
           
           // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
-    
-          this.modelManager.recalculateOtherModelPositions(selectedModel.getId())
+          console.log(`[InteractionManager] Recalculating positions after drag of ${selectedModel.getType()}`)
+          this.modelManager.recalculateOtherModelPositions(selectedModel.getId(), this.dragState.previousPosition || undefined)
         }
       }
       
@@ -457,6 +466,7 @@ export class InteractionManager {
     this.dragState.dragOffset.set(0, 0, 0)
     this.dragState.startMouseY = 0
     this.dragState.startModelY = 0
+    this.dragState.previousPosition = null
     this.isDragStarted = false
   }
 

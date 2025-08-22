@@ -434,41 +434,87 @@ export class FloorModelManager {
     return this.calculateAdjustedPosition(targetModel, newX, newY, newZ)
   }
 
-  // 재배치 로직들
-  public async recalculateOtherModelPositions(excludeModelId: string): Promise<void> {
-    // 이동된 모델이 실제로 다른 모델을 지지하고 있는지만 확인
+  // 가구 이동 후 재계산 로직 (지지 관계 변화 감지)
+  public async recalculateOtherModelPositions(excludeModelId: string, previousPosition?: { x: number, y: number, z: number }): Promise<void> {
     const draggedModel = this.models.get(excludeModelId)
     if (!draggedModel) return
     
-    const draggedPosition = draggedModel.getPosition()
-    const candidateIds: string[] = []
+    const currentPosition = draggedModel.getPosition()
+    console.log(`[recalculateOtherModelPositions] Analyzing move of ${draggedModel.getType()} from (${previousPosition ? previousPosition.x.toFixed(2) + ', ' + previousPosition.y.toFixed(2) + ', ' + previousPosition.z.toFixed(2) : 'unknown'}) to (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)})`)
     
+    const affectedModels = new Set<string>()
+    
+    // 1. 현재 지지하고 있는 모델들 찾기 (기존 로직)
     this.models.forEach((model, id) => {
       if (id === excludeModelId || model.getType() === 'wallcube') return
       
       const modelPosition = model.getPosition()
       
-      // 1. 이동된 모델보다 위에 있는 모델만 확인
-      if (modelPosition.y <= draggedPosition.y + 0.1) return
-      
-      // 2. 수평 거리가 가까운 모델만 확인 (1m 반경)
-      const dx = modelPosition.x - draggedPosition.x
-      const dz = modelPosition.z - draggedPosition.z
+      // 이동된 모델보다 위에 있고 가까운 모델들
+      const dx = modelPosition.x - currentPosition.x
+      const dz = modelPosition.z - currentPosition.z
       const horizontalDistance = Math.sqrt(dx * dx + dz * dz)
-      if (horizontalDistance > 1.0) return
       
-      // 3. 실제로 지지 관계가 있는지 확인
-      if (this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)) {
-        candidateIds.push(id)
+      if (modelPosition.y > currentPosition.y + 0.1 && horizontalDistance <= 1.5) {
+        if (this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)) {
+          affectedModels.add(id)
+          console.log(`[recalculateOtherModelPositions] Currently supporting: ${model.getType()}`)
+        }
       }
     })
     
-    // 실제로 지지받고 있던 모델만 재계산
+    // 2. 이동으로 인해 지지를 잃었을 수 있는 모델들 찾기 (새로운 로직)
+    if (previousPosition) {
+      const moveDistance = Math.sqrt(
+        Math.pow(currentPosition.x - previousPosition.x, 2) + 
+        Math.pow(currentPosition.z - previousPosition.z, 2)
+      )
+      
+      // 의미있는 거리만큼 이동했다면 지지 손실 확인
+      if (moveDistance > 0.1) {
+        this.models.forEach((model, id) => {
+          if (id === excludeModelId || model.getType() === 'wallcube') return
+          
+          const modelPosition = model.getPosition()
+          
+          // 이전 위치에서 지지받고 있었는지 확인
+          const prevDx = modelPosition.x - previousPosition.x
+          const prevDz = modelPosition.z - previousPosition.z
+          const prevDistance = Math.sqrt(prevDx * prevDx + prevDz * prevDz)
+          
+          if (modelPosition.y > previousPosition.y + 0.1 && prevDistance <= 2.0) {
+            // 임시로 이전 위치에 모델을 두고 지지 관계 확인
+            const modelGroup = draggedModel.getModel()
+            if (modelGroup) {
+              const originalPos = modelGroup.position.clone()
+              modelGroup.position.set(previousPosition.x, previousPosition.y, previousPosition.z)
+              
+              const wasSupported = this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)
+              
+              // 원래 위치로 복원
+              modelGroup.position.copy(originalPos)
+              
+              if (wasSupported) {
+                // 현재 다른 지지가 있는지 확인
+                const hasCurrentSupport = this.hasAlternativeSupport(model, excludeModelId)
+                if (!hasCurrentSupport) {
+                  affectedModels.add(id)
+                  console.log(`[recalculateOtherModelPositions] Lost support due to move: ${model.getType()}`)
+                }
+              }
+            }
+          }
+        })
+      }
+    }
+    
+    // 3. 영향받는 모델들 재계산
+    const candidateIds = Array.from(affectedModels)
     if (candidateIds.length > 0) {
-      console.log(`[recalculateOtherModelPositions] Found ${candidateIds.length} models actually supported by moved model`)
-      await this.recalculateAffectedModelPositions(candidateIds, draggedPosition)
+      console.log(`[recalculateOtherModelPositions] Found ${candidateIds.length} affected models:`, candidateIds)
+      await this.recalculateAffectedModelPositions(candidateIds, currentPosition)
     } else {
-      console.log(`[recalculateOtherModelPositions] No models were actually supported by moved model`)
+      console.log(`[recalculateOtherModelPositions] No affected models found`)
     }
   }
 

@@ -30,7 +30,7 @@ export class ModelManager {
       const model = modelOrType as BaseModel
       
       if (model.getType() === 'wallcube') {
-        // 벽 가구는 WallModelManager에서 처리
+        // 벽 가구는 WallModelManager에서 처리 (스마트 배치)
         const modelId = await this.wallManager.addWallModel(model)
         return
       } else {
@@ -45,8 +45,11 @@ export class ModelManager {
     const model = new (ModelClass as new (position?: { x: number; y: number; z: number }) => BaseModel)(position)
     
     if (model.getType() === 'wallcube') {
-      // 벽 가구인 경우 - WallModelManager에 위임
-      const modelId = await this.wallManager.addWallModel(model, position)
+      // 벽 가구인 경우 - WallModelManager에 위임 (스마트 배치 활성화)
+      const modelId = await this.wallManager.addWallModel(model, {
+        position,
+        useOptimalPlacement: true  // 스마트 배치 활성화
+      })
       return modelId
     } else {
       // 바닥 가구인 경우 - FloorModelManager에 위임 (위치 지정 배치)
@@ -68,6 +71,11 @@ export class ModelManager {
       
       // 삭제 전 모든 모델 상태 출력
       this.logAllModelStates()
+      
+      // 벽 가구인 경우 사용 횟수 감소
+      if (model.getType() === 'wallcube') {
+        this.wallManager.onWallModelRemoved(model)
+      }
       
       // 삭제될 모델 위에 있는 모델들을 찾기
       const affectedModels = this.floorManager.findModelsAffectedByRemoval(modelId)

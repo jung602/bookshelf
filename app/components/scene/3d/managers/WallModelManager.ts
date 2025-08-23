@@ -101,6 +101,7 @@ export class WallModelManager {
       // 부착 실패 시 원래 위치 유지
       console.warn(`Failed to attach wallcube ${modelId} to nearest wall`)
     }
+
   }
 
   public findNearestWall(x: number, z: number): THREE.Mesh | null {

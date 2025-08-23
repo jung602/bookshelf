@@ -3,7 +3,7 @@ import { ModelManager } from './ModelManager'
 import { BaseModel } from '../objects/BaseModel'
 
 // 상수 정의
-const Y_SCALE = 2.0
+const Y_SCALE = 2.0 // 벽 가구 Y축 드래그 민감도 (더 민감하게 조정)
 const DRAG_THRESHOLD = 5
 const CLICK_DURATION_THRESHOLD = 300
 const COLLISION_CHECK_INTERVAL = 16
@@ -341,24 +341,31 @@ export class InteractionManager {
     }
     
     if (model.getType() === 'wallcube') {
-      this.dragState.dragOffset.set(
-        modelPosition.x - intersectionPoint.x,
-        0,
-        modelPosition.z - intersectionPoint.z
-      )
+      // 벽 가구: 2D UI 드래그 방식 - 화면에서 자유롭게 이동
+      this.dragState.dragOffset.set(0, 0, 0) // 2D 드래그용 오프셋 제거
       this.dragState.startMouseY = this.mouse.y
       this.dragState.startModelY = modelPosition.y
-
+      
+      // 2D 드래그를 위한 카메라 기준 평면 생성
+      const cameraPosition = this.camera.position.clone()
+      const cameraDirection = new THREE.Vector3()
+      this.camera.getWorldDirection(cameraDirection)
+      const distance = cameraPosition.distanceTo(modelPosition)
+      this.dragState.dragPlane = new THREE.Plane(cameraDirection, -distance)
+      
+      // 드래그 중 벽 뒤로 숨지 않도록 렌더링 우선순위 올리기
+      this.setWallcubeAlwaysOnTop(model, true)
+      
+      console.log(`[InteractionManager] 2D Wall drag prepared: camera distance=${distance.toFixed(2)}, z-index raised`)
     } else {
+      // 바닥 가구: 기존 드래그 오프셋 유지
       this.dragState.dragOffset.set(
         modelPosition.x - intersectionPoint.x,
         0,
         modelPosition.z - intersectionPoint.z
       )
-
+      this.dragState.dragPlane = this.floorPlane.clone()
     }
-
-    this.dragState.dragPlane = this.floorPlane.clone()
   }
 
   private updateDrag(): void {
@@ -371,10 +378,17 @@ export class InteractionManager {
     const newZ = dragIntersection.z + this.dragState.dragOffset.z
 
     if (this.dragState.selectedModel.getType() === 'wallcube') {
-      const mouseYDelta = this.mouse.y - this.dragState.startMouseY
-              const yScale = Y_SCALE
-      const desiredY = this.dragState.startModelY - (mouseYDelta * yScale)
-      this.modelManager.getWallManager().attachToNearestWall(this.dragState.selectedModel, newX, newZ, desiredY)
+      // 벽 가구: 2D UI 드래그 - 화면에서 자유롭게 이동 (벽 부착 없음)
+      if (dragIntersection) {
+        // 카메라 기준 평면에서의 교차점을 3D 위치로 사용
+        console.log(`[InteractionManager] 2D Wall dragging to: (${dragIntersection.x.toFixed(2)}, ${dragIntersection.y.toFixed(2)}, ${dragIntersection.z.toFixed(2)})`)
+        
+        this.dragState.selectedModel.setPosition({
+          x: dragIntersection.x,
+          y: dragIntersection.y, 
+          z: dragIntersection.z
+        })
+      }
     } else {
       const currentTime = Date.now()
       const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
@@ -431,7 +445,25 @@ export class InteractionManager {
         const currentPosition = selectedModel.getPosition()
         
         if (selectedModel.getType() === 'wallcube') {
-  
+          // 벽 가구: 2D 드래그 종료 - 화면 위치에서 벽 레이캐스팅
+          console.log(`[InteractionManager] Wall drag ended, performing wall raycast...`)
+          
+          // 드래그 종료 시 렌더링 우선순위 원래대로 복구
+          this.setWallcubeAlwaysOnTop(selectedModel, false)
+          
+          const attachedToWall = this.attachWallcubeToVisibleWall(selectedModel)
+          
+          if (!attachedToWall) {
+            console.warn(`[InteractionManager] No visible wall found at cursor position, using fallback attachment`)
+            // 폴백: 기존 방식으로 가장 가까운 벽에 부착
+            const currentPosition = selectedModel.getPosition()
+            this.modelManager.getWallManager().attachToNearestWall(
+              selectedModel, 
+              currentPosition.x, 
+              currentPosition.z, 
+              currentPosition.y
+            )
+          }
         } else {
           // 개선된 바닥 가구 배치 로직 적용
           try {
@@ -546,7 +578,146 @@ export class InteractionManager {
     canvas.removeEventListener('touchmove', this.boundTouchMove)
     canvas.removeEventListener('touchend', this.boundTouchEnd)
     canvas.removeEventListener('contextmenu', this.boundContextMenu)
+  }
 
+  /**
+   * 2D 드래그 종료 시 화면 위치에서 보이는 벽에 wallcube 부착
+   */
+  private attachWallcubeToVisibleWall(model: BaseModel): boolean {
+    // 현재 마우스 위치에서 레이캐스팅
+    this.raycaster.setFromCamera(this.mouse, this.camera)
+    
+    // 씬에서 벽 객체들만 가져오기 (userData.isWall === true)
+    const walls = this.scene.children.filter(obj => obj.userData.isWall === true)
+    
+    if (walls.length === 0) {
+      console.warn(`[attachWallcubeToVisibleWall] No walls found in scene`)
+      return false
+    }
+    
+    // 벽들과의 교차점 검사 (FrontSide만 자동으로 감지됨)
+    const intersections = this.raycaster.intersectObjects(walls)
+    
+    console.log(`[attachWallcubeToVisibleWall] Found ${intersections.length} wall intersections`)
+    
+    if (intersections.length > 0) {
+      const closestIntersection = intersections[0]
+      const hitWall = closestIntersection.object as THREE.Mesh
+      const hitPoint = closestIntersection.point
+      
+      console.log(`[attachWallcubeToVisibleWall] Hit wall at: (${hitPoint.x.toFixed(2)}, ${hitPoint.y.toFixed(2)}, ${hitPoint.z.toFixed(2)})`)
+      
+      // 히트한 벽에 모델 부착
+      return this.attachModelToSpecificWall(model, hitWall, hitPoint)
+    }
+    
+    return false
+  }
 
+  /**
+   * 특정 벽에 모델을 부착
+   */
+  private attachModelToSpecificWall(model: BaseModel, wall: THREE.Mesh, hitPoint: THREE.Vector3): boolean {
+    try {
+      // 벽의 법선 벡터 계산
+      const wallNormal = this.getWallNormal(wall)
+      
+      // 벽에서 약간 떨어진 위치 계산 (0.1 단위)
+      const offsetDistance = 0.1
+      const attachPosition = hitPoint.clone().add(wallNormal.multiplyScalar(offsetDistance))
+      
+      // Y 좌표는 hitPoint의 Y를 사용하되, 범위 제한
+      const clampedY = Math.max(0.3, Math.min(2.5, hitPoint.y))
+      attachPosition.y = clampedY
+      
+      console.log(`[attachModelToSpecificWall] Attaching to: (${attachPosition.x.toFixed(2)}, ${attachPosition.y.toFixed(2)}, ${attachPosition.z.toFixed(2)})`)
+      
+      // 모델 위치 설정
+      model.setPosition({
+        x: attachPosition.x,
+        y: attachPosition.y,
+        z: attachPosition.z
+      })
+      
+      return true
+    } catch (error) {
+      console.error(`[attachModelToSpecificWall] Error:`, error)
+      return false
+    }
+  }
+
+  /**
+   * 벽의 법선 벡터 계산 (카메라 방향으로)
+   */
+  private getWallNormal(wall: THREE.Mesh): THREE.Vector3 {
+    // 벽의 월드 매트릭스에서 법선 벡터 추출
+    const wallMatrix = wall.matrixWorld
+    const wallNormal = new THREE.Vector3(0, 0, 1) // 기본 법선
+    wallNormal.transformDirection(wallMatrix).normalize()
+    
+    // 카메라 방향과 비교해서 바깥쪽을 향하도록 조정
+    const cameraDirection = new THREE.Vector3()
+    this.camera.getWorldDirection(cameraDirection)
+    
+    if (wallNormal.dot(cameraDirection) > 0) {
+      wallNormal.negate() // 카메라 쪽을 향하면 반대로
+    }
+    
+    return wallNormal
+  }
+
+  /**
+   * 벽가구의 렌더링 우선순위 설정 (드래그 중 항상 위에 보이도록)
+   */
+  private setWallcubeAlwaysOnTop(model: BaseModel, alwaysOnTop: boolean): void {
+    try {
+      // BaseModel에서 Three.js 객체 가져오기
+      const threeObject = model.getModel()
+      
+      if (!threeObject) {
+        console.warn(`[setWallcubeAlwaysOnTop] No Three.js object found for model`)
+        return
+      }
+      
+      // 모든 메쉬에 대해 재귀적으로 적용
+      threeObject.traverse((child: THREE.Object3D) => {
+        if (child instanceof THREE.Mesh) {
+          if (alwaysOnTop) {
+            // 드래그 중: 항상 위에 보이도록 설정
+            child.renderOrder = 999 // 높은 렌더링 우선순위
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach(mat => {
+                  mat.depthTest = false // depth test 비활성화
+                  mat.depthWrite = false // depth write 비활성화
+                })
+              } else {
+                child.material.depthTest = false
+                child.material.depthWrite = false
+              }
+            }
+          } else {
+            // 드래그 종료: 원래 설정으로 복구
+            child.renderOrder = 0 // 기본 렌더링 우선순위
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach(mat => {
+                  mat.depthTest = true // depth test 활성화
+                  mat.depthWrite = true // depth write 활성화
+                })
+              } else {
+                child.material.depthTest = true
+                child.material.depthWrite = true
+              }
+            }
+          }
+        }
+      })
+      
+      console.log(`[setWallcubeAlwaysOnTop] ${alwaysOnTop ? 'Enabled' : 'Disabled'} always-on-top for wallcube`)
+      
+    } catch (error) {
+      console.error(`[setWallcubeAlwaysOnTop] Error:`, error)
+    }
   }
 }

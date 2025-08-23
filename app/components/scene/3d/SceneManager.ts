@@ -484,10 +484,19 @@ export class SceneManager {
     return this.interactionManager
   }
 
-  // 벽 큐브 테스트용 메서드
-  public async addTestWallCube(x: number = 0, z: number = 0): Promise<string | null> {
+  // 벽 큐브 테스트용 메서드 (스마트 배치 사용)
+  public async addTestWallCube(x?: number, z?: number): Promise<string | null> {
     const { WallCube } = await import('./objects/WallCube')
-    return await this.modelManager.addModel('wallcube', WallCube, { x, y: 0, z })
+    
+    // 위치가 지정되지 않으면 스마트 배치 사용
+    if (x === undefined && z === undefined) {
+      const wallCube = new WallCube()
+      await this.modelManager.addModel(wallCube)
+      return wallCube.getId()
+    } else {
+      // 위치가 지정되면 해당 위치에 배치 (Y는 자동 계산)
+      return await this.modelManager.addModel('wallcube', WallCube, { x: x || 0, y: 1.5, z: z || 0 })
+    }
   }
 
   // 플로어 램프 추가 메서드

@@ -739,7 +739,7 @@ export class FloorModelManager {
   }
 
   // 주어진 시작점 근처에서 유효한 위치 찾기 (충돌 회피용)
-  private findNearestValidPositionNear(model: BaseModel, startX: number, startZ: number): { x: number, z: number } | null {
+  public findNearestValidPositionNear(model: BaseModel, startX: number, startZ: number): { x: number, z: number } | null {
     return this.findValidPosition(model, { centerX: startX, centerZ: startZ, stepMultiplier: 6 })
   }
 

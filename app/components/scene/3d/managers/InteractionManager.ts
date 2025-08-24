@@ -6,7 +6,6 @@ import { BaseModel } from '../objects/BaseModel'
 const Y_SCALE = 2.0 // 벽 가구 Y축 드래그 민감도 (더 민감하게 조정)
 const DRAG_THRESHOLD = 5
 const CLICK_DURATION_THRESHOLD = 300
-const COLLISION_CHECK_INTERVAL = 16
 
 export interface DragState {
   isDragging: boolean
@@ -36,8 +35,7 @@ export class InteractionManager {
   private isDragStarted: boolean = false
   private clickStartTime: number = 0
   private clickStartPosition: { x: number; y: number } = { x: 0, y: 0 }
-  private lastCollisionCheckTime: number = 0
-  private collisionCheckInterval: number = COLLISION_CHECK_INTERVAL
+
 
   // 이벤트 리스너 참조 저장
   private boundMouseDown: (event: MouseEvent) => void
@@ -340,30 +338,20 @@ export class InteractionManager {
       z: modelPosition.z
     }
     
-    if (model.getType() === 'wallcube') {
-      // 벽 가구: 2D UI 드래그 방식 - 화면에서 자유롭게 이동
-      this.dragState.dragOffset.set(0, 0, 0) // 2D 드래그용 오프셋 제거
-      this.dragState.startMouseY = this.mouse.y
-      this.dragState.startModelY = modelPosition.y
-      
-      // 2D 드래그를 위한 카메라 기준 평면 생성
-      const cameraPosition = this.camera.position.clone()
-      const cameraDirection = new THREE.Vector3()
-      this.camera.getWorldDirection(cameraDirection)
-      const distance = cameraPosition.distanceTo(modelPosition)
-      this.dragState.dragPlane = new THREE.Plane(cameraDirection, -distance)
-      
-      // 드래그 중 벽 뒤로 숨지 않도록 렌더링 우선순위 올리기
-      this.setWallcubeAlwaysOnTop(model, true)
-    } else {
-      // 바닥 가구: 기존 드래그 오프셋 유지
-      this.dragState.dragOffset.set(
-        modelPosition.x - intersectionPoint.x,
-        0,
-        modelPosition.z - intersectionPoint.z
-      )
-      this.dragState.dragPlane = this.floorPlane.clone()
-    }
+    // 모든 가구: 2D UI 드래그 방식 - 화면에서 자유롭게 이동
+    this.dragState.dragOffset.set(0, 0, 0) // 2D 드래그용 오프셋 제거
+    this.dragState.startMouseY = this.mouse.y
+    this.dragState.startModelY = modelPosition.y
+    
+    // 2D 드래그를 위한 카메라 기준 평면 생성
+    const cameraPosition = this.camera.position.clone()
+    const cameraDirection = new THREE.Vector3()
+    this.camera.getWorldDirection(cameraDirection)
+    const distance = cameraPosition.distanceTo(modelPosition)
+    this.dragState.dragPlane = new THREE.Plane(cameraDirection, -distance)
+    
+    // 드래그 중 항상 위에 보이도록 렌더링 우선순위 올리기
+    this.setModelAlwaysOnTop(model, true)
   }
 
   private updateDrag(): void {
@@ -372,31 +360,12 @@ export class InteractionManager {
     const dragIntersection = this.getDragPlaneIntersection()
     if (!dragIntersection) return
 
-    if (this.dragState.selectedModel.getType() === 'wallcube') {
-      // 벽 가구: 2D UI 드래그 - 화면에서 자유롭게 이동
-      this.dragState.selectedModel.setPosition({
-        x: dragIntersection.x,
-        y: dragIntersection.y, 
-        z: dragIntersection.z
-      })
-    } else {
-      // 바닥 가구: 실시간 충돌 검사 및 위치 조정 (throttled)
-      const currentTime = Date.now()
-      if (currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval) {
-        const newX = dragIntersection.x + this.dragState.dragOffset.x
-        const newZ = dragIntersection.z + this.dragState.dragOffset.z
-        
-        const adjustedPosition = this.modelManager.getFloorManager().calculateAdjustedPosition(
-          this.dragState.selectedModel, 
-          newX, 
-          0,
-          newZ
-        )
-        
-        this.dragState.selectedModel.setPosition(adjustedPosition)
-        this.lastCollisionCheckTime = currentTime
-      }
-    }
+    // 모든 가구: 2D UI 드래그 - 화면에서 자유롭게 이동
+    this.dragState.selectedModel.setPosition({
+      x: dragIntersection.x,
+      y: dragIntersection.y, 
+      z: dragIntersection.z
+    })
   }
 
   private getDragPlaneIntersection(): THREE.Vector3 | null {
@@ -421,16 +390,15 @@ export class InteractionManager {
       if (wasActuallyDragged) {
         const currentPosition = selectedModel.getPosition()
         
+        // 드래그 종료 시 렌더링 우선순위 원래대로 복구
+        this.setModelAlwaysOnTop(selectedModel, false)
+        
         if (selectedModel.getType() === 'wallcube') {
           // 벽 가구: 2D 드래그 종료 - 화면 위치에서 벽 레이캐스팅
-          // 드래그 종료 시 렌더링 우선순위 원래대로 복구
-          this.setWallcubeAlwaysOnTop(selectedModel, false)
-          
           const attachedToWall = this.attachWallcubeToVisibleWall(selectedModel)
           
           if (!attachedToWall) {
             // 폴백: 기존 방식으로 가장 가까운 벽에 부착
-            const currentPosition = selectedModel.getPosition()
             this.modelManager.getWallManager().attachToNearestWall(
               selectedModel, 
               currentPosition.x, 
@@ -439,14 +407,19 @@ export class InteractionManager {
             )
           }
         } else {
-          // 바닥 가구: 드래그 중에 이미 실시간 조정되었으므로 최종 확인만 수행
-          const finalPosition = this.modelManager.getFloorManager().calculateAdjustedPosition(
-            selectedModel, 
-            currentPosition.x, 
-            currentPosition.y,
-            currentPosition.z
-          )
-          selectedModel.setPosition(finalPosition)
+          // 바닥 가구: 2D 드래그 종료 - 화면 위치에서 바닥 레이캐스팅
+          const attachedToFloor = this.attachFloorModelToVisibleFloor(selectedModel)
+          
+          if (!attachedToFloor) {
+            // 폴백: 기존 방식으로 바닥에 배치
+            const finalPosition = this.modelManager.getFloorManager().calculateAdjustedPosition(
+              selectedModel, 
+              currentPosition.x, 
+              currentPosition.y,
+              currentPosition.z
+            )
+            selectedModel.setPosition(finalPosition)
+          }
           
           // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
           this.modelManager.recalculateOtherModelPositions(selectedModel.getId(), this.dragState.previousPosition || undefined)
@@ -658,15 +631,116 @@ export class InteractionManager {
   }
 
   /**
-   * 벽가구의 렌더링 우선순위 설정 (드래그 중 항상 위에 보이도록)
+   * 2D 드래그 종료 시 화면 위치에서 보이는 표면(바닥 또는 다른 가구)에 floorModel 부착
    */
-  private setWallcubeAlwaysOnTop(model: BaseModel, alwaysOnTop: boolean): void {
+  private attachFloorModelToVisibleFloor(model: BaseModel): boolean {
+    // 현재 마우스 위치에서 레이캐스팅
+    this.raycaster.setFromCamera(this.mouse, this.camera)
+    
+    // 바닥과 다른 가구들의 콜라이더 모두 수집
+    const colliders: THREE.Mesh[] = []
+    
+    // 바닥 메시 추가
+    const floorMeshes = this.modelManager.getFloorManager().sceneIndex.getFloorMeshes()
+    colliders.push(...floorMeshes)
+    
+    // 다른 가구들의 콜라이더 추가 (지지 관계 고려)
+    const allModels = this.modelManager.getAllModels()
+    allModels.forEach((otherModel) => {
+      if (otherModel.getId() !== model.getId() && 
+          otherModel.getType() !== 'wallcube' &&
+          otherModel.isModelLoaded() &&
+          otherModel.getModel()) {
+        const modelColliders = otherModel.getAllColliders()
+        if (modelColliders && modelColliders.length > 0) {
+          const validColliders = modelColliders.filter(collider => {
+            return collider.parent && this.scene.getObjectById(collider.id) !== undefined
+          })
+          if (validColliders.length > 0) {
+            colliders.push(...validColliders)
+          }
+        }
+      }
+    })
+    
+    if (colliders.length === 0) {
+      return false
+    }
+    
+    // 모든 콜라이더와의 교차점 검사
+    const intersections = this.raycaster.intersectObjects(colliders, false)
+    
+    if (intersections.length > 0) {
+      const closestIntersection = intersections[0]
+      const hitObject = closestIntersection.object as THREE.Mesh
+      const hitPoint = closestIntersection.point
+      
+      // 히트한 객체가 바닥인지 다른 가구인지 확인
+      const isFloorMesh = hitObject.userData.isFloor
+      
+      if (isFloorMesh) {
+        // 바닥에 배치 - FloorModelManager의 로직 사용
+        const floorManager = this.modelManager.getFloorManager()
+        const adjustedPosition = floorManager.calculateAdjustedPosition(
+          model, 
+          hitPoint.x, 
+          hitPoint.y, 
+          hitPoint.z
+        )
+        model.setPosition(adjustedPosition)
+        return true
+      } else {
+        // 다른 가구 위에 배치 시도
+        const surfaceModelId = hitObject.userData.modelId
+        const surfaceModel = this.modelManager.getModel(surfaceModelId)
+        
+        if (surfaceModel) {
+          const floorManager = this.modelManager.getFloorManager()
+          
+          // 지지 관계 확인
+          if (floorManager.canModelSupportAnother(surfaceModel, model, hitPoint.x, hitPoint.z)) {
+            // 지지할 수 있으면 해당 가구 위에 배치
+            const adjustedPosition = floorManager.calculateAdjustedPosition(
+              model, 
+              hitPoint.x, 
+              hitPoint.y, 
+              hitPoint.z
+            )
+            model.setPosition(adjustedPosition)
+            return true
+          } else {
+            // 지지할 수 없으면 바닥에 배치
+            const floorY = floorManager.getFloorHeight(hitPoint.x, hitPoint.z)
+            const adjustedPosition = floorManager.calculateAdjustedPosition(
+              model, 
+              hitPoint.x, 
+              floorY, 
+              hitPoint.z
+            )
+            model.setPosition(adjustedPosition)
+            return true
+          }
+        }
+      }
+    }
+    
+    return false
+  }
+
+
+
+
+
+  /**
+   * 모든 가구의 렌더링 우선순위 설정 (드래그 중 항상 위에 보이도록)
+   */
+  private setModelAlwaysOnTop(model: BaseModel, alwaysOnTop: boolean): void {
     try {
       // BaseModel에서 Three.js 객체 가져오기
       const threeObject = model.getModel()
       
       if (!threeObject) {
-        console.warn(`[setWallcubeAlwaysOnTop] No Three.js object found for model`)
+        console.warn(`[setModelAlwaysOnTop] No Three.js object found for model`)
         return
       }
       

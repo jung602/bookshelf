@@ -6,6 +6,9 @@ export class FloorModelManager {
   private scene: THREE.Scene
   private models: Map<string, BaseModel>
   private sceneIndex: SceneIndex
+  private boundingBoxCache: Map<string, { bounds: THREE.Box3, lastUpdate: number }> = new Map()
+  private static BOUNDING_BOX_CACHE_DURATION = 100 // 100ms 캐시
+  private raycaster: THREE.Raycaster = new THREE.Raycaster() // 재사용 가능한 레이캐스터
 
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {
     this.scene = scene
@@ -54,44 +57,14 @@ export class FloorModelManager {
       model.addToScene(this.scene)
       this.models.set(model.getId(), model)
       
+      // 새 모델 추가 시 캐시 정리 (위치 재계산이 필요할 수 있음)
+      this.clearBoundingBoxCache()
+      
       return model.getId()
     } catch (error) {
       console.error('Failed to add floor model:', error)
       throw error
     }
-  }
-
-  // 바닥 가구 회전
-  public rotateFloorModel(modelId: string): void {
-    const model = this.models.get(modelId)
-    if (model && model.getType() !== 'wallcube') {
-      model.rotateY90()
-      // 회전 후 재배치 및 충돌 안정화
-      const pos = model.getPosition()
-      try {
-        this.placeOnFloor(model, pos.x, pos.z)
-      } catch {
-        const clamped = this.clampToBounds(model, pos.x, pos.z)
-        const newY = this.calculateSurfaceY(model, clamped.x, clamped.z)
-        model.setPosition({ x: clamped.x, y: newY, z: clamped.z })
-      }
-      // 다른 모델들 재계산
-      this.recalculateOtherModelPositions(modelId)
-    }
-  }
-
-  // 바닥 가구 이동 (충돌 검사 및 조정 포함)
-  public moveFloorModel(modelId: string, x: number, z: number): void {
-    const model = this.models.get(modelId)
-    if (!model || model.getType() === 'wallcube') return
-
-    if (!this.hasFloorMeshes()) {
-      return
-    }
-
-    // checkCollisionAndAdjust와 통합된 로직 사용
-    const adjustedPosition = this.calculateAdjustedPosition(model, x, 0, z)
-    model.setPosition(adjustedPosition)
   }
 
   public hasFloorMeshes(): boolean {
@@ -116,12 +89,11 @@ export class FloorModelManager {
       targetModel 
     } = options
 
-    const raycaster = new THREE.Raycaster()
     const rayOrigin = new THREE.Vector3(x, rayOriginY, z)
     const rayDirection = new THREE.Vector3(0, -1, 0)
-    raycaster.set(rayOrigin, rayDirection)
+    this.raycaster.set(rayOrigin, rayDirection)
 
-    let colliders: THREE.Mesh[] = []
+    const colliders: THREE.Mesh[] = []
 
     if (targets === 'all-colliders' && targetModel) {
       // 다른 모델들의 콜라이더 포함
@@ -148,18 +120,34 @@ export class FloorModelManager {
     const floorMeshes = this.sceneIndex.getFloorMeshes()
     colliders.push(...floorMeshes)
 
-    return raycaster.intersectObjects(colliders, false)
+    return this.raycaster.intersectObjects(colliders, false)
   }
 
-  // 모델 바운딩 박스 계산 헬퍼
+  // 모델 바운딩 박스 계산 헬퍼 (캐시 지원)
   private getModelBoundsAt(model: BaseModel, x: number, z: number): THREE.Box3 | null {
     const modelGroup = model.getModel()
     if (!modelGroup) return null
+
+    const cacheKey = `${model.getId()}_${x.toFixed(2)}_${z.toFixed(2)}`
+    const now = Date.now()
+    const cached = this.boundingBoxCache.get(cacheKey)
+    
+    if (cached && (now - cached.lastUpdate) < FloorModelManager.BOUNDING_BOX_CACHE_DURATION) {
+      return cached.bounds.clone()
+    }
 
     const originalPos = modelGroup.position.clone()
     modelGroup.position.set(x, 0, z)
     const boundingBox = new THREE.Box3().setFromObject(modelGroup)
     modelGroup.position.copy(originalPos)
+    
+    // 캐시에 저장 (너무 많이 쌓이지 않도록 제한)
+    if (this.boundingBoxCache.size < 100) {
+      this.boundingBoxCache.set(cacheKey, { 
+        bounds: boundingBox.clone(), 
+        lastUpdate: now 
+      })
+    }
     
     return boundingBox
   }
@@ -429,92 +417,64 @@ export class FloorModelManager {
     }
   }
 
-  // 호환성을 위한 레거시 메서드
-  public checkCollisionAndAdjust(targetModel: BaseModel, newX: number, newY: number, newZ: number): { x: number, y: number, z: number } {
-    return this.calculateAdjustedPosition(targetModel, newX, newY, newZ)
-  }
-
   // 가구 이동 후 재계산 로직 (지지 관계 변화 감지)
   public async recalculateOtherModelPositions(excludeModelId: string, previousPosition?: { x: number, y: number, z: number }): Promise<void> {
     const draggedModel = this.models.get(excludeModelId)
     if (!draggedModel) return
     
     const currentPosition = draggedModel.getPosition()
-    console.log(`[recalculateOtherModelPositions] Analyzing move of ${draggedModel.getType()} from (${previousPosition ? previousPosition.x.toFixed(2) + ', ' + previousPosition.y.toFixed(2) + ', ' + previousPosition.z.toFixed(2) : 'unknown'}) to (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)})`)
-    
     const affectedModels = new Set<string>()
     
-    // 1. 현재 지지하고 있는 모델들 찾기 (기존 로직)
+    // 1. 현재 지지하고 있는 모델들 찾기 (더 넓은 범위로 확장)
     this.models.forEach((model, id) => {
       if (id === excludeModelId || model.getType() === 'wallcube') return
       
       const modelPosition = model.getPosition()
       
-      // 이동된 모델보다 위에 있고 가까운 모델들
+      // 이동된 모델보다 위에 있고 가까운 모델들 (범위 확장: 1.5m → 3.0m)
       const dx = modelPosition.x - currentPosition.x
       const dz = modelPosition.z - currentPosition.z
       const horizontalDistance = Math.sqrt(dx * dx + dz * dz)
       
-      if (modelPosition.y > currentPosition.y + 0.1 && horizontalDistance <= 1.5) {
-        if (this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)) {
+      if (modelPosition.y > currentPosition.y + 0.1 && horizontalDistance <= 3.0) {
+        // 현재 위치에서 지지 관계 확인
+        const isCurrentlySupported = this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)
+        
+        if (isCurrentlySupported) {
           affectedModels.add(id)
-          console.log(`[recalculateOtherModelPositions] Currently supporting: ${model.getType()}`)
-        }
-      }
-    })
-    
-    // 2. 이동으로 인해 지지를 잃었을 수 있는 모델들 찾기 (새로운 로직)
-    if (previousPosition) {
-      const moveDistance = Math.sqrt(
-        Math.pow(currentPosition.x - previousPosition.x, 2) + 
-        Math.pow(currentPosition.z - previousPosition.z, 2)
-      )
-      
-      // 의미있는 거리만큼 이동했다면 지지 손실 확인
-      if (moveDistance > 0.1) {
-        this.models.forEach((model, id) => {
-          if (id === excludeModelId || model.getType() === 'wallcube') return
-          
-          const modelPosition = model.getPosition()
-          
-          // 이전 위치에서 지지받고 있었는지 확인
-          const prevDx = modelPosition.x - previousPosition.x
-          const prevDz = modelPosition.z - previousPosition.z
-          const prevDistance = Math.sqrt(prevDx * prevDx + prevDz * prevDz)
-          
-          if (modelPosition.y > previousPosition.y + 0.1 && prevDistance <= 2.0) {
-            // 임시로 이전 위치에 모델을 두고 지지 관계 확인
-            const modelGroup = draggedModel.getModel()
-            if (modelGroup) {
-              const originalPos = modelGroup.position.clone()
-              modelGroup.position.set(previousPosition.x, previousPosition.y, previousPosition.z)
-              
-              const wasSupported = this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)
-              
-              // 원래 위치로 복원
-              modelGroup.position.copy(originalPos)
-              
-              if (wasSupported) {
-                // 현재 다른 지지가 있는지 확인
-                const hasCurrentSupport = this.hasAlternativeSupport(model, excludeModelId)
-                if (!hasCurrentSupport) {
+        } else {
+          // 현재 지지되지 않지만, 이전 위치에서 지지받고 있었을 수 있음
+          if (previousPosition) {
+            const prevDx = modelPosition.x - previousPosition.x
+            const prevDz = modelPosition.z - previousPosition.z
+            const prevDistance = Math.sqrt(prevDx * prevDx + prevDz * prevDz)
+            
+            if (prevDistance <= 3.0 && modelPosition.y > previousPosition.y + 0.1) {
+              // 이전 위치에서 지지받고 있었는지 확인
+              const modelGroup = draggedModel.getModel()
+              if (modelGroup) {
+                const originalPos = modelGroup.position.clone()
+                modelGroup.position.set(previousPosition.x, previousPosition.y, previousPosition.z)
+                
+                const wasSupported = this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)
+                
+                // 원래 위치로 복원
+                modelGroup.position.copy(originalPos)
+                
+                if (wasSupported) {
                   affectedModels.add(id)
-                  console.log(`[recalculateOtherModelPositions] Lost support due to move: ${model.getType()}`)
                 }
               }
             }
           }
-        })
+        }
       }
-    }
+    })
     
-    // 3. 영향받는 모델들 재계산
+    // 2. 영향받는 모델들 재계산
     const candidateIds = Array.from(affectedModels)
     if (candidateIds.length > 0) {
-      console.log(`[recalculateOtherModelPositions] Found ${candidateIds.length} affected models:`, candidateIds)
-      await this.recalculateAffectedModelPositions(candidateIds, currentPosition)
-    } else {
-      console.log(`[recalculateOtherModelPositions] No affected models found`)
+      await this.recalculateAffectedModelPositions(candidateIds)
     }
   }
 
@@ -525,8 +485,6 @@ export class FloorModelManager {
     const affectedModels: string[] = []
     const removedPosition = removedModel.getPosition()
     
-    console.log(`[findModelsAffectedByRemoval] Analyzing removal of ${removedModel.getType()} at (${removedPosition.x.toFixed(2)}, ${removedPosition.y.toFixed(2)}, ${removedPosition.z.toFixed(2)})`)
-    
     // 더 넓은 영향 범위: 제거된 모델 주변 반경 3m 내의 모델 고려
     const maxDistance = 3.0
     
@@ -534,7 +492,7 @@ export class FloorModelManager {
     this.models.forEach((model, modelId) => {
       if (modelId === removedModelId || model.getType() === 'wallcube') return
       
-      const modelPosition = model.getPosition()
+              const modelPosition = model.getPosition()
       
       // 거리 제한: 영향 범위 내 모델만 고려
       const distance = Math.sqrt(
@@ -546,30 +504,23 @@ export class FloorModelManager {
       // 제거된 모델보다 위에 있는 모델만 확인 (높이 차이를 더 완화)
       const heightDifference = modelPosition.y - removedPosition.y
       if (heightDifference > 0.005) {  // 0.5cm 이상 차이
-        console.log(`[findModelsAffectedByRemoval] Checking ${model.getType()} at (${modelPosition.x.toFixed(2)}, ${modelPosition.y.toFixed(2)}, ${modelPosition.z.toFixed(2)}), height diff: ${heightDifference.toFixed(3)}`)
-        
         // 1단계: 지지 관계 확인 (더 관대하게)
         const isActuallySupported = this.canModelSupportAnother(removedModel, model, modelPosition.x, modelPosition.z)
-        console.log(`[findModelsAffectedByRemoval] ${model.getType()} was supported by removed model: ${isActuallySupported}`)
         
         // 2단계: 지지 관계가 없어도 높이가 비슷하고 가까우면 영향받을 수 있음
         const isSuspiciouslyClose = distance < 1.0 && heightDifference < 1.0 && heightDifference > 0.1
-        console.log(`[findModelsAffectedByRemoval] ${model.getType()} is suspiciously close: ${isSuspiciouslyClose}`)
         
         if (isActuallySupported || isSuspiciouslyClose) {
           // 제거된 모델 외에 다른 지지가 있는지 확인
           const hasOtherSupport = this.hasAlternativeSupport(model, removedModelId)
-          console.log(`[findModelsAffectedByRemoval] ${model.getType()} has alternative support: ${hasOtherSupport}`)
           
           if (!hasOtherSupport) {
-            console.log(`[findModelsAffectedByRemoval] Adding ${model.getType()} to affected models`)
             affectedModels.push(modelId)
           }
         }
       }
     })
     
-    console.log(`[findModelsAffectedByRemoval] Found ${affectedModels.length} affected models:`, affectedModels)
     return affectedModels
   }
   
@@ -577,11 +528,8 @@ export class FloorModelManager {
   private hasAlternativeSupport(targetModel: BaseModel, excludeModelId: string): boolean {
     const targetPosition = targetModel.getPosition()
     
-    console.log(`[hasAlternativeSupport] Checking alternative support for ${targetModel.getType()} at (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`)
-    
     // 1. 바닥 지지 확인 (가장 기본적인 지지)
     const canPlaceOnFloor = this.canPlaceOnFloor(targetModel, targetPosition.x, targetPosition.z)
-    console.log(`[hasAlternativeSupport] Can place on floor: ${canPlaceOnFloor}`)
     
     if (canPlaceOnFloor) {
       // 바닥에 직접 배치할 수 있으면 다른 지지가 있다고 판단
@@ -598,17 +546,13 @@ export class FloorModelManager {
       
       // 타겟 모델보다 아래에 있고 (높이 조건 완화)
       if (modelPosition.y < targetPosition.y - 0.01) {
-        console.log(`[hasAlternativeSupport] Checking support from ${model.getType()} at (${modelPosition.x.toFixed(2)}, ${modelPosition.y.toFixed(2)}, ${modelPosition.z.toFixed(2)})`)
-        
         // 지지 관계가 성립하면
         if (this.canModelSupportAnother(model, targetModel, targetPosition.x, targetPosition.z)) {
-          console.log(`[hasAlternativeSupport] Found alternative support from ${model.getType()}`)
           return true
         }
       }
     }
     
-    console.log(`[hasAlternativeSupport] No alternative support found`)
     return false
   }
 
@@ -627,7 +571,7 @@ export class FloorModelManager {
       
       // 지지 관계가 성립하는지 확인
       if (this.canModelSupportAnother(model, targetModel, x, z)) {
-        const modelPosition = model.getPosition()
+        // const modelPosition = model.getPosition() // 사용되지 않는 변수
         const modelGroup = model.getModel()
         if (modelGroup) {
           const boundingBox = new THREE.Box3().setFromObject(modelGroup)
@@ -645,9 +589,7 @@ export class FloorModelManager {
     return bestSupportingModel
   }
 
-  public async recalculateAffectedModelPositions(affectedModelIds: string[], removedPosition: { x: number; y: number; z: number }): Promise<void> {
-    console.log(`[recalculateAffectedModelPositions] START - ${affectedModelIds.length} models to recalculate:`, affectedModelIds)
-    
+  public async recalculateAffectedModelPositions(affectedModelIds: string[]): Promise<void> {
     if (affectedModelIds.length === 0) return
     
     const sortedModels = affectedModelIds
@@ -658,7 +600,6 @@ export class FloorModelManager {
     // 각 모델을 개별적으로 안전하게 재배치
     for (const { id, model } of sortedModels) {
       const currentPosition = model.getPosition()
-      console.log(`[recalculateAffectedModelPositions] Processing ${model.getType()} ${id} at (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)})`)
       
       try {
         // 현재 위치에서 지지할 수 있는 다른 모델 찾기
@@ -667,28 +608,22 @@ export class FloorModelManager {
         if (supportingModel) {
           // 다른 모델 위에 배치
           const surfaceY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z, [id])
-          console.log(`[recalculateAffectedModelPositions] ${model.getType()} placing on ${supportingModel.getType()} at Y: ${surfaceY.toFixed(3)}`)
           model.setPosition({ x: currentPosition.x, y: surfaceY, z: currentPosition.z })
         } else if (this.canPlaceOnFloor(model, currentPosition.x, currentPosition.z)) {
           // 바닥에 배치
           const floorY = this.calculateModelFloorY(model, currentPosition.x, currentPosition.z)
-          console.log(`[recalculateAffectedModelPositions] ${model.getType()} placing on floor at Y: ${floorY.toFixed(3)}`)
           model.setPosition({ x: currentPosition.x, y: floorY, z: currentPosition.z })
         } else {
           // 현재 위치에 배치할 수 없음 - 가까운 유효 위치 찾기
           const nearestValid = this.findNearestValidPositionNear(model, currentPosition.x, currentPosition.z)
           if (nearestValid) {
             const newY = this.calculateSurfaceY(model, nearestValid.x, nearestValid.z, [id])
-            console.log(`[recalculateAffectedModelPositions] ${model.getType()} relocating to (${nearestValid.x.toFixed(2)}, ${newY.toFixed(3)}, ${nearestValid.z.toFixed(2)})`)
             model.setPosition({ x: nearestValid.x, y: newY, z: nearestValid.z })
           } else {
             // 최후 수단: 바닥의 안전한 위치에 배치
             const optimalPosition = this.findOptimalPlacement(model)
             if (optimalPosition) {
-              console.log(`[recalculateAffectedModelPositions] ${model.getType()} relocating to optimal position (${optimalPosition.x.toFixed(2)}, ${optimalPosition.y.toFixed(3)}, ${optimalPosition.z.toFixed(2)})`)
               model.setPosition(optimalPosition)
-            } else {
-              console.warn(`[recalculateAffectedModelPositions] Could not find valid position for ${model.getType()}`)
             }
           }
         }
@@ -702,9 +637,7 @@ export class FloorModelManager {
         // 다음 모델 처리 전 약간의 지연
         await new Promise(resolve => setTimeout(resolve, 5))
         
-      } catch (error) {
-        console.warn(`Failed to recalculate position for model ${id}:`, error)
-        
+      } catch {
         // 실패 시 안전한 기본 위치로 복원
         try {
           const safeY = this.calculateModelFloorY(model, currentPosition.x, currentPosition.z)
@@ -714,15 +647,12 @@ export class FloorModelManager {
         }
       }
     }
-    
-    console.log(`[recalculateAffectedModelPositions] COMPLETE`)
   }
 
   // 전역 최적 배치 위치 찾기 (Y 좌표 포함)
   public findOptimalPlacement(model: BaseModel): { x: number, y: number, z: number } | null {
     const modelGroup = model.getModel()
     if (!modelGroup) {
-      console.warn('findOptimalPlacement: Model group not found')
       return null
     }
 
@@ -736,7 +666,6 @@ export class FloorModelManager {
         return result as { x: number, y: number, z: number }
       }
       
-      console.warn('findOptimalPlacement: No valid position found')
       return null
     } finally {
       // 원래 위치 복원
@@ -808,8 +737,6 @@ export class FloorModelManager {
     testModelGroup.position.copy(originalPos)
     return hasCollision
   }
-
-
 
   // 주어진 시작점 근처에서 유효한 위치 찾기 (충돌 회피용)
   private findNearestValidPositionNear(model: BaseModel, startX: number, startZ: number): { x: number, z: number } | null {
@@ -911,6 +838,11 @@ export class FloorModelManager {
     }
     return idsToDelete
   }
+
+    // 캐시 정리 메서드
+  private clearBoundingBoxCache(): void {
+      this.boundingBoxCache.clear()
+    }
 }
 
 

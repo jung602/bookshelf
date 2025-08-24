@@ -355,8 +355,6 @@ export class InteractionManager {
       
       // 드래그 중 벽 뒤로 숨지 않도록 렌더링 우선순위 올리기
       this.setWallcubeAlwaysOnTop(model, true)
-      
-      console.log(`[InteractionManager] 2D Wall drag prepared: camera distance=${distance.toFixed(2)}, z-index raised`)
     } else {
       // 바닥 가구: 기존 드래그 오프셋 유지
       this.dragState.dragOffset.set(
@@ -374,51 +372,30 @@ export class InteractionManager {
     const dragIntersection = this.getDragPlaneIntersection()
     if (!dragIntersection) return
 
-    const newX = dragIntersection.x + this.dragState.dragOffset.x
-    const newZ = dragIntersection.z + this.dragState.dragOffset.z
-
     if (this.dragState.selectedModel.getType() === 'wallcube') {
-      // 벽 가구: 2D UI 드래그 - 화면에서 자유롭게 이동 (벽 부착 없음)
-      if (dragIntersection) {
-        // 카메라 기준 평면에서의 교차점을 3D 위치로 사용
-        console.log(`[InteractionManager] 2D Wall dragging to: (${dragIntersection.x.toFixed(2)}, ${dragIntersection.y.toFixed(2)}, ${dragIntersection.z.toFixed(2)})`)
-        
-        this.dragState.selectedModel.setPosition({
-          x: dragIntersection.x,
-          y: dragIntersection.y, 
-          z: dragIntersection.z
-        })
-      }
+      // 벽 가구: 2D UI 드래그 - 화면에서 자유롭게 이동
+      this.dragState.selectedModel.setPosition({
+        x: dragIntersection.x,
+        y: dragIntersection.y, 
+        z: dragIntersection.z
+      })
     } else {
+      // 바닥 가구: 실시간 충돌 검사 및 위치 조정 (throttled)
       const currentTime = Date.now()
-      const shouldCheckCollision = currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval
-
-      let adjustedPosition = { x: newX, y: 0, z: newZ }
-
-      if (shouldCheckCollision) {
-        adjustedPosition = this.modelManager.getFloorManager().checkCollisionAndAdjust(
+      if (currentTime - this.lastCollisionCheckTime > this.collisionCheckInterval) {
+        const newX = dragIntersection.x + this.dragState.dragOffset.x
+        const newZ = dragIntersection.z + this.dragState.dragOffset.z
+        
+        const adjustedPosition = this.modelManager.getFloorManager().calculateAdjustedPosition(
           this.dragState.selectedModel, 
           newX, 
           0,
           newZ
         )
-        // 드래그 가능 영역을 바닥 경계 안쪽으로 제한 (벽/경계 깜빡임 방지)
-        const inset = 0.05
-        const clamped = this.modelManager.getFloorManager().clampToBounds(this.dragState.selectedModel, adjustedPosition.x, adjustedPosition.z)
-        adjustedPosition.x = clamped.x
-        adjustedPosition.z = clamped.z
         
+        this.dragState.selectedModel.setPosition(adjustedPosition)
         this.lastCollisionCheckTime = currentTime
-      } else {
-        const currentPosition = this.dragState.selectedModel.getPosition()
-        adjustedPosition.y = currentPosition.y
       }
-
-      this.dragState.selectedModel.setPosition({
-        x: adjustedPosition.x,
-        y: adjustedPosition.y,
-        z: adjustedPosition.z
-      })
     }
   }
 
@@ -446,15 +423,12 @@ export class InteractionManager {
         
         if (selectedModel.getType() === 'wallcube') {
           // 벽 가구: 2D 드래그 종료 - 화면 위치에서 벽 레이캐스팅
-          console.log(`[InteractionManager] Wall drag ended, performing wall raycast...`)
-          
           // 드래그 종료 시 렌더링 우선순위 원래대로 복구
           this.setWallcubeAlwaysOnTop(selectedModel, false)
           
           const attachedToWall = this.attachWallcubeToVisibleWall(selectedModel)
           
           if (!attachedToWall) {
-            console.warn(`[InteractionManager] No visible wall found at cursor position, using fallback attachment`)
             // 폴백: 기존 방식으로 가장 가까운 벽에 부착
             const currentPosition = selectedModel.getPosition()
             this.modelManager.getWallManager().attachToNearestWall(
@@ -465,24 +439,16 @@ export class InteractionManager {
             )
           }
         } else {
-          // 개선된 바닥 가구 배치 로직 적용
-          try {
-            this.modelManager.getFloorManager().placeOnFloor(selectedModel, currentPosition.x, currentPosition.z)
-    
-          } catch {
-  
-            const clampedPosition = this.modelManager.getFloorManager().clampToBounds(selectedModel, currentPosition.x, currentPosition.z)
-            const surfaceY = this.modelManager.getFloorManager().calculateSurfaceY(selectedModel, clampedPosition.x, clampedPosition.z)
-            
-            selectedModel.setPosition({
-              x: clampedPosition.x,
-              y: surfaceY,
-              z: clampedPosition.z
-            })
-          }
+          // 바닥 가구: 드래그 중에 이미 실시간 조정되었으므로 최종 확인만 수행
+          const finalPosition = this.modelManager.getFloorManager().calculateAdjustedPosition(
+            selectedModel, 
+            currentPosition.x, 
+            currentPosition.y,
+            currentPosition.z
+          )
+          selectedModel.setPosition(finalPosition)
           
           // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
-          console.log(`[InteractionManager] Recalculating positions after drag of ${selectedModel.getType()}`)
           this.modelManager.recalculateOtherModelPositions(selectedModel.getId(), this.dragState.previousPosition || undefined)
         }
       }
@@ -567,6 +533,39 @@ export class InteractionManager {
     return { ...this.gizmoState }
   }
 
+  // 통합 모델 회전 메서드 (벽/바닥 가구 구분하여 처리)
+  public rotateModel(modelId: string): void {
+    const model = this.modelManager.getModel(modelId)
+    if (!model) return
+
+    // 모델 회전 실행
+    model.rotateY90()
+    
+    if (model.getType() === 'wallcube') {
+      // 벽 가구: 회전 후 벽에 다시 부착
+      const pos = model.getPosition()
+      this.modelManager.getWallManager().attachToNearestWall(model, pos.x, pos.z, pos.y)
+    } else {
+      // 바닥 가구: 회전 후 재배치 및 충돌 안정화
+      const pos = model.getPosition()
+      const floorManager = this.modelManager.getFloorManager()
+      
+      try {
+        floorManager.placeOnFloor(model, pos.x, pos.z)
+      } catch {
+        const clamped = floorManager.clampToBounds(model, pos.x, pos.z)
+        const newY = floorManager.calculateSurfaceY(model, clamped.x, clamped.z)
+        model.setPosition({ x: clamped.x, y: newY, z: clamped.z })
+      }
+      
+      // 다른 모델들 재계산
+      floorManager.recalculateOtherModelPositions(modelId)
+    }
+    
+    // 회전 후 기즈모 위치 업데이트
+    this.showGizmoAtModelTop(model)
+  }
+
   public dispose(): void {
     const canvas = this.renderer.domElement
 
@@ -591,21 +590,16 @@ export class InteractionManager {
     const walls = this.scene.children.filter(obj => obj.userData.isWall === true)
     
     if (walls.length === 0) {
-      console.warn(`[attachWallcubeToVisibleWall] No walls found in scene`)
       return false
     }
     
     // 벽들과의 교차점 검사 (FrontSide만 자동으로 감지됨)
     const intersections = this.raycaster.intersectObjects(walls)
     
-    console.log(`[attachWallcubeToVisibleWall] Found ${intersections.length} wall intersections`)
-    
     if (intersections.length > 0) {
       const closestIntersection = intersections[0]
       const hitWall = closestIntersection.object as THREE.Mesh
       const hitPoint = closestIntersection.point
-      
-      console.log(`[attachWallcubeToVisibleWall] Hit wall at: (${hitPoint.x.toFixed(2)}, ${hitPoint.y.toFixed(2)}, ${hitPoint.z.toFixed(2)})`)
       
       // 히트한 벽에 모델 부착
       return this.attachModelToSpecificWall(model, hitWall, hitPoint)
@@ -630,8 +624,6 @@ export class InteractionManager {
       const clampedY = Math.max(0.3, Math.min(2.5, hitPoint.y))
       attachPosition.y = clampedY
       
-      console.log(`[attachModelToSpecificWall] Attaching to: (${attachPosition.x.toFixed(2)}, ${attachPosition.y.toFixed(2)}, ${attachPosition.z.toFixed(2)})`)
-      
       // 모델 위치 설정
       model.setPosition({
         x: attachPosition.x,
@@ -641,7 +633,6 @@ export class InteractionManager {
       
       return true
     } catch (error) {
-      console.error(`[attachModelToSpecificWall] Error:`, error)
       return false
     }
   }
@@ -714,10 +705,8 @@ export class InteractionManager {
         }
       })
       
-      console.log(`[setWallcubeAlwaysOnTop] ${alwaysOnTop ? 'Enabled' : 'Disabled'} always-on-top for wallcube`)
-      
     } catch (error) {
-      console.error(`[setWallcubeAlwaysOnTop] Error:`, error)
+      // 에러 무시 (렌더링 우선순위 설정 실패)
     }
   }
 }

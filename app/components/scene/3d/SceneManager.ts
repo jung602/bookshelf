@@ -525,7 +525,7 @@ export class SceneManager {
   }
 
   public rotateModel(modelId: string): void {
-    this.modelManager.rotateModel(modelId)
+    this.interactionManager.rotateModel(modelId)
   }
 
   public async deleteModel(modelId: string): Promise<void> {

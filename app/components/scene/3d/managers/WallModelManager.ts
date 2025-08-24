@@ -9,6 +9,9 @@ export class WallModelManager {
   private scene: THREE.Scene
   private models: Map<string, BaseModel>
   private sceneIndex: SceneIndex
+  private raycaster: THREE.Raycaster = new THREE.Raycaster() // 재사용 가능한 레이캐스터
+  private boundingBoxCache: Map<string, { bounds: THREE.Box3, lastUpdate: number }> = new Map()
+  private static BOUNDING_BOX_CACHE_DURATION = 100 // 100ms 캐시
 
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {
     this.scene = scene
@@ -18,15 +21,14 @@ export class WallModelManager {
 
   // 바닥 높이 계산 (FloorModelManager와 동일한 로직)
   private getFloorHeight(x: number, z: number): number {
-    const raycaster = new THREE.Raycaster()
     const rayOrigin = new THREE.Vector3(x, 100, z) // 위에서 아래로 쏴보기
     const rayDirection = new THREE.Vector3(0, -1, 0)
-    raycaster.set(rayOrigin, rayDirection)
+    this.raycaster.set(rayOrigin, rayDirection)
     
     const floorMeshes = this.sceneIndex.getFloorMeshes()
     if (floorMeshes.length === 0) return 0
     
-    const intersections = raycaster.intersectObjects(floorMeshes)
+    const intersections = this.raycaster.intersectObjects(floorMeshes)
     if (intersections.length > 0) {
       return intersections[0].point.y
     }
@@ -38,15 +40,53 @@ export class WallModelManager {
     const modelGroup = model.getModel()
     if (!modelGroup) return 0
     
+    const boundingBox = this.getCachedBoundingBox(model)
+    return boundingBox ? boundingBox.min.y : 0
+  }
+
+  // 캐시된 바운딩박스 계산
+  private getCachedBoundingBox(model: BaseModel): THREE.Box3 | null {
+    const modelGroup = model.getModel()
+    if (!modelGroup) return null
+
+    const cacheKey = model.getId()
+    const now = Date.now()
+    const cached = this.boundingBoxCache.get(cacheKey)
+    
+    if (cached && (now - cached.lastUpdate) < WallModelManager.BOUNDING_BOX_CACHE_DURATION) {
+      return cached.bounds.clone()
+    }
+
     const boundingBox = new THREE.Box3().setFromObject(modelGroup)
-    return boundingBox.min.y
+    
+    // 캐시에 저장 (너무 많이 쌓이지 않도록 제한)
+    if (this.boundingBoxCache.size < 50) {
+      this.boundingBoxCache.set(cacheKey, { 
+        bounds: boundingBox.clone(), 
+        lastUpdate: now 
+      })
+    }
+    
+    return boundingBox
+  }
+
+  // 캐시 정리 메서드
+  private clearBoundingBoxCache(): void {
+    this.boundingBoxCache.clear()
   }
 
   // 벽 가구 추가 메소드
-  public async addWallModel(model: BaseModel, position?: { x: number; y: number; z: number }): Promise<string> {
+  public async addWallModel(
+    model: BaseModel, 
+    options: {
+      position?: { x: number, y: number, z: number },
+      useOptimalPlacement?: boolean
+    } = {}
+  ): Promise<string> {
     try {
       await model.load()
       
+      const { position, useOptimalPlacement = true } = options
       const defaultPosition = position || { x: 0, y: 0, z: 0 }
       
       // 벽 가구 배치 가능 여부 검사
@@ -55,56 +95,46 @@ export class WallModelManager {
         throw new Error(`벽 가구를 배치할 수 없습니다. 벽이 가구보다 작거나 벽이 없습니다.`)
       }
       
-      // 최적의 위치 찾기 (충돌 회피 포함)
-      const optimalPosition = this.findOptimalWallPosition(model, defaultPosition.x, defaultPosition.z, position?.y)
-      if (!optimalPosition) {
-        model.dispose()
-        throw new Error('벽에 배치할 수 있는 적절한 공간이 없습니다.')
-      }
-      
-      // 최적 위치에 벽 가구 부착
-      const attached = this.attachToNearestWall(model, optimalPosition.x, optimalPosition.z, optimalPosition.y)
-      if (!attached) {
-        model.dispose()
-        throw new Error('벽에 부착할 수 없습니다.')
+      if (useOptimalPlacement) {
+        // 최적의 위치 찾기 (충돌 회피 포함)
+        const optimalPosition = this.findOptimalWallPosition(model, defaultPosition.x, defaultPosition.z, position?.y)
+        if (!optimalPosition) {
+          model.dispose()
+          throw new Error('벽에 배치할 수 있는 적절한 공간이 없습니다.')
+        }
+        
+        // 최적 위치에 벽 가구 부착
+        const attached = this.attachToNearestWall(model, optimalPosition.x, optimalPosition.z, optimalPosition.y)
+        if (!attached) {
+          model.dispose()
+          throw new Error('벽에 부착할 수 없습니다.')
+        }
+      } else {
+        // 지정된 위치에 직접 부착
+        const attached = this.attachToNearestWall(model, defaultPosition.x, defaultPosition.z, defaultPosition.y)
+        if (!attached) {
+          model.dispose()
+          throw new Error('벽에 부착할 수 없습니다.')
+        }
       }
       
       model.addToScene(this.scene)
       this.models.set(model.getId(), model)
       
+      // 새 모델 추가 시 캐시 정리 (충돌 검사 재계산이 필요할 수 있음)
+      this.clearBoundingBoxCache()
+      
       return model.getId()
     } catch (error) {
-      console.error('Failed to add wall model:', error)
+      // 개발 환경에서만 에러 로깅
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to add wall model:', error)
+      }
       throw error
     }
   }
 
-  // 벽 가구 회전
-  public rotateWallModel(modelId: string): void {
-    const model = this.models.get(modelId)
-    if (model && model.getType() === 'wallcube') {
-      model.rotateY90()
-      // 회전 후 벽에 다시 부착
-      const pos = model.getPosition()
-      this.attachToNearestWall(model, pos.x, pos.z, pos.y)
-    }
-  }
-
-  // 벽 가구 이동
-  public moveWallModel(modelId: string, x: number, z: number, y?: number): void {
-    const model = this.models.get(modelId)
-    if (!model || model.getType() !== 'wallcube') return
-
-    // 벽에 부착하도록 개선
-    const attached = this.attachToNearestWall(model, x, z, y)
-    if (!attached) {
-      // 부착 실패 시 원래 위치 유지
-      console.warn(`Failed to attach wallcube ${modelId} to nearest wall`)
-    }
-
-  }
-
-  public findNearestWall(x: number, z: number): THREE.Mesh | null {
+  private findNearestWall(x: number, z: number): THREE.Mesh | null {
     const walls: THREE.Mesh[] = this.sceneIndex.getWallMeshes()
     if (walls.length === 0) return null
     let nearestWall: THREE.Mesh | null = null
@@ -120,10 +150,10 @@ export class WallModelManager {
     return nearestWall
   }
 
-  public isModelSmallerThanWall(model: BaseModel, wall: THREE.Mesh): boolean {
-    const modelGroup = model.getModel()
-    if (!modelGroup) return false
-    const modelBox = new THREE.Box3().setFromObject(modelGroup)
+  private isModelSmallerThanWall(model: BaseModel, wall: THREE.Mesh): boolean {
+    const modelBox = this.getCachedBoundingBox(model)
+    if (!modelBox) return false
+    
     const wallScale = wall.scale
     const modelWidth = modelBox.max.x - modelBox.min.x
     const modelHeight = modelBox.max.y - modelBox.min.y
@@ -132,7 +162,7 @@ export class WallModelManager {
     return modelWidth < wallWidth && modelHeight < wallHeight
   }
 
-  public canPlaceOnWall(model: BaseModel, x: number, z: number): boolean {
+  private canPlaceOnWall(model: BaseModel, x: number, z: number): boolean {
     const nearestWall = this.findNearestWall(x, z)
     if (!nearestWall) {
       return false
@@ -199,6 +229,12 @@ export class WallModelManager {
     return idsToDelete
   }
 
+  // 벽 가구 제거 후 캐시 정리 (ModelManager에서 호출)
+  public onWallModelRemoved(model: BaseModel): void {
+    // 특정 모델의 캐시만 정리
+    this.boundingBoxCache.delete(model.getId())
+  }
+
   // 벽 가구 최적 위치 찾기 (충돌 회피)
   private findOptimalWallPosition(
     model: BaseModel, 
@@ -214,13 +250,12 @@ export class WallModelManager {
       return { x: targetX, z: targetZ, y: defaultY }
     }
     
-    console.log(`[WallModelManager] Collision detected at preferred position (${targetX}, ${defaultY}, ${targetZ}), searching alternatives...`)
+
     
     // 3. 같은 벽에서 다른 높이 시도
     const sameWallPositions = this.generateSameWallPositions(targetX, targetZ, defaultY)
     for (const pos of sameWallPositions) {
       if (!this.hasWallCollisionAt(model, pos.x, pos.z, pos.y)) {
-        console.log(`[WallModelManager] Found alternative position on same wall: (${pos.x}, ${pos.y}, ${pos.z})`)
         return pos
       }
     }
@@ -229,12 +264,10 @@ export class WallModelManager {
     const otherWallPositions = this.generateOtherWallPositions(targetX, targetZ, defaultY)
     for (const pos of otherWallPositions) {
       if (this.canPlaceOnWall(model, pos.x, pos.z) && !this.hasWallCollisionAt(model, pos.x, pos.z, pos.y)) {
-        console.log(`[WallModelManager] Found position on different wall: (${pos.x}, ${pos.y}, ${pos.z})`)
         return pos
       }
     }
     
-    console.warn(`[WallModelManager] No suitable wall position found for model`)
     return null
   }
 
@@ -308,8 +341,10 @@ export class WallModelManager {
     const modelGroup = model.getModel()
     if (!modelGroup) return false
 
-    // 모델 크기 계산
-    const tempBounds = new THREE.Box3().setFromObject(modelGroup)
+    // 모델 크기 계산 (캐시 사용)
+    const tempBounds = this.getCachedBoundingBox(model)
+    if (!tempBounds) return false
+    
     const modelSize = {
       width: tempBounds.max.x - tempBounds.min.x,
       height: tempBounds.max.y - tempBounds.min.y,
@@ -321,10 +356,9 @@ export class WallModelManager {
       if (otherId === model.getId() || otherModel.getType() !== 'wallcube') continue
       
       const otherPos = otherModel.getPosition()
-      const otherGroup = otherModel.getModel()
-      if (!otherGroup) continue
+      const otherBounds = this.getCachedBoundingBox(otherModel)
+      if (!otherBounds) continue
 
-      const otherBounds = new THREE.Box3().setFromObject(otherGroup)
       const otherSize = {
         width: otherBounds.max.x - otherBounds.min.x,
         height: otherBounds.max.y - otherBounds.min.y,

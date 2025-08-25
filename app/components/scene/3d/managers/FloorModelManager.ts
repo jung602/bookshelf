@@ -458,7 +458,20 @@ export class FloorModelManager {
     let adjustedX = clampedPosition.x
     let adjustedZ = clampedPosition.z
 
-    // 2. 다른 모델과의 충돌 검사 및 회피
+    // 2. L자형/T자형 바닥 검증 (빈 공간 차단)
+    if (!this.canPlaceOnFloor(targetModel, adjustedX, adjustedZ)) {
+      const nearestValid = this.findNearestValidPositionNear(targetModel, adjustedX, adjustedZ)
+      if (nearestValid) {
+        adjustedX = nearestValid.x
+        adjustedZ = nearestValid.z
+      } else {
+        // 배치할 수 없으면 현재 위치 유지
+        const currentPosition = targetModel.getPosition()
+        return { x: currentPosition.x, y: Math.max(0, currentPosition.y), z: currentPosition.z }
+      }
+    }
+
+    // 3. 다른 모델과의 충돌 검사 및 회피
     if (this.hasCollisionWithExistingModels(targetModel, adjustedX, adjustedZ)) {
       const nearestValid = this.findNearestValidPositionNear(targetModel, adjustedX, adjustedZ)
       if (nearestValid) {
@@ -467,7 +480,7 @@ export class FloorModelManager {
       }
     }
 
-    // 3. 최적 Y 좌표 계산
+    // 4. 최적 Y 좌표 계산
     try {
       const surfaceY = this.calculateSurfaceY(targetModel, adjustedX, adjustedZ)
       return { x: adjustedX, y: Math.max(0, surfaceY), z: adjustedZ }

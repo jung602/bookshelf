@@ -411,14 +411,42 @@ export class InteractionManager {
           const attachedToFloor = this.attachFloorModelToVisibleFloor(selectedModel)
           
           if (!attachedToFloor) {
-            // 폴백: 기존 방식으로 바닥에 배치
-            const finalPosition = this.modelManager.getFloorManager().calculateAdjustedPosition(
-              selectedModel, 
-              currentPosition.x, 
-              currentPosition.y,
-              currentPosition.z
-            )
-            selectedModel.setPosition(finalPosition)
+            // 폴백: 안전한 위치 찾기
+            const floorManager = this.modelManager.getFloorManager()
+            
+            // 먼저 현재 위치에서 배치 가능한지 확인
+            if (floorManager.canPlaceOnFloor(selectedModel, currentPosition.x, currentPosition.z)) {
+              const finalPosition = floorManager.calculateAdjustedPosition(
+                selectedModel, 
+                currentPosition.x, 
+                currentPosition.y,
+                currentPosition.z
+              )
+              selectedModel.setPosition(finalPosition)
+            } else {
+              // 현재 위치가 안전하지 않으면 가까운 유효 위치 찾기
+              const nearestValid = floorManager.findNearestValidPositionNear(selectedModel, currentPosition.x, currentPosition.z)
+              if (nearestValid) {
+                const finalPosition = floorManager.calculateAdjustedPosition(
+                  selectedModel, 
+                  nearestValid.x, 
+                  currentPosition.y,
+                  nearestValid.z
+                )
+                selectedModel.setPosition(finalPosition)
+              } else {
+                // 최후 수단: 전역 최적 위치
+                const optimalPosition = floorManager.findOptimalPlacement(selectedModel)
+                if (optimalPosition) {
+                  selectedModel.setPosition(optimalPosition)
+                } else {
+                  // 정말 배치할 곳이 없으면 이전 위치로 복원
+                  if (this.dragState.previousPosition) {
+                    selectedModel.setPosition(this.dragState.previousPosition)
+                  }
+                }
+              }
+            }
           }
           
           // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산

@@ -178,21 +178,23 @@ export class FloorModelManager {
     let clampedX = x
     let clampedZ = z
 
-    // 인셋 적용된 경계
+    // 인셋 적용된 경계 (일관성 있게 적용)
     const minX = floorBounds.minX + inset
     const maxX = floorBounds.maxX - inset
     const minZ = floorBounds.minZ + inset
     const maxZ = floorBounds.maxZ - inset
 
-    if (modelBoundingBox.min.x < floorBounds.minX) {
+    // X축 클램핑 (인셋 적용된 경계 기준)
+    if (modelBoundingBox.min.x < minX) {
       clampedX = x + (minX - modelBoundingBox.min.x)
-    } else if (modelBoundingBox.max.x > floorBounds.maxX) {
+    } else if (modelBoundingBox.max.x > maxX) {
       clampedX = x - (modelBoundingBox.max.x - maxX)
     }
 
-    if (modelBoundingBox.min.z < floorBounds.minZ) {
+    // Z축 클램핑 (인셋 적용된 경계 기준)
+    if (modelBoundingBox.min.z < minZ) {
       clampedZ = z + (minZ - modelBoundingBox.min.z)
-    } else if (modelBoundingBox.max.z > floorBounds.maxZ) {
+    } else if (modelBoundingBox.max.z > maxZ) {
       clampedZ = z - (modelBoundingBox.max.z - maxZ)
     }
 
@@ -300,6 +302,7 @@ export class FloorModelManager {
     // 명시적 금지 페어
     const forbiddenPairs = new Set<string>([
       'stool->chair', // 스툴 위에 의자 금지
+      'stool->desk',  // 스툴 위에 책상 금지
     ])
     if (forbiddenPairs.has(pairKey)) {
       return false
@@ -346,20 +349,77 @@ export class FloorModelManager {
     }
     const modelGroup = model.getModel()
     if (!modelGroup) return false
+    
     const originalPos = modelGroup.position.clone()
     modelGroup.position.set(x, 0, z)
     const boundingBox = new THREE.Box3().setFromObject(modelGroup)
     modelGroup.position.copy(originalPos)
-    const corners = [
+    
+    // 가구 크기 계산
+    const width = boundingBox.max.x - boundingBox.min.x
+    const depth = boundingBox.max.z - boundingBox.min.z
+    const maxDimension = Math.max(width, depth)
+    
+    // 가구 크기에 따른 체크 간격 결정 (L자형, T자형 바닥의 빈 공간 감지)
+    const checkStep = Math.min(0.25, Math.max(0.1, maxDimension / 8))
+    
+    const pointsToCheck: { x: number, z: number }[] = []
+    
+    // 4개 모서리는 반드시 포함
+    pointsToCheck.push(
       { x: boundingBox.min.x, z: boundingBox.min.z },
       { x: boundingBox.max.x, z: boundingBox.min.z },
       { x: boundingBox.min.x, z: boundingBox.max.z },
       { x: boundingBox.max.x, z: boundingBox.max.z }
-    ]
-    const validCorners = corners.filter(corner => this.hasFloorAt(corner.x, corner.z))
-    if (validCorners.length !== corners.length) {
+    )
+    
+    // 가구가 작지 않은 경우 중간 지점들도 체크 (L자, T자형 바닥의 빈 공간 감지 강화)
+    if (width > checkStep * 2 || depth > checkStep * 2) {
+      // 중앙점과 1/4, 3/4 지점들 추가
+      const centerX = (boundingBox.min.x + boundingBox.max.x) / 2
+      const centerZ = (boundingBox.min.z + boundingBox.max.z) / 2
+      const quarterX1 = boundingBox.min.x + width * 0.25
+      const quarterX2 = boundingBox.min.x + width * 0.75
+      const quarterZ1 = boundingBox.min.z + depth * 0.25
+      const quarterZ2 = boundingBox.min.z + depth * 0.75
+      
+      pointsToCheck.push(
+        { x: centerX, z: centerZ },           // 정중앙 (가장 중요)
+        { x: quarterX1, z: quarterZ1 },       // 1/4 지점들
+        { x: quarterX1, z: quarterZ2 },
+        { x: quarterX2, z: quarterZ1 },
+        { x: quarterX2, z: quarterZ2 },
+        { x: centerX, z: quarterZ1 },         // 중앙선상 1/4, 3/4
+        { x: centerX, z: quarterZ2 },
+        { x: quarterX1, z: centerZ },
+        { x: quarterX2, z: centerZ }
+      )
+      
+      // 큰 가구의 경우 더 세밀한 그리드 검사
+      if (width > checkStep * 4 && depth > checkStep * 4) {
+        for (let testX = boundingBox.min.x + checkStep; testX < boundingBox.max.x; testX += checkStep) {
+          for (let testZ = boundingBox.min.z + checkStep; testZ < boundingBox.max.z; testZ += checkStep) {
+            pointsToCheck.push({ x: testX, z: testZ })
+          }
+        }
+      }
+    }
+    
+    // 중복 제거 (1cm 이내 거리는 같은 점으로 간주)
+    const uniquePoints = pointsToCheck.filter((point, index, self) => 
+      index === self.findIndex(p => 
+        Math.abs(p.x - point.x) < 0.01 && Math.abs(p.z - point.z) < 0.01
+      )
+    )
+    
+    // 모든 체크 포인트에 바닥이 있어야 함 (L자형, T자형 바닥의 빈 공간 차단)
+    const validPoints = uniquePoints.filter(point => this.hasFloorAt(point.x, point.z))
+    
+    // 모든 포인트가 바닥 위에 있어야 함 (100% 엄격한 검사)
+    if (validPoints.length !== uniquePoints.length) {
       return false
     }
+    
     return true
   }
 
@@ -659,8 +719,12 @@ export class FloorModelManager {
     const originalPos = modelGroup.position.clone()
     
     try {
-      // 통합된 위치 찾기 메서드 사용 (Y 좌표 포함)
-      const result = this.findValidPosition(model, { includeY: true })
+      // 통합된 위치 찾기 메서드 사용 (Y 좌표 포함, 더 정밀한 그리드)
+      const result = this.findValidPosition(model, { 
+        includeY: true,
+        gridSize: 0.2,  // 더 정밀한 그리드 (20cm 간격)
+        stepMultiplier: 6
+      })
       
       if (result && 'y' in result) {
         return result as { x: number, y: number, z: number }
@@ -740,7 +804,12 @@ export class FloorModelManager {
 
   // 주어진 시작점 근처에서 유효한 위치 찾기 (충돌 회피용)
   public findNearestValidPositionNear(model: BaseModel, startX: number, startZ: number): { x: number, z: number } | null {
-    return this.findValidPosition(model, { centerX: startX, centerZ: startZ, stepMultiplier: 6 })
+    return this.findValidPosition(model, { 
+      centerX: startX, 
+      centerZ: startZ, 
+      stepMultiplier: 8,
+      gridSize: 0.1  // 더 정밀한 그리드 (10cm 간격)
+    })
   }
 
   // 통합된 유효 위치 찾기 메서드
@@ -750,20 +819,22 @@ export class FloorModelManager {
       centerX?: number,
       centerZ?: number,
       stepMultiplier?: number,
+      gridSize?: number,
       includeY?: boolean
     } = {}
   ): { x: number, z: number } | { x: number, y: number, z: number } | null {
     const bounds = this.getFloorBounds()
     if (!bounds) return null
 
-    const { centerX, centerZ, stepMultiplier = 4, includeY = false } = options
+    const { centerX, centerZ, stepMultiplier = 4, gridSize = 0.5, includeY = false } = options
     const searchCenterX = centerX ?? (bounds.minX + bounds.maxX) / 2
     const searchCenterZ = centerZ ?? (bounds.minZ + bounds.maxZ) / 2
 
     const candidates = this.generateSearchPositions(bounds, {
       centerX: searchCenterX,
       centerZ: searchCenterZ,
-      stepMultiplier
+      stepMultiplier,
+      gridSize
     })
 
     for (const pos of candidates) {

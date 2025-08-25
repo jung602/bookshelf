@@ -679,16 +679,34 @@ export class InteractionManager {
       const isFloorMesh = hitObject.userData.isFloor
       
       if (isFloorMesh) {
-        // 바닥에 배치 - FloorModelManager의 로직 사용
+        // 바닥에 배치 - 먼저 배치 가능 여부 검증
         const floorManager = this.modelManager.getFloorManager()
-        const adjustedPosition = floorManager.calculateAdjustedPosition(
-          model, 
-          hitPoint.x, 
-          hitPoint.y, 
-          hitPoint.z
-        )
-        model.setPosition(adjustedPosition)
-        return true
+        
+        // L자형/T자형 바닥의 빈 공간 검증
+        if (floorManager.canPlaceOnFloor(model, hitPoint.x, hitPoint.z)) {
+          const adjustedPosition = floorManager.calculateAdjustedPosition(
+            model, 
+            hitPoint.x, 
+            hitPoint.y, 
+            hitPoint.z
+          )
+          model.setPosition(adjustedPosition)
+          return true
+        } else {
+          // 배치할 수 없으면 가까운 유효 위치 찾기
+          const nearestValid = floorManager.findNearestValidPositionNear(model, hitPoint.x, hitPoint.z)
+          if (nearestValid) {
+            const adjustedPosition = floorManager.calculateAdjustedPosition(
+              model, 
+              nearestValid.x, 
+              hitPoint.y, 
+              nearestValid.z
+            )
+            model.setPosition(adjustedPosition)
+            return true
+          }
+          return false
+        }
       } else {
         // 다른 가구 위에 배치 시도
         const surfaceModelId = hitObject.userData.modelId
@@ -709,16 +727,33 @@ export class InteractionManager {
             model.setPosition(adjustedPosition)
             return true
           } else {
-            // 지지할 수 없으면 바닥에 배치
-            const floorY = floorManager.getFloorHeight(hitPoint.x, hitPoint.z)
-            const adjustedPosition = floorManager.calculateAdjustedPosition(
-              model, 
-              hitPoint.x, 
-              floorY, 
-              hitPoint.z
-            )
-            model.setPosition(adjustedPosition)
-            return true
+            // 지지할 수 없으면 바닥에 배치 시도 (검증 포함)
+            if (floorManager.canPlaceOnFloor(model, hitPoint.x, hitPoint.z)) {
+              const floorY = floorManager.getFloorHeight(hitPoint.x, hitPoint.z)
+              const adjustedPosition = floorManager.calculateAdjustedPosition(
+                model, 
+                hitPoint.x, 
+                floorY, 
+                hitPoint.z
+              )
+              model.setPosition(adjustedPosition)
+              return true
+            } else {
+              // 배치할 수 없으면 가까운 유효 위치 찾기
+              const nearestValid = floorManager.findNearestValidPositionNear(model, hitPoint.x, hitPoint.z)
+              if (nearestValid) {
+                const floorY = floorManager.getFloorHeight(nearestValid.x, nearestValid.z)
+                const adjustedPosition = floorManager.calculateAdjustedPosition(
+                  model, 
+                  nearestValid.x, 
+                  floorY, 
+                  nearestValid.z
+                )
+                model.setPosition(adjustedPosition)
+                return true
+              }
+              return false
+            }
           }
         }
       }

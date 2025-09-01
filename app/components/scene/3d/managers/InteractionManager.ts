@@ -2,9 +2,10 @@ import * as THREE from 'three'
 import { ModelManager } from './ModelManager'
 import { BaseModel } from '../objects/BaseModel'
 
-// 상수 정의
-const Y_SCALE = 2.0 // 벽 가구 Y축 드래그 민감도 (더 민감하게 조정)
-const DRAG_THRESHOLD = 5
+// 상수 정의 (DPI 보정)
+const Y_SCALE = 2.0 // 벽 가구 Y축 드래그 민감도
+const BASE_DRAG_PX = 5
+const DRAG_THRESHOLD = BASE_DRAG_PX * (typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1)
 const CLICK_DURATION_THRESHOLD = 300
 
 export interface DragState {
@@ -14,10 +15,11 @@ export interface DragState {
   dragPlane: THREE.Plane
   startMouseY: number
   startModelY: number
-  previousPosition: { x: number, y: number, z: number } | null
+  previousPosition: { x: number; y: number; z: number } | null
 }
 
 export interface GizmoState {
+  visible: boolean
   selectedModelId: string | null
   screenPosition: { x: number; y: number } | null
 }
@@ -27,6 +29,7 @@ export class InteractionManager {
   private camera: THREE.Camera
   private renderer: THREE.WebGLRenderer
   private modelManager: ModelManager
+  private controls?: any // OrbitControls 참조
   private raycaster: THREE.Raycaster
   private mouse: THREE.Vector2
   private dragState: DragState
@@ -35,7 +38,9 @@ export class InteractionManager {
   private isDragStarted: boolean = false
   private clickStartTime: number = 0
   private clickStartPosition: { x: number; y: number } = { x: 0, y: 0 }
-
+  private clickHandledOnMouseUp: boolean = false
+  private _hoverScheduled: boolean = false
+  private _dragCache: Map<THREE.Object3D, { renderOrder: Map<THREE.Mesh, number>; onBeforeRender: Map<THREE.Mesh, ((...args: any[]) => void) | null>; material: Map<THREE.Mesh, { transparent?: boolean; opacity?: number; depthTest?: boolean; depthWrite?: boolean }>; } > = new Map()
 
   // 이벤트 리스너 참조 저장
   private boundMouseDown: (event: MouseEvent) => void
@@ -54,29 +59,32 @@ export class InteractionManager {
     camera: THREE.Camera,
     renderer: THREE.WebGLRenderer,
     modelManager: ModelManager,
-    onGizmoStateChange?: (gizmoState: GizmoState) => void
+    onGizmoStateChange?: (gizmoState: GizmoState) => void,
+    controls?: any
   ) {
     this.scene = scene
     this.camera = camera
     this.renderer = renderer
     this.modelManager = modelManager
     this.onGizmoStateChange = onGizmoStateChange
+    this.controls = controls
     this.raycaster = new THREE.Raycaster()
     this.mouse = new THREE.Vector2()
-    
+
     this.floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
-    
+
     this.dragState = {
       isDragging: false,
       selectedModel: null,
       dragOffset: new THREE.Vector3(),
-      dragPlane: this.floorPlane.clone(),
+      dragPlane: new THREE.Plane(),
       startMouseY: 0,
       startModelY: 0,
       previousPosition: null
     }
 
     this.gizmoState = {
+      visible: false,
       selectedModelId: null,
       screenPosition: null
     }
@@ -92,7 +100,6 @@ export class InteractionManager {
     this.boundContextMenu = (event: Event) => event.preventDefault()
 
     this.setupEventListeners()
-
   }
 
   private setupEventListeners(): void {
@@ -102,12 +109,10 @@ export class InteractionManager {
     canvas.addEventListener('mousemove', this.boundMouseMove)
     canvas.addEventListener('mouseup', this.boundMouseUp)
     canvas.addEventListener('click', this.boundClick)
-    canvas.addEventListener('touchstart', this.boundTouchStart)
-    canvas.addEventListener('touchmove', this.boundTouchMove)
-    canvas.addEventListener('touchend', this.boundTouchEnd)
+    canvas.addEventListener('touchstart', this.boundTouchStart, { passive: false })
+    canvas.addEventListener('touchmove', this.boundTouchMove, { passive: false })
+    canvas.addEventListener('touchend', this.boundTouchEnd, { passive: false })
     canvas.addEventListener('contextmenu', this.boundContextMenu)
-
-
   }
 
   private updateMousePosition(clientX: number, clientY: number): void {
@@ -118,35 +123,55 @@ export class InteractionManager {
 
   private getIntersectedModels(isInteraction: boolean = false): THREE.Intersection[] {
     this.raycaster.setFromCamera(this.mouse, this.camera)
-    
+
     const colliders: THREE.Mesh[] = []
     const allModels = this.modelManager.getAllModels()
-    
-    allModels.forEach((model: BaseModel, index: number) => {
+
+    allModels.forEach((model: BaseModel) => {
+      if (!model.isModelLoaded()) return
+      const threeObject = model.getModel()
+      if (!threeObject) return
       const modelColliders = model.getAllColliders()
-      if (modelColliders.length > 0) {
-        colliders.push(...modelColliders)
-      }
+      if (!modelColliders || modelColliders.length === 0) return
+
+      // 가시성/씬 존재 여부 확인 후 추가
+      modelColliders.forEach((collider) => {
+        if (
+          collider && collider.parent && this.scene.getObjectById(collider.id) !== undefined
+        ) {
+          colliders.push(collider)
+        }
+      })
     })
-    
+
+    if (colliders.length === 0) return []
+
+    // 교차 검사
     const intersections = this.raycaster.intersectObjects(colliders, false)
-    
+
+    if (isInteraction) {
+      // 상호작용 시 화면에 가장 가까운 것만 (closest)
+      return intersections
+    }
+
     return intersections
   }
 
-  private getModelFromIntersection(intersection: THREE.Intersection, isInteraction: boolean = false): BaseModel | null {
+  private getModelFromIntersection(intersection: THREE.Intersection, onlyDraggable: boolean = false): BaseModel | null {
     const intersectedObject = intersection.object
     const modelId = intersectedObject.userData.modelId
     
     if (modelId) {
       const model = this.modelManager.getModel(modelId)
+      if (model && onlyDraggable) {
+        // 모든 모델이 드래그 가능하다고 가정
+        return model
+      }
       return model || null
     }
     
     return null
   }
-
-
 
   private onMouseDown(event: MouseEvent): void {
     event.preventDefault()
@@ -158,16 +183,16 @@ export class InteractionManager {
     this.isDragStarted = false
 
     const intersections = this.getIntersectedModels(true)
-    
     if (intersections.length > 0) {
       const selectedModel = this.getModelFromIntersection(intersections[0], true)
-      
+
       if (selectedModel) {
-  
-        this.prepareForDrag(selectedModel, intersections[0].point)
+        this.prepareForDrag(selectedModel, intersections[0].point as THREE.Vector3)
+        this.dragState.isDragging = true
       }
     } else {
-
+      this.dragState.isDragging = false
+      this.dragState.selectedModel = null
       this.hideGizmo()
     }
   }
@@ -181,33 +206,46 @@ export class InteractionManager {
         Math.pow(event.clientX - this.clickStartPosition.x, 2) +
         Math.pow(event.clientY - this.clickStartPosition.y, 2)
       )
-      
+
       if (moveDistance > DRAG_THRESHOLD) {
         this.isDragStarted = true
-        this.dragState.isDragging = true
-        this.hideGizmo()
       }
     }
 
     if (this.dragState.isDragging && this.dragState.selectedModel) {
       this.updateDrag()
     } else {
-      this.updateHover()
+      this.scheduleHoverUpdate()
     }
   }
 
   private onMouseUp(event: MouseEvent): void {
     event.preventDefault()
-    
-    
+
     const clickDuration = Date.now() - this.clickStartTime
-    const moveDistance = Math.sqrt(
-      Math.pow(event.clientX - this.clickStartPosition.x, 2) +
-      Math.pow(event.clientY - this.clickStartPosition.y, 2)
+    const moveDistance = Math.hypot(
+      event.clientX - this.clickStartPosition.x,
+      event.clientY - this.clickStartPosition.y
     )
 
-    if (clickDuration < 300 && moveDistance < 5 && this.dragState.selectedModel && !this.isDragStarted) {
-      this.handleModelClick(this.dragState.selectedModel)
+    const isClick = (clickDuration < CLICK_DURATION_THRESHOLD && moveDistance < DRAG_THRESHOLD && !this.isDragStarted)
+    if (isClick) {
+      this.clickHandledOnMouseUp = true
+      if (this.dragState.selectedModel) {
+        this.handleModelClick(this.dragState.selectedModel)
+      } else {
+        // 새로 피킹해서 클릭 처리
+        this.updateMousePosition(event.clientX, event.clientY)
+        const intersections = this.getIntersectedModels(true)
+        if (intersections.length > 0) {
+          const selectedModel = this.getModelFromIntersection(intersections[0], true)
+          if (selectedModel) {
+            this.handleModelClick(selectedModel)
+          }
+        } else {
+          this.hideGizmo()
+        }
+      }
     }
 
     this.endDrag()
@@ -215,40 +253,27 @@ export class InteractionManager {
 
   private onClick(event: MouseEvent): void {
     event.preventDefault()
-    
-    
-    if (this.isDragStarted) {
-      
-      return
-    }
-    
+    // mouseup에서 이미 처리된 클릭이면 무시
+    if (this.clickHandledOnMouseUp) { this.clickHandledOnMouseUp = false; return }
+    if (this.isDragStarted) { return }
+
     const clickDuration = Date.now() - this.clickStartTime
-    if (clickDuration > 200) {
-      
-      return
-    }
-    
-    const clickDistance = Math.sqrt(
-      Math.pow(event.clientX - this.clickStartPosition.x, 2) + 
-      Math.pow(event.clientY - this.clickStartPosition.y, 2)
+    const clickDistance = Math.hypot(
+      event.clientX - this.clickStartPosition.x,
+      event.clientY - this.clickStartPosition.y
     )
-    if (clickDistance > 5) {
-      
-      return
-    }
-    
+    if (clickDuration > CLICK_DURATION_THRESHOLD || clickDistance > DRAG_THRESHOLD) { return }
+
     this.updateMousePosition(event.clientX, event.clientY)
     const intersections = this.getIntersectedModels(true)
-    
+
     if (intersections.length > 0) {
       const selectedModel = this.getModelFromIntersection(intersections[0], true)
-      
+
       if (selectedModel) {
-  
         this.handleModelClick(selectedModel)
       }
     } else {
-
       this.hideGizmo()
     }
   }
@@ -256,7 +281,7 @@ export class InteractionManager {
   // 터치 이벤트 처리
   private onTouchStart(event: TouchEvent): void {
     event.preventDefault()
-    
+
     if (event.touches.length === 1) {
       const touch = event.touches[0]
       this.updateMousePosition(touch.clientX, touch.clientY)
@@ -266,16 +291,16 @@ export class InteractionManager {
       this.isDragStarted = false
 
       const intersections = this.getIntersectedModels(true)
-      
       if (intersections.length > 0) {
         const selectedModel = this.getModelFromIntersection(intersections[0], true)
-        
+
         if (selectedModel) {
-    
-          this.prepareForDrag(selectedModel, intersections[0].point)
+          this.prepareForDrag(selectedModel, intersections[0].point as THREE.Vector3)
+          this.dragState.isDragging = true
         }
       } else {
-  
+        this.dragState.isDragging = false
+        this.dragState.selectedModel = null
         this.hideGizmo()
       }
     }
@@ -292,35 +317,47 @@ export class InteractionManager {
           Math.pow(touch.clientX - this.clickStartPosition.x, 2) +
           Math.pow(touch.clientY - this.clickStartPosition.y, 2)
         )
-        
+
         if (moveDistance > DRAG_THRESHOLD) {
           this.isDragStarted = true
-          this.dragState.isDragging = true
-          this.hideGizmo()
         }
       }
 
       if (this.dragState.isDragging && this.dragState.selectedModel) {
         this.updateDrag()
       } else {
-        this.updateHover()
+        this.scheduleHoverUpdate()
       }
     }
   }
 
   private onTouchEnd(event: TouchEvent): void {
     event.preventDefault()
-    
-    
+
     const clickDuration = Date.now() - this.clickStartTime
-    const touch = event.changedTouches[0]
-    const moveDistance = Math.sqrt(
-      Math.pow(touch.clientX - this.clickStartPosition.x, 2) +
-      Math.pow(touch.clientY - this.clickStartPosition.y, 2)
+    const moveDistance = Math.hypot(
+      (event.changedTouches[0]?.clientX ?? this.clickStartPosition.x) - this.clickStartPosition.x,
+      (event.changedTouches[0]?.clientY ?? this.clickStartPosition.y) - this.clickStartPosition.y
     )
 
-    if (clickDuration < 300 && moveDistance < 5 && this.dragState.selectedModel && !this.isDragStarted) {
-      this.handleModelClick(this.dragState.selectedModel)
+    const isClick = (clickDuration < CLICK_DURATION_THRESHOLD && moveDistance < DRAG_THRESHOLD && !this.isDragStarted)
+
+    if (isClick) {
+      if (this.dragState.selectedModel) {
+        this.handleModelClick(this.dragState.selectedModel)
+      } else {
+        const touch = event.changedTouches[0]
+        if (touch) {
+          this.updateMousePosition(touch.clientX, touch.clientY)
+          const intersections = this.getIntersectedModels(true)
+          if (intersections.length > 0) {
+            const selectedModel = this.getModelFromIntersection(intersections[0], true)
+            if (selectedModel) this.handleModelClick(selectedModel)
+          } else {
+            this.hideGizmo()
+          }
+        }
+      }
     }
 
     this.endDrag()
@@ -328,56 +365,61 @@ export class InteractionManager {
 
   private prepareForDrag(model: BaseModel, intersectionPoint: THREE.Vector3): void {
     this.dragState.selectedModel = model
-    
+
     const modelPosition = model.getPosition()
-    
+
     // 드래그 시작 시 이전 위치 저장
     this.dragState.previousPosition = {
       x: modelPosition.x,
       y: modelPosition.y,
       z: modelPosition.z
     }
-    
+
     // 모든 가구: 2D UI 드래그 방식 - 화면에서 자유롭게 이동
     this.dragState.dragOffset.set(0, 0, 0) // 2D 드래그용 오프셋 제거
     this.dragState.startMouseY = this.mouse.y
     this.dragState.startModelY = modelPosition.y
-    
-    // 2D 드래그를 위한 카메라 기준 평면 생성
-    const cameraPosition = this.camera.position.clone()
+
+    // 2D 드래그를 위한 카메라 기준 평면 생성 (모델 위치를 지나는 평면)
     const cameraDirection = new THREE.Vector3()
     this.camera.getWorldDirection(cameraDirection)
-    const distance = cameraPosition.distanceTo(modelPosition)
-    this.dragState.dragPlane = new THREE.Plane(cameraDirection, -distance)
-    
-    // 드래그 중 항상 위에 보이도록 렌더링 우선순위 올리기
+    this.dragState.dragPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      cameraDirection,
+      new THREE.Vector3(modelPosition.x, modelPosition.y, modelPosition.z)
+    )
+
+    // 드래그 중 항상 위에 보이도록 렌더링 우선순위 올리기 (불투명 유지)
     this.setModelAlwaysOnTop(model, true)
+    this.renderer.domElement.style.cursor = 'grabbing'
+    
+    // 드래그 중 orbit controls 비활성화
+    if (this.controls) {
+      this.controls.enabled = false
+    }
   }
 
   private updateDrag(): void {
     if (!this.dragState.selectedModel) return
 
-    const dragIntersection = this.getDragPlaneIntersection()
-    if (!dragIntersection) return
-
-    // 모든 가구: 2D UI 드래그 - 화면에서 자유롭게 이동
-    this.dragState.selectedModel.setPosition({
-      x: dragIntersection.x,
-      y: dragIntersection.y, 
-      z: dragIntersection.z
-    })
-  }
-
-  private getDragPlaneIntersection(): THREE.Vector3 | null {
+    // 드래그 평면과의 교점 계산
     this.raycaster.setFromCamera(this.mouse, this.camera)
-    
     const intersectionPoint = new THREE.Vector3()
-    const intersected = this.raycaster.ray.intersectPlane(this.dragState.dragPlane, intersectionPoint)
-    
-    return intersected ? intersectionPoint : null
-  }
+    const intersects = this.raycaster.ray.intersectPlane(this.dragState.dragPlane, intersectionPoint)
 
-  // 벽 스냅 계산은 WallModelManager로 위임됨
+    if (!intersects) return
+
+    const selectedModel = this.dragState.selectedModel
+
+    // 모든 가구 공통: 2D 화면 드래그 → 월드 위치로 역투영 이동
+    selectedModel.setPosition({
+      x: intersectionPoint.x,
+      y: selectedModel.getType() === 'wallcube' ? this.dragState.startModelY + (this.mouse.y - this.dragState.startMouseY) * Y_SCALE : intersectionPoint.y,
+      z: intersectionPoint.z
+    })
+
+    // 기즈모 위치 업데이트
+    this.showGizmoAtModelTop(selectedModel)
+  }
 
   private endDrag(): void {
     const wasDragging = this.dragState.isDragging
@@ -385,40 +427,38 @@ export class InteractionManager {
     const wasActuallyDragged = this.isDragStarted
 
     if (wasDragging && selectedModel) {
-
-      
       if (wasActuallyDragged) {
         const currentPosition = selectedModel.getPosition()
-        
-        // 드래그 종료 시 렌더링 우선순위 원래대로 복구
+
+        // 드래그 종료 시 렌더링 우선순위/상태 복구
         this.setModelAlwaysOnTop(selectedModel, false)
-        
+
         if (selectedModel.getType() === 'wallcube') {
           // 벽 가구: 2D 드래그 종료 - 화면 위치에서 벽 레이캐스팅
           const attachedToWall = this.attachWallcubeToVisibleWall(selectedModel)
-          
+
           if (!attachedToWall) {
             // 폴백: 기존 방식으로 가장 가까운 벽에 부착
             this.modelManager.getWallManager().attachToNearestWall(
-              selectedModel, 
-              currentPosition.x, 
-              currentPosition.z, 
+              selectedModel,
+              currentPosition.x,
+              currentPosition.z,
               currentPosition.y
             )
           }
         } else {
           // 바닥 가구: 2D 드래그 종료 - 화면 위치에서 바닥 레이캐스팅
           const attachedToFloor = this.attachFloorModelToVisibleFloor(selectedModel)
-          
+
           if (!attachedToFloor) {
             // 폴백: 안전한 위치 찾기
             const floorManager = this.modelManager.getFloorManager()
-            
+
             // 먼저 현재 위치에서 배치 가능한지 확인
             if (floorManager.canPlaceOnFloor(selectedModel, currentPosition.x, currentPosition.z)) {
               const finalPosition = floorManager.calculateAdjustedPosition(
-                selectedModel, 
-                currentPosition.x, 
+                selectedModel,
+                currentPosition.x,
                 currentPosition.y,
                 currentPosition.z
               )
@@ -427,36 +467,37 @@ export class InteractionManager {
               // 현재 위치가 안전하지 않으면 가까운 유효 위치 찾기
               const nearestValid = floorManager.findNearestValidPositionNear(selectedModel, currentPosition.x, currentPosition.z)
               if (nearestValid) {
-                const finalPosition = floorManager.calculateAdjustedPosition(
-                  selectedModel, 
-                  nearestValid.x, 
-                  currentPosition.y,
-                  nearestValid.z
-                )
-                selectedModel.setPosition(finalPosition)
+                const newY = floorManager.calculateSurfaceY(selectedModel, nearestValid.x, nearestValid.z)
+                selectedModel.setPosition({ x: nearestValid.x, y: newY, z: nearestValid.z })
               } else {
-                // 최후 수단: 전역 최적 위치
-                const optimalPosition = floorManager.findOptimalPlacement(selectedModel)
-                if (optimalPosition) {
-                  selectedModel.setPosition(optimalPosition)
-                } else {
-                  // 정말 배치할 곳이 없으면 이전 위치로 복원
-                  if (this.dragState.previousPosition) {
-                    selectedModel.setPosition(this.dragState.previousPosition)
-                  }
-                }
+                // 마지막 폴백: 경계 클램프 및 표면 높이 계산
+                const clamped = floorManager.clampToBounds(selectedModel, currentPosition.x, currentPosition.z)
+                const newY = floorManager.calculateSurfaceY(selectedModel, clamped.x, clamped.z)
+                selectedModel.setPosition({ x: clamped.x, y: newY, z: clamped.z })
               }
             }
+
+            // 다른 모델들과의 충돌/지지 관계 재계산 (이전 위치 정보 포함)
+            floorManager.recalculateOtherModelPositions(
+              selectedModel.getId(),
+              this.dragState.previousPosition || undefined
+            )
           }
-          
-          // 드래그된 모델의 위치가 변경된 후, 다른 모든 모델들의 위치도 재계산
-          this.modelManager.recalculateOtherModelPositions(selectedModel.getId(), this.dragState.previousPosition || undefined)
+          // 드래그가 어떤 방식이든 끝났다면, 주변 모델들의 지지 관계도 안전하게 재계산
+          const floorManagerAfter = this.modelManager.getFloorManager()
+          floorManagerAfter.recalculateOtherModelPositions(
+            selectedModel.getId(),
+            this.dragState.previousPosition || undefined
+          )
         }
-      }
-      
-      if (wasActuallyDragged) {
-        // 개선된 기즈모 위치 계산
-        this.showGizmoAtModelTop(selectedModel)
+      } else {
+        // 드래그 안 되었으면 원래 위치로 복귀(필요 시)
+        if (this.dragState.previousPosition) {
+          selectedModel.setPosition(this.dragState.previousPosition)
+        }
+
+        // 렌더링 상태 복구
+        this.setModelAlwaysOnTop(selectedModel, false)
       }
     }
 
@@ -467,11 +508,17 @@ export class InteractionManager {
     this.dragState.startModelY = 0
     this.dragState.previousPosition = null
     this.isDragStarted = false
+    this.renderer.domElement.style.cursor = 'default'
+    
+    // 드래그 종료 시 orbit controls 다시 활성화
+    if (this.controls) {
+      this.controls.enabled = true
+    }
   }
 
   private updateHover(): void {
     const intersections = this.getIntersectedModels()
-    
+
     if (intersections.length > 0) {
       this.renderer.domElement.style.cursor = 'pointer'
     } else {
@@ -479,78 +526,80 @@ export class InteractionManager {
     }
   }
 
-  private handleModelClick(model: BaseModel): void {
+  private scheduleHoverUpdate(): void {
+    if (this._hoverScheduled) return
+    this._hoverScheduled = true
+    requestAnimationFrame(() => {
+      this._hoverScheduled = false
+      this.updateHover()
+    })
+  }
 
+  private handleModelClick(model: BaseModel): void {
     this.showGizmoAtModelTop(model)
   }
 
-  // 개선된 기즈모 위치 계산 메서드 (현재 버전에서 가져옴)
   private showGizmoAtModelTop(model: BaseModel): void {
-    const modelPosition = model.getPosition()
-    const modelGroup = model.getModel()
-    
-    if (modelGroup) {
-      // 개선된 바운딩박스 계산으로 더 정확한 기즈모 위치
-      const boundingBox = new THREE.Box3().setFromObject(modelGroup)
-      
-      const topPosition = new THREE.Vector3(
-        modelPosition.x,
-        boundingBox.max.y + 0.2, // 모델 최상단 + 여유공간
-        modelPosition.z
-      )
-      
-      // 3D 위치를 화면 좌표로 변환
-      topPosition.project(this.camera)
-      
-      const rect = this.renderer.domElement.getBoundingClientRect()
-      const gizmoScreenX = (topPosition.x + 1) * rect.width / 2 + rect.left
-      const gizmoScreenY = (-topPosition.y + 1) * rect.height / 2 + rect.top
-      
-  
-      
-      this.gizmoState.selectedModelId = model.getId()
-      this.gizmoState.screenPosition = { x: gizmoScreenX, y: gizmoScreenY }
-      
-      if (this.onGizmoStateChange) {
-        this.onGizmoStateChange(this.gizmoState)
-      }
+    // 모델의 AABB로 상단 월드 좌표 계산
+    const object = model.getModel()
+    if (!object) return
+
+    const box = new THREE.Box3().setFromObject(object)
+    const topCenter = new THREE.Vector3((box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2)
+
+    // 월드 → 스크린 좌표 변환
+    topCenter.project(this.camera)
+    const rect = this.renderer.domElement.getBoundingClientRect()
+    const screenX = (topCenter.x + 1) / 2 * rect.width + rect.left
+    const screenY = (-topCenter.y + 1) / 2 * rect.height + rect.top
+
+    this.gizmoState = {
+      visible: true,
+      selectedModelId: model.getId(),
+      screenPosition: { x: screenX, y: screenY }
     }
+
+    if (this.onGizmoStateChange) this.onGizmoStateChange(this.gizmoState)
   }
 
   private hideGizmo(): void {
+    if (!this.gizmoState.visible) return
+    this.gizmoState.visible = false
     this.gizmoState.selectedModelId = null
     this.gizmoState.screenPosition = null
-    
-    if (this.onGizmoStateChange) {
-      this.onGizmoStateChange(this.gizmoState)
-    }
+    if (this.onGizmoStateChange) this.onGizmoStateChange(this.gizmoState)
   }
 
-  public getDragState(): DragState {
-    return { ...this.dragState }
-  }
-
-  public getGizmoState(): GizmoState {
-    return { ...this.gizmoState }
-  }
-
-  // 통합 모델 회전 메서드 (벽/바닥 가구 구분하여 처리)
-  public rotateModel(modelId: string): void {
+  public rotateModel(modelId: string, direction: 'left' | 'right'): void {
     const model = this.modelManager.getModel(modelId)
     if (!model) return
 
-    // 모델 회전 실행
-    model.rotateY90()
-    
+    // 회전 전 위치 스냅샷 (상부 지지 모델 재계산에 사용)
+    const prev = model.getPosition()
+    const previousPosition = { x: prev.x, y: prev.y, z: prev.z }
+
+    // BaseModel의 rotateY90 메서드 사용
+    if (direction === 'left') {
+      // 왼쪽 회전: 3번 90도 회전 = -90도
+      model.rotateY90()
+      model.rotateY90()
+      model.rotateY90()
+    } else {
+      // 오른쪽 회전: 1번 90도 회전
+      model.rotateY90()
+    }
+
     if (model.getType() === 'wallcube') {
       // 벽 가구: 회전 후 벽에 다시 부착
       const pos = model.getPosition()
       this.modelManager.getWallManager().attachToNearestWall(model, pos.x, pos.z, pos.y)
+      // 주변 바닥 가구들의 지지 관계 재계산 (안전상 호출)
+      this.modelManager.getFloorManager().recalculateOtherModelPositions(modelId, previousPosition)
     } else {
       // 바닥 가구: 회전 후 재배치 및 충돌 안정화
       const pos = model.getPosition()
       const floorManager = this.modelManager.getFloorManager()
-      
+
       try {
         floorManager.placeOnFloor(model, pos.x, pos.z)
       } catch {
@@ -558,11 +607,11 @@ export class InteractionManager {
         const newY = floorManager.calculateSurfaceY(model, clamped.x, clamped.z)
         model.setPosition({ x: clamped.x, y: newY, z: clamped.z })
       }
-      
+
       // 다른 모델들 재계산
-      floorManager.recalculateOtherModelPositions(modelId)
+      floorManager.recalculateOtherModelPositions(modelId, previousPosition)
     }
-    
+
     // 회전 후 기즈모 위치 업데이트
     this.showGizmoAtModelTop(model)
   }
@@ -586,56 +635,28 @@ export class InteractionManager {
   private attachWallcubeToVisibleWall(model: BaseModel): boolean {
     // 현재 마우스 위치에서 레이캐스팅
     this.raycaster.setFromCamera(this.mouse, this.camera)
-    
+
     // 씬에서 벽 객체들만 가져오기 (userData.isWall === true)
-    const walls = this.scene.children.filter(obj => obj.userData.isWall === true)
-    
+    const walls: THREE.Object3D[] = []
+    this.scene.traverse(obj => { if ((obj as any).userData?.isWall === true) walls.push(obj) })
+
     if (walls.length === 0) {
       return false
     }
-    
-    // 벽들과의 교차점 검사 (FrontSide만 자동으로 감지됨)
-    const intersections = this.raycaster.intersectObjects(walls)
-    
+
+    // 벽들과의 교차점 검사 (하위까지 재귀)
+    const intersections = this.raycaster.intersectObjects(walls, true)
+
     if (intersections.length > 0) {
       const closestIntersection = intersections[0]
       const hitWall = closestIntersection.object as THREE.Mesh
       const hitPoint = closestIntersection.point
-      
+
       // 히트한 벽에 모델 부착
       return this.attachModelToSpecificWall(model, hitWall, hitPoint)
     }
-    
-    return false
-  }
 
-  /**
-   * 특정 벽에 모델을 부착
-   */
-  private attachModelToSpecificWall(model: BaseModel, wall: THREE.Mesh, hitPoint: THREE.Vector3): boolean {
-    try {
-      // 벽의 법선 벡터 계산
-      const wallNormal = this.getWallNormal(wall)
-      
-      // 벽에서 약간 떨어진 위치 계산 (0.1 단위)
-      const offsetDistance = 0.1
-      const attachPosition = hitPoint.clone().add(wallNormal.multiplyScalar(offsetDistance))
-      
-      // Y 좌표는 hitPoint의 Y를 사용하되, 범위 제한
-      const clampedY = Math.max(0.3, Math.min(2.5, hitPoint.y))
-      attachPosition.y = clampedY
-      
-      // 모델 위치 설정
-      model.setPosition({
-        x: attachPosition.x,
-        y: attachPosition.y,
-        z: attachPosition.z
-      })
-      
-      return true
-    } catch (error) {
-      return false
-    }
+    return false
   }
 
   /**
@@ -646,16 +667,30 @@ export class InteractionManager {
     const wallMatrix = wall.matrixWorld
     const wallNormal = new THREE.Vector3(0, 0, 1) // 기본 법선
     wallNormal.transformDirection(wallMatrix).normalize()
-    
+
     // 카메라 방향과 비교해서 바깥쪽을 향하도록 조정
     const cameraDirection = new THREE.Vector3()
     this.camera.getWorldDirection(cameraDirection)
-    
+
     if (wallNormal.dot(cameraDirection) > 0) {
       wallNormal.negate() // 카메라 쪽을 향하면 반대로
     }
-    
+
     return wallNormal
+  }
+
+  /**
+   * 벽 법선을 바라보도록 모델의 Y 회전 정렬
+   */
+  private alignModelFacingWall(model: BaseModel, wallNormal: THREE.Vector3) {
+    try {
+      const yaw = Math.atan2(wallNormal.x, wallNormal.z)
+      const targetY = yaw + Math.PI // 벽을 바라보게
+      const obj = model.getModel()
+      if (obj) {
+        obj.rotation.y = targetY
+      }
+    } catch {}
   }
 
   /**
@@ -664,18 +699,17 @@ export class InteractionManager {
   private attachFloorModelToVisibleFloor(model: BaseModel): boolean {
     // 현재 마우스 위치에서 레이캐스팅
     this.raycaster.setFromCamera(this.mouse, this.camera)
-    
-    // 바닥과 다른 가구들의 콜라이더 모두 수집
-    const colliders: THREE.Mesh[] = []
-    
+
+    const colliders: THREE.Object3D[] = []
+
     // 바닥 메시 추가
-    const floorMeshes = this.modelManager.getFloorManager().sceneIndex.getFloorMeshes()
+    const floorMeshes = this.modelManager.getFloorManager().getFloorMeshes()
     colliders.push(...floorMeshes)
-    
+
     // 다른 가구들의 콜라이더 추가 (지지 관계 고려)
     const allModels = this.modelManager.getAllModels()
     allModels.forEach((otherModel) => {
-      if (otherModel.getId() !== model.getId() && 
+      if (otherModel.getId() !== model.getId() &&
           otherModel.getType() !== 'wallcube' &&
           otherModel.isModelLoaded() &&
           otherModel.getModel()) {
@@ -690,51 +724,33 @@ export class InteractionManager {
         }
       }
     })
-    
+
     if (colliders.length === 0) {
       return false
     }
-    
+
     // 모든 콜라이더와의 교차점 검사
     const intersections = this.raycaster.intersectObjects(colliders, false)
-    
+
     if (intersections.length > 0) {
       const closestIntersection = intersections[0]
       const hitObject = closestIntersection.object as THREE.Mesh
       const hitPoint = closestIntersection.point
-      
-      // 히트한 객체가 바닥인지 다른 가구인지 확인
-      const isFloorMesh = hitObject.userData.isFloor
-      
-      if (isFloorMesh) {
-        // 바닥에 배치 - 먼저 배치 가능 여부 검증
+
+      // 히트한 객체가 바닥인지 다른 가구인지 판별
+      const isFloor = hitObject.userData.isFloor === true
+
+      if (isFloor) {
+        // 바닥 위에 배치
         const floorManager = this.modelManager.getFloorManager()
-        
-        // L자형/T자형 바닥의 빈 공간 검증
-        if (floorManager.canPlaceOnFloor(model, hitPoint.x, hitPoint.z)) {
-          const adjustedPosition = floorManager.calculateAdjustedPosition(
-            model, 
-            hitPoint.x, 
-            hitPoint.y, 
-            hitPoint.z
-          )
-          model.setPosition(adjustedPosition)
-          return true
-        } else {
-          // 배치할 수 없으면 가까운 유효 위치 찾기
-          const nearestValid = floorManager.findNearestValidPositionNear(model, hitPoint.x, hitPoint.z)
-          if (nearestValid) {
-            const adjustedPosition = floorManager.calculateAdjustedPosition(
-              model, 
-              nearestValid.x, 
-              hitPoint.y, 
-              nearestValid.z
-            )
-            model.setPosition(adjustedPosition)
-            return true
-          }
-          return false
-        }
+        const adjusted = floorManager.calculateAdjustedPosition(
+          model,
+          hitPoint.x,
+          hitPoint.y,
+          hitPoint.z
+        )
+        model.setPosition(adjusted)
+        return true
       } else {
         // 다른 가구 위에 배치 시도
         const surfaceModelId = hitObject.userData.modelId
@@ -747,103 +763,124 @@ export class InteractionManager {
           if (floorManager.canModelSupportAnother(surfaceModel, model, hitPoint.x, hitPoint.z)) {
             // 지지할 수 있으면 해당 가구 위에 배치
             const adjustedPosition = floorManager.calculateAdjustedPosition(
-              model, 
-              hitPoint.x, 
-              hitPoint.y, 
+              model,
+              hitPoint.x,
+              hitPoint.y,
               hitPoint.z
             )
             model.setPosition(adjustedPosition)
             return true
-          } else {
-            // 지지할 수 없으면 바닥에 배치 시도 (검증 포함)
-            if (floorManager.canPlaceOnFloor(model, hitPoint.x, hitPoint.z)) {
-              const floorY = floorManager.getFloorHeight(hitPoint.x, hitPoint.z)
-              const adjustedPosition = floorManager.calculateAdjustedPosition(
-                model, 
-                hitPoint.x, 
-                floorY, 
-                hitPoint.z
-              )
-              model.setPosition(adjustedPosition)
-              return true
-            } else {
-              // 배치할 수 없으면 가까운 유효 위치 찾기
-              const nearestValid = floorManager.findNearestValidPositionNear(model, hitPoint.x, hitPoint.z)
-              if (nearestValid) {
-                const floorY = floorManager.getFloorHeight(nearestValid.x, nearestValid.z)
-                const adjustedPosition = floorManager.calculateAdjustedPosition(
-                  model, 
-                  nearestValid.x, 
-                  floorY, 
-                  nearestValid.z
-                )
-                model.setPosition(adjustedPosition)
-                return true
-              }
-              return false
-            }
           }
         }
       }
     }
-    
+
     return false
   }
 
+  private attachModelToSpecificWall(model: BaseModel, wall: THREE.Mesh, hitPoint: THREE.Vector3): boolean {
+    try {
+      // 벽의 법선 벡터 계산
+      const wallNormal = this.getWallNormal(wall)
 
+      // 벽에서 약간 떨어진 위치 계산 (0.1 단위)
+      const offsetDistance = 0.1
+      const attachPosition = hitPoint.clone().add(wallNormal.clone().multiplyScalar(offsetDistance))
 
+      // 벽/모델 AABB 기반 Y 클램프 (폴백 포함)
+      let minClamp = 0.3
+      let maxClamp = 2.5
+      const wallBox = new THREE.Box3().setFromObject(wall)
+      const obj = model.getModel()
+      if (wallBox && isFinite(wallBox.min.y) && isFinite(wallBox.max.y)) {
+        minClamp = wallBox.min.y + 0.05
+        maxClamp = wallBox.max.y - 0.05
+        if (obj) {
+          const mb = new THREE.Box3().setFromObject(obj)
+          const mH = mb.max.y - mb.min.y
+          if (isFinite(mH) && mH > 0) {
+            minClamp = wallBox.min.y + mH * 0.5
+            maxClamp = wallBox.max.y - mH * 0.05
+          }
+        }
+      }
+      const clampedY = Math.max(minClamp, Math.min(maxClamp, hitPoint.y))
+      attachPosition.y = clampedY
 
+      // 모델 위치/방향 설정 (벽을 바라보도록 정렬)
+      model.setPosition({ x: attachPosition.x, y: attachPosition.y, z: attachPosition.z })
+      this.alignModelFacingWall(model, wallNormal)
+
+      return true
+    } catch (error) {
+      return false
+    }
+  }
 
   /**
-   * 모든 가구의 렌더링 우선순위 설정 (드래그 중 항상 위에 보이도록)
+   * 모든 가구의 렌더링 우선순위/상태 제어 (드래그 중 항상 위, 불투명 유지)
    */
   private setModelAlwaysOnTop(model: BaseModel, alwaysOnTop: boolean): void {
     try {
-      // BaseModel에서 Three.js 객체 가져오기
       const threeObject = model.getModel()
-      
       if (!threeObject) {
         console.warn(`[setModelAlwaysOnTop] No Three.js object found for model`)
         return
       }
-      
-      // 모든 메쉬에 대해 재귀적으로 적용
-      threeObject.traverse((child: THREE.Object3D) => {
-        if (child instanceof THREE.Mesh) {
-          if (alwaysOnTop) {
-            // 드래그 중: 항상 위에 보이도록 설정
-            child.renderOrder = 999 // 높은 렌더링 우선순위
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(mat => {
-                  mat.depthTest = false // depth test 비활성화
-                  mat.depthWrite = false // depth write 비활성화
-                })
-              } else {
-                child.material.depthTest = false
-                child.material.depthWrite = false
-              }
-            }
-          } else {
-            // 드래그 종료: 원래 설정으로 복구
-            child.renderOrder = 0 // 기본 렌더링 우선순위
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(mat => {
-                  mat.depthTest = true // depth test 활성화
-                  mat.depthWrite = true // depth write 활성화
-                })
-              } else {
-                child.material.depthTest = true
-                child.material.depthWrite = true
-              }
-            }
-          }
+      if (alwaysOnTop) {
+        // 스냅샷 준비
+        const snap = {
+          renderOrder: new Map<THREE.Mesh, number>(),
+          onBeforeRender: new Map<THREE.Mesh, ((...args: any[]) => void) | null>(),
+          material: new Map<THREE.Mesh, { transparent?: boolean; opacity?: number; depthTest?: boolean; depthWrite?: boolean }>()
         }
-      })
-      
+        // 저장 + 적용
+        threeObject.traverse((child: THREE.Object3D) => {
+          const mesh = child as THREE.Mesh
+          if (!mesh.isMesh) return
+          snap.renderOrder.set(mesh, mesh.renderOrder)
+          snap.onBeforeRender.set(mesh, (mesh as any).onBeforeRender ?? null)
+          // 머티리얼 플래그도 복원용으로만 저장(변경하지 않음)
+          const mat = mesh.material as any
+          if (mat) {
+            snap.material.set(mesh, {
+              transparent: mat.transparent, opacity: mat.opacity,
+              depthTest: mat.depthTest, depthWrite: mat.depthWrite
+            })
+          }
+          mesh.renderOrder = 999999
+          mesh.onBeforeRender = (renderer: THREE.WebGLRenderer) => {
+            renderer.clearDepth()
+          }
+          // 깊이 테스트/쓰기는 유지(반투명 방지)
+          if (mat) {
+            mat.depthTest = true
+            mat.depthWrite = true
+          }
+        })
+        this._dragCache.set(threeObject, snap)
+      } else {
+        const snap = this._dragCache.get(threeObject)
+        threeObject.traverse((child: THREE.Object3D) => {
+          const mesh = child as THREE.Mesh
+          if (!mesh.isMesh) return
+          const origOrder = snap?.renderOrder.get(mesh)
+          if (typeof origOrder === 'number') mesh.renderOrder = origOrder
+          const prevBefore = snap?.onBeforeRender.get(mesh) ?? null
+          ;(mesh as any).onBeforeRender = prevBefore
+          const origMat = snap?.material.get(mesh)
+          const mat = mesh.material as any
+          if (origMat && mat) {
+            mat.transparent = origMat.transparent
+            mat.opacity     = origMat.opacity
+            mat.depthTest   = origMat.depthTest
+            mat.depthWrite  = origMat.depthWrite
+          }
+        })
+        if (snap) this._dragCache.delete(threeObject)
+      }
     } catch (error) {
-      // 에러 무시 (렌더링 우선순위 설정 실패)
+      // ignore
     }
   }
 }

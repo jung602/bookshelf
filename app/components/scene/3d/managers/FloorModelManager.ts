@@ -71,6 +71,10 @@ export class FloorModelManager {
     return this.sceneIndex.getFloorMeshes().length > 0
   }
 
+  public getFloorMeshes(): THREE.Mesh[] {
+    return this.sceneIndex.getFloorMeshes()
+  }
+
   // 통합된 Raycasting 헬퍼 메소드
   private performFloorRaycast(
     x: number, 

@@ -48,7 +48,7 @@ export class SceneManager {
   }
   private colorParams: ColorParams = { wallColor: '#f3f3f3', floorColor: '#ffffff' }
   private isInitialized: boolean = false
-  private gizmoState: GizmoState = { selectedModelId: null, screenPosition: null }
+  private gizmoState: GizmoState = { visible: false, selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
   private customFloorTexture?: string
   private themeObserver?: MutationObserver
@@ -212,7 +212,8 @@ export class SceneManager {
         } else {
     
         }
-      }
+      },
+      this.controls
     )
 
     // OrbitControls와 드래그 상호작용 조정
@@ -369,21 +370,8 @@ export class SceneManager {
   }
 
   private setupControlsInteraction() {
-    // 드래그 상태 확인을 위한 인터벌 설정
-    const checkDragState = () => {
-      const dragState = this.interactionManager.getDragState()
-      
-      if (dragState.isDragging) {
-        // 드래그 중일 때 OrbitControls 비활성화
-        this.controls.enabled = false
-      } else {
-        // 드래그가 끝나면 OrbitControls 활성화
-        this.controls.enabled = true
-      }
-    }
-
-    // 주기적으로 드래그 상태 확인
-    setInterval(checkDragState, 16) // 60fps
+    // 드래그 중 orbit controls 제어는 이제 InteractionManager에서 직접 처리됩니다.
+    // 추가적인 상호작용 로직이 필요하면 여기에 구현할 수 있습니다.
   }
 
   public updateRoom(params: Partial<RoomParams>) {
@@ -524,15 +512,15 @@ export class SceneManager {
     }
   }
 
-  public rotateModel(modelId: string): void {
-    this.interactionManager.rotateModel(modelId)
+  public rotateModel(modelId: string, direction: 'left' | 'right' = 'right'): void {
+    this.interactionManager.rotateModel(modelId, direction)
   }
 
   public async deleteModel(modelId: string): Promise<void> {
     await this.modelManager.removeModel(modelId)
     // 모델 삭제 후 기즈모 숨기기
     if (this.gizmoState.selectedModelId === modelId) {
-      this.gizmoState = { selectedModelId: null, screenPosition: null }
+      this.gizmoState = { visible: false, selectedModelId: null, screenPosition: null }
       if (this.onGizmoStateChange) {
         this.onGizmoStateChange(this.gizmoState)
       }

@@ -41,6 +41,8 @@ export class InteractionManager {
   private clickHandledOnMouseUp: boolean = false
   private _hoverScheduled: boolean = false
   private _dragCache: Map<THREE.Object3D, { renderOrder: Map<THREE.Mesh, number>; onBeforeRender: Map<THREE.Mesh, ((...args: any[]) => void) | null>; material: Map<THREE.Mesh, { transparent?: boolean; opacity?: number; depthTest?: boolean; depthWrite?: boolean }>; } > = new Map()
+  private suppressClearDepth: boolean = false
+  private renderPixelatedPass?: any
 
   // 이벤트 리스너 참조 저장
   private boundMouseDown: (event: MouseEvent) => void
@@ -60,7 +62,8 @@ export class InteractionManager {
     renderer: THREE.WebGLRenderer,
     modelManager: ModelManager,
     onGizmoStateChange?: (gizmoState: GizmoState) => void,
-    controls?: any
+    controls?: any,
+    renderPixelatedPass?: any
   ) {
     this.scene = scene
     this.camera = camera
@@ -68,6 +71,7 @@ export class InteractionManager {
     this.modelManager = modelManager
     this.onGizmoStateChange = onGizmoStateChange
     this.controls = controls
+    this.renderPixelatedPass = renderPixelatedPass
     this.raycaster = new THREE.Raycaster()
     this.mouse = new THREE.Vector2()
 
@@ -100,6 +104,10 @@ export class InteractionManager {
     this.boundContextMenu = (event: Event) => event.preventDefault()
 
     this.setupEventListeners()
+  }
+
+  public setClearDepthSuppressed(value: boolean): void {
+    this.suppressClearDepth = !!value
   }
 
   private setupEventListeners(): void {
@@ -396,6 +404,11 @@ export class InteractionManager {
     if (this.controls) {
       this.controls.enabled = false
     }
+
+    // 포스트프로세싱 패스 드래그 모드 활성화
+    if (this.renderPixelatedPass && typeof this.renderPixelatedPass.setDragMode === 'function') {
+      this.renderPixelatedPass.setDragMode(true)
+    }
   }
 
   private updateDrag(): void {
@@ -513,6 +526,12 @@ export class InteractionManager {
     // 드래그 종료 시 orbit controls 다시 활성화
     if (this.controls) {
       this.controls.enabled = true
+    }
+
+    // 드래그 모드 해제 및 clearDepth 억제 해제 보장
+    this.setClearDepthSuppressed(false)
+    if (this.renderPixelatedPass && typeof this.renderPixelatedPass.setDragMode === 'function') {
+      this.renderPixelatedPass.setDragMode(false)
     }
   }
 
@@ -850,7 +869,9 @@ export class InteractionManager {
           }
           mesh.renderOrder = 999999
           mesh.onBeforeRender = (renderer: THREE.WebGLRenderer) => {
-            renderer.clearDepth()
+            if (!this.suppressClearDepth) {
+              renderer.clearDepth()
+            }
           }
           // 깊이 테스트/쓰기는 유지(반투명 방지)
           if (mat) {

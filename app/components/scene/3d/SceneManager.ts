@@ -213,11 +213,19 @@ export class SceneManager {
     
         }
       },
-      this.controls
+      this.controls,
+      this.pixelatedPass
     )
 
     // OrbitControls와 드래그 상호작용 조정
     this.setupControlsInteraction()
+
+    // clearDepth 억제 훅을 패스에 연결
+    if (this.pixelatedPass && typeof this.pixelatedPass.setClearDepthController === 'function') {
+      this.pixelatedPass.setClearDepthController((suppress: boolean) => {
+        this.interactionManager.setClearDepthSuppressed(suppress)
+      })
+    }
   }
 
   private setupCustomTextureListener() {

@@ -34,10 +34,13 @@ export class RenderPixelatedPass extends Pass {
   private scene: THREE.Scene
   private camera: THREE.Camera
   private rgbRenderTarget: THREE.WebGLRenderTarget
+  private colorRenderTarget: THREE.WebGLRenderTarget
   private normalRenderTarget: THREE.WebGLRenderTarget
   private normalMaterial: THREE.Material
   private params: PixelationParams
   private currentScreenResolution: THREE.Vector2
+  private dragModeActive: boolean = false
+  private clearDepthController?: (suppress: boolean) => void
 
   constructor(
     resolution: THREE.Vector2,
@@ -56,6 +59,7 @@ export class RenderPixelatedPass extends Pass {
     this.fsQuad = new FullScreenQuad(this.createMaterial())
     
     this.rgbRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBAFormat)
+    this.colorRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBAFormat)
     this.normalRenderTarget = this.createPixelRenderTarget(resolution, THREE.RGBFormat)
     this.normalMaterial = new THREE.MeshNormalMaterial()
     
@@ -71,20 +75,39 @@ export class RenderPixelatedPass extends Pass {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     readBuffer: THREE.WebGLRenderTarget
   ) {
-    // RGB 렌더링
-    renderer.setRenderTarget(this.rgbRenderTarget)
-    renderer.render(this.scene, this.camera)
+    if (this.dragModeActive) {
+      // Phase 1: 안전한 Depth/Normal 수집 (clearDepth 억제)
+      if (this.clearDepthController) this.clearDepthController(true)
+      renderer.setRenderTarget(this.rgbRenderTarget)
+      renderer.render(this.scene, this.camera)
 
-    // Normal 렌더링
-    const overrideMaterial_old = this.scene.overrideMaterial
-    renderer.setRenderTarget(this.normalRenderTarget)
-    this.scene.overrideMaterial = this.normalMaterial
-    renderer.render(this.scene, this.camera)
-    this.scene.overrideMaterial = overrideMaterial_old
+      const overrideMaterial_old = this.scene.overrideMaterial
+      renderer.setRenderTarget(this.normalRenderTarget)
+      this.scene.overrideMaterial = this.normalMaterial
+      renderer.render(this.scene, this.camera)
+      this.scene.overrideMaterial = overrideMaterial_old
+
+      // Phase 2: 최종 컬러 렌더 (clearDepth 허용으로 드래그 오브젝트 맨 앞)
+      if (this.clearDepthController) this.clearDepthController(false)
+      renderer.setRenderTarget(this.colorRenderTarget)
+      renderer.render(this.scene, this.camera)
+    } else {
+      // 일반 모드: 기존 방식
+      // RGB 렌더링
+      renderer.setRenderTarget(this.rgbRenderTarget)
+      renderer.render(this.scene, this.camera)
+
+      // Normal 렌더링
+      const overrideMaterial_old = this.scene.overrideMaterial
+      renderer.setRenderTarget(this.normalRenderTarget)
+      this.scene.overrideMaterial = this.normalMaterial
+      renderer.render(this.scene, this.camera)
+      this.scene.overrideMaterial = overrideMaterial_old
+    }
 
     // 셰이더 유니폼 업데이트
     const uniforms = (this.fsQuad.material as THREE.ShaderMaterial).uniforms
-    uniforms.tDiffuse.value = this.rgbRenderTarget.texture
+    uniforms.tDiffuse.value = this.dragModeActive ? this.colorRenderTarget.texture : this.rgbRenderTarget.texture
     uniforms.tNormal.value = this.normalRenderTarget.texture
     uniforms.tDepth.value = this.rgbRenderTarget.depthTexture
     uniforms.normalEdgeStrength.value = this.params.normalEdgeStrength
@@ -130,8 +153,10 @@ export class RenderPixelatedPass extends Pass {
       
       // 렌더 타겟 재생성
       this.rgbRenderTarget.dispose()
+      this.colorRenderTarget.dispose()
       this.normalRenderTarget.dispose()
       this.rgbRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBAFormat)
+      this.colorRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBAFormat)
       this.normalRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBFormat)
       
       // RGB 렌더 타겟에 depth texture 재추가
@@ -159,8 +184,10 @@ export class RenderPixelatedPass extends Pass {
     
     // 렌더 타겟 재생성
     this.rgbRenderTarget.dispose()
+    this.colorRenderTarget.dispose()
     this.normalRenderTarget.dispose()
     this.rgbRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBAFormat)
+    this.colorRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBAFormat)
     this.normalRenderTarget = this.createPixelRenderTarget(this.resolution, THREE.RGBFormat)
     
     // RGB 렌더 타겟에 depth texture 재추가
@@ -482,7 +509,16 @@ export class RenderPixelatedPass extends Pass {
 
   dispose() {
     this.rgbRenderTarget.dispose()
+    this.colorRenderTarget.dispose()
     this.normalRenderTarget.dispose()
     this.fsQuad.dispose()
   }
-} 
+
+  public setDragMode(active: boolean) {
+    this.dragModeActive = active
+  }
+
+  public setClearDepthController(controller: (suppress: boolean) => void) {
+    this.clearDepthController = controller
+  }
+}

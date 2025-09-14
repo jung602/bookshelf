@@ -6,7 +6,6 @@ import FloorTileControl from './FloorTileControl'
 import TopBar from './TopBar'
 import MenuBar from './MenuBar'
 import ModelAddControl from './ModelAddControl'
-import ModelLayerControl from './ModelLayerControl'
 import { getModelClass } from '../objects'
 
 interface ControlsContainerProps {
@@ -127,69 +126,6 @@ export default function ControlsContainer({
     }
   }
 
-  const getModels = () => {
-    if (!sceneManager) return []
-    
-    try {
-      const modelManager = sceneManager.getModelManager()
-      const models = modelManager.getAllModels()
-      
-      // ModelLayerControl에서 요구하는 형태로 변환
-      return models.map(model => ({
-        id: model.getId(),
-        type: model.getType(),
-        position: model.getPosition()
-      }))
-    } catch (error) {
-      console.error('모델 목록 가져오기 실패:', error)
-      return []
-    }
-  }
-
-  const handleModelSelect = (modelId: string) => {
-
-    if (!sceneManager) return
-
-    try {
-      // InteractionManager를 통해 모델 선택 (기즈모 표시)
-      // 실제 선택 로직은 InteractionManager에서 처리됩니다
-
-    } catch (error) {
-      console.error('모델 선택 실패:', error)
-    }
-  }
-
-  const handleModelDelete = async (modelId: string) => {
-
-    if (!sceneManager) return
-
-    try {
-      await sceneManager.deleteModel(modelId)
-
-    } catch (error) {
-      console.error('모델 삭제 실패:', error)
-    }
-  }
-
-  const handleModelVisibilityToggle = (modelId: string, visible: boolean) => {
-
-    if (!sceneManager) return
-
-    try {
-      const modelManager = sceneManager.getModelManager()
-      const model = modelManager.getModel(modelId)
-      
-      if (model) {
-        const threeModel = model.getModel()
-        if (threeModel) {
-          threeModel.visible = visible
-
-        }
-      }
-    } catch (error) {
-      console.error('모델 가시성 토글 실패:', error)
-    }
-  }
 
   return (
     <div className="w-full h-full flex flex-col relative">
@@ -218,16 +154,10 @@ export default function ControlsContainer({
             />
           )}
           {selectedMenu === 'models' && (
-            <div className="w-full h-full flex gap-4 p-4">
+            <div className="w-full h-full flex p-4">
               <ModelAddControl 
                 onModelAdd={handleModelAdd}
                 onBookCreate={handleBookCreate}
-              />
-              <ModelLayerControl 
-                getModels={getModels}
-                onModelSelect={handleModelSelect}
-                onModelDelete={handleModelDelete}
-                onModelVisibilityToggle={handleModelVisibilityToggle}
               />
             </div>
           )}
@@ -277,16 +207,10 @@ export default function ControlsContainer({
             />
           )}
           {selectedMenu === 'models' && (
-            <div className="w-full h-full flex flex-col gap-4 p-4">
+            <div className="w-full h-full flex p-4">
               <ModelAddControl 
                 onModelAdd={handleModelAdd}
                 onBookCreate={handleBookCreate}
-              />
-              <ModelLayerControl 
-                getModels={getModels}
-                onModelSelect={handleModelSelect}
-                onModelDelete={handleModelDelete}
-                onModelVisibilityToggle={handleModelVisibilityToggle}
               />
             </div>
           )}

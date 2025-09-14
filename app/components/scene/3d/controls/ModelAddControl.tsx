@@ -83,7 +83,7 @@ export default function ModelAddControl({ onModelAdd, onBookCreate }: ModelAddCo
   }
 
   return (
-    <div className="bg-gray-200 p-4 rounded-none shadow-inner w-64">
+    <div className="bg-gray-200 p-4 rounded-none shadow-inner w-full">
       <h3 className="text-xs font-bold mb-3 text-black font-w95fa">
         Add Model
       </h3>

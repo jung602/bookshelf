@@ -446,7 +446,6 @@ export default function FloorTileControl({
             <div
               className="absolute backdrop-blur-[20px] backdrop-filter size-full translate-x-[-50%] translate-y-[-50%]"
               style={{
-                backgroundColor: themeColors.activeBackdrop,
                 top: "calc(50% + 0.4px)",
                 left: "calc(50% - 0.2px)",
                 ...cornerRadiusStyle,
@@ -498,7 +497,6 @@ export default function FloorTileControl({
       <div className="relative size-full">
         <div
           className={`box-border ${getResponsiveGridGap(isMobile)} grid grid-cols-[repeat(5,_minmax(0px,_1fr))] grid-rows-[repeat(5,_minmax(0px,_1fr))] overflow-clip ${getResponsiveGridPadding(isMobile)} relative size-full ${getResponsiveGridRounding(isMobile)} ${TRANSITIONS.fast}`}
-          style={{ backgroundColor: themeColors.gridContainer }}
         >
           {Array.from({ length: 5 }, (_, rowIndex) =>
             Array.from({ length: 5 }, (_, colIndex) => {

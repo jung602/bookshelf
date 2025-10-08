@@ -132,7 +132,7 @@ export class FloorModelManager {
     const modelGroup = model.getModel()
     if (!modelGroup) return null
 
-    const cacheKey = `${model.getId()}_${x.toFixed(2)}_${z.toFixed(2)}`
+    const cacheKey = `${model.getId()}_${x.toFixed(2)}_${z.toFixed(2)}_${modelGroup.rotation.y.toFixed(2)}`
     const now = Date.now()
     const cached = this.boundingBoxCache.get(cacheKey)
     
@@ -142,8 +142,15 @@ export class FloorModelManager {
 
     const originalPos = modelGroup.position.clone()
     modelGroup.position.set(x, 0, z)
+    
+    // 매트릭스 업데이트로 회전/애니메이션 상태 반영
+    modelGroup.updateMatrixWorld(true)
+    
     const boundingBox = new THREE.Box3().setFromObject(modelGroup)
     modelGroup.position.copy(originalPos)
+    
+    // 원래 위치로 복원 후 매트릭스 재업데이트
+    modelGroup.updateMatrixWorld(true)
     
     // 캐시에 저장 (너무 많이 쌓이지 않도록 제한)
     if (this.boundingBoxCache.size < 100) {
@@ -279,11 +286,21 @@ export class FloorModelManager {
     const unsupportableTypes = ['floorlamp', 'wallcube']
     if (unsupportableTypes.includes(supportModel.getType())) { return false }
 
+    // 지지 모델 매트릭스 업데이트
+    supportModelGroup.updateMatrixWorld(true)
+    
     const supportBox = new THREE.Box3().setFromObject(supportModelGroup)
     const originalTargetPosition = targetModelGroup.position.clone()
     targetModelGroup.position.set(targetX, 0, targetZ)
+    
+    // 타겟 모델 매트릭스 업데이트
+    targetModelGroup.updateMatrixWorld(true)
+    
     const targetBox = new THREE.Box3().setFromObject(targetModelGroup)
     targetModelGroup.position.copy(originalTargetPosition)
+    
+    // 원래 위치로 복원 후 매트릭스 재업데이트
+    targetModelGroup.updateMatrixWorld(true)
 
     const xOverlap = Math.min(targetBox.max.x, supportBox.max.x) - Math.max(targetBox.min.x, supportBox.min.x)
     const zOverlap = Math.min(targetBox.max.z, supportBox.max.z) - Math.max(targetBox.min.z, supportBox.min.z)
@@ -356,8 +373,15 @@ export class FloorModelManager {
     
     const originalPos = modelGroup.position.clone()
     modelGroup.position.set(x, 0, z)
+    
+    // 매트릭스 업데이트로 회전/애니메이션 상태 반영
+    modelGroup.updateMatrixWorld(true)
+    
     const boundingBox = new THREE.Box3().setFromObject(modelGroup)
     modelGroup.position.copy(originalPos)
+    
+    // 원래 위치로 복원 후 매트릭스 재업데이트
+    modelGroup.updateMatrixWorld(true)
     
     // 가구 크기 계산
     const width = boundingBox.max.x - boundingBox.min.x
@@ -797,12 +821,20 @@ export class FloorModelManager {
     if (!testModelGroup) return false
     const originalPos = testModelGroup.position.clone()
     testModelGroup.position.set(x, 0, z)
+    
+    // 매트릭스 업데이트로 회전/애니메이션 상태 반영
+    testModelGroup.updateMatrixWorld(true)
+    
     const testBounds = new THREE.Box3().setFromObject(testModelGroup)
     let hasCollision = false
     this.models.forEach((existingModel) => {
       if (existingModel.getId() === testModel.getId()) return
       const existingGroup = existingModel.getModel()
       if (!existingGroup) return
+      
+      // 기존 모델도 매트릭스 업데이트
+      existingGroup.updateMatrixWorld(true)
+      
       const existingBounds = new THREE.Box3().setFromObject(existingGroup)
       const xOverlap = testBounds.max.x >= existingBounds.min.x && testBounds.min.x <= existingBounds.max.x
       const zOverlap = testBounds.max.z >= existingBounds.min.z && testBounds.min.z <= existingBounds.max.z
@@ -816,6 +848,10 @@ export class FloorModelManager {
       }
     })
     testModelGroup.position.copy(originalPos)
+    
+    // 원래 위치로 복원 후 매트릭스 재업데이트
+    testModelGroup.updateMatrixWorld(true)
+    
     return hasCollision
   }
 

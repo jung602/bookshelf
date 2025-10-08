@@ -5,7 +5,7 @@ export class StoolModel extends BaseModel {
 
   constructor(
     position: ModelPosition = { x: 0, y: 0, z: 0 },
-    scale: ModelScale = { x: 1.6, y: 1.6, z: 1.6 },
+    scale: ModelScale = { x: 1.5, y: 1.5, z: 1.5 },
     rotation: ModelRotation = { x: 0, y: 0, z: 0 }
   ) {
     super('/3d/main/models/stool.glb', position, scale, rotation)
@@ -21,6 +21,9 @@ export class StoolModel extends BaseModel {
     if (this.model) {
       // Math.sin을 사용해서 -1에서 1 사이 값을 얻고, Math.PI를 곱해서 -180도에서 180도 사이로 변환
       this.model.rotation.y = Math.sin(this.rotationTime) * Math.PI/2
+      
+      // 회전 후 매트릭스 업데이트 (바운딩 박스 계산이 정확하도록)
+      this.model.updateMatrixWorld(true)
     }
   }
 

@@ -563,6 +563,15 @@ export class InteractionManager {
     const object = model.getModel()
     if (!object) return
 
+    // 매트릭스 업데이트를 통해 최신 위치/회전 반영
+    object.updateMatrixWorld(true)
+    
+    // 카메라 매트릭스도 업데이트 (projection 정확도 향상)
+    if (this.camera.parent) {
+      this.camera.parent.updateMatrixWorld(true)
+    }
+    this.camera.updateMatrixWorld(true)
+
     const box = new THREE.Box3().setFromObject(object)
     const topCenter = new THREE.Vector3((box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2)
 
@@ -619,12 +628,47 @@ export class InteractionManager {
       const pos = model.getPosition()
       const floorManager = this.modelManager.getFloorManager()
 
+      // 1단계: 현재 위치에 배치 가능한지 확인
+      let placementSuccessful = false
+      
       try {
-        floorManager.placeOnFloor(model, pos.x, pos.z)
+        if (floorManager.canPlaceOnFloor(model, pos.x, pos.z)) {
+          floorManager.placeOnFloor(model, pos.x, pos.z)
+          placementSuccessful = true
+        }
       } catch {
-        const clamped = floorManager.clampToBounds(model, pos.x, pos.z)
-        const newY = floorManager.calculateSurfaceY(model, clamped.x, clamped.z)
-        model.setPosition({ x: clamped.x, y: newY, z: clamped.z })
+        // 실패 시 다음 단계로
+      }
+
+      // 2단계: 현재 위치가 불가능하면 근처 유효 위치 찾기
+      if (!placementSuccessful) {
+        const nearestValid = floorManager.findNearestValidPositionNear(model, pos.x, pos.z)
+        if (nearestValid) {
+          try {
+            const newY = floorManager.calculateSurfaceY(model, nearestValid.x, nearestValid.z)
+            model.setPosition({ x: nearestValid.x, y: newY, z: nearestValid.z })
+            placementSuccessful = true
+          } catch {
+            // 실패 시 다음 단계로
+          }
+        }
+      }
+
+      // 3단계: 근처에도 없으면 전역 최적 위치 찾기
+      if (!placementSuccessful) {
+        const optimalPosition = floorManager.findOptimalPlacement(model)
+        if (optimalPosition) {
+          model.setPosition(optimalPosition)
+          placementSuccessful = true
+        }
+      }
+
+      // 4단계: 배치할 공간이 없으면 모델 삭제
+      if (!placementSuccessful) {
+        console.log(`회전 후 배치할 공간이 없어 모델 ${modelId}를 삭제합니다.`)
+        this.modelManager.removeModel(modelId)
+        this.hideGizmo()
+        return
       }
 
       // 다른 모델들 재계산

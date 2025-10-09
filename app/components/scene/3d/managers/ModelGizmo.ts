@@ -218,4 +218,4 @@ export class ModelGizmo {
     this.backdrop = null
     this.gizmo = null
   }
-} 
+}

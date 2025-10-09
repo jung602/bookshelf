@@ -106,6 +106,30 @@ const Scene = () => {
     }
   }, [isMobile, isCollapsed]) // isCollapsed 의존성 추가
 
+  // 바운딩박스 토글 단축키 (B 키)
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // 입력 필드에서는 무시
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+      
+      // B 키를 누르면 바운딩박스 토글
+      if (e.key === 'b' || e.key === 'B') {
+        if (sceneManager) {
+          sceneManager.toggleBoundingBoxVisualization()
+          console.log('바운딩박스 시각화 토글됨')
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress)
+    }
+  }, [sceneManager])
+
   return (
     <div className="w-full h-full relative bg-gradient-to-br from-gray-50 to-gray-100">
       <div className={isMobile ? "flex flex-col w-full h-full" : "w-full h-full"}>

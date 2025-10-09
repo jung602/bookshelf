@@ -51,5 +51,3 @@ export class SceneIndex {
     return { minX, maxX, minZ, maxZ }
   }
 }
-
-

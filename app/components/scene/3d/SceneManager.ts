@@ -414,6 +414,9 @@ export class SceneManager {
         }
         alert(`${wallDeleteIds.length}개의 벽 가구가 벽이 없어 삭제되었습니다.`)
       }
+      
+      // 바닥/벽 재배치 후 모든 바운딩박스 업데이트
+      this.modelManager.updateAllBoundingBoxes()
     }, 100) // 100ms 지연으로 바닥/벽 생성 완료 보장
     
     // 카메라 위치 조정 (격자 크기 기반)
@@ -454,6 +457,9 @@ export class SceneManager {
         }
         alert(`${wallDeleteIds.length}개의 벽 가구가 벽이 없어 삭제되었습니다.`)
       }
+      
+      // 바닥/벽 재배치 후 모든 바운딩박스 업데이트
+      this.modelManager.updateAllBoundingBoxes()
     }, 100) // 100ms 지연으로 바닥 생성 완료 보장
   }
 
@@ -475,6 +481,9 @@ export class SceneManager {
       wallDeleteIds.forEach(async (id) => await this.modelManager.removeModel(id))
       alert(`${wallDeleteIds.length}개의 벽 가구가 벽이 없어 삭제되었습니다.`)
     }
+    
+    // 색상 변경 후 모든 바운딩박스 업데이트
+    this.modelManager.updateAllBoundingBoxes()
   }
 
   public getModelManager(): ModelManager {
@@ -762,5 +771,20 @@ export class SceneManager {
     }
     
     return 'light'
+  }
+
+  // 바운딩박스 시각화 토글
+  public toggleBoundingBoxVisualization(): void {
+    this.modelManager.toggleBoundingBoxVisualization()
+  }
+
+  // 바운딩박스 시각화 활성화
+  public enableBoundingBoxVisualization(): void {
+    this.modelManager.enableBoundingBoxVisualization()
+  }
+
+  // 바운딩박스 시각화 비활성화
+  public disableBoundingBoxVisualization(): void {
+    this.modelManager.disableBoundingBoxVisualization()
   }
 } 

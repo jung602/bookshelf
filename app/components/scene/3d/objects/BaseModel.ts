@@ -19,6 +19,15 @@ export interface ModelRotation {
   z: number
 }
 
+export interface CustomBoundingBox {
+  type: 'box' | 'cylinder'
+  width?: number
+  height?: number
+  depth?: number
+  radius?: number
+  offsetY?: number // 모델 중심에서 바운딩박스 바닥까지의 오프셋
+}
+
 export abstract class BaseModel {
   protected model!: THREE.Group
   protected modelPath: string
@@ -29,6 +38,7 @@ export abstract class BaseModel {
   protected id: string
   protected collider!: THREE.Mesh // 간단한 박스 콜라이더
   protected visible: boolean = true // 가시성 상태
+  protected customBoundingBox?: CustomBoundingBox // 커스텀 바운딩박스
 
   constructor(
     modelPath: string,
@@ -211,6 +221,15 @@ export abstract class BaseModel {
   // 모델 타입 반환 (자식 클래스에서 오버라이드)
   public getType(): string {
     return 'unknown'
+  }
+
+  // 커스텀 바운딩박스 getter/setter
+  public getCustomBoundingBox(): CustomBoundingBox | undefined {
+    return this.customBoundingBox
+  }
+
+  public setCustomBoundingBox(boundingBox: CustomBoundingBox): void {
+    this.customBoundingBox = boundingBox
   }
 
   // 자식 클래스에서 구현해야 하는 업데이트 메서드

@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { 
   TRANSITIONS,
   getShadowStyles 
 } from './utils/cssUtils'
+import { SceneManager } from '../SceneManager'
 
 interface TopBarProps {
   isMobile: boolean
@@ -9,10 +11,19 @@ interface TopBarProps {
   onToggleCollapse: () => void
   onGoBack?: () => void
   isDarkMode?: boolean
+  sceneManager?: SceneManager | null
 }
 
-const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, onGoBack, isDarkMode = false }: TopBarProps) => {
+const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, onGoBack, isDarkMode = false, sceneManager }: TopBarProps) => {
   const shadowStyles = getShadowStyles(isDarkMode)
+  const [showBoundingBoxes, setShowBoundingBoxes] = useState(false)
+  
+  const handleToggleBoundingBoxes = () => {
+    if (sceneManager) {
+      sceneManager.toggleBoundingBoxVisualization()
+      setShowBoundingBoxes(!showBoundingBoxes)
+    }
+  }
   
   return (
     <div 
@@ -75,8 +86,40 @@ const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, onGoBack, isDarkMode 
         </button>
       )}
 
-      {/* 우측 공간 (대칭을 위한 빈 공간) */}
-      <div className="w-8 h-8"></div>
+      {/* 우측 바운딩박스 토글 버튼 */}
+      <button
+        onClick={handleToggleBoundingBoxes}
+        className={`flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-50 ${TRANSITIONS.colors} ${
+          showBoundingBoxes ? 'bg-cyan-500 hover:bg-cyan-600' : 'bg-white'
+        }`}
+        style={{
+          boxShadow: shadowStyles.inactive
+        }}
+        aria-label="바운딩박스 표시"
+        title="바운딩박스 토글 (B)"
+      >
+        <svg 
+          width="16" 
+          height="16" 
+          viewBox="0 0 16 16" 
+          fill="none"
+        >
+          <rect 
+            x="3" 
+            y="3" 
+            width="10" 
+            height="10" 
+            stroke={showBoundingBoxes ? '#ffffff' : '#6B7280'}
+            strokeWidth="2"
+            strokeDasharray="2 2"
+            fill="none"
+          />
+          <circle cx="3" cy="3" r="1.5" fill={showBoundingBoxes ? '#00ffff' : '#6B7280'} />
+          <circle cx="13" cy="3" r="1.5" fill={showBoundingBoxes ? '#00ffff' : '#6B7280'} />
+          <circle cx="3" cy="13" r="1.5" fill={showBoundingBoxes ? '#00ffff' : '#6B7280'} />
+          <circle cx="13" cy="13" r="1.5" fill={showBoundingBoxes ? '#00ffff' : '#6B7280'} />
+        </svg>
+      </button>
     </div>
   )
 }

@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { BaseModel } from '../objects/BaseModel'
 import { SceneIndex } from './SceneIndex'
+import { BoundingBoxVisualizer } from './BoundingBoxVisualizer'
+import { calculateBoundingBox } from './BoundingBoxUtils'
 
 // 상수 정의
 const CUBE_SIZE = 0.1
@@ -9,14 +11,14 @@ export class WallModelManager {
   private scene: THREE.Scene
   private models: Map<string, BaseModel>
   private sceneIndex: SceneIndex
-  private raycaster: THREE.Raycaster = new THREE.Raycaster() // 재사용 가능한 레이캐스터
-  private boundingBoxCache: Map<string, { bounds: THREE.Box3, lastUpdate: number }> = new Map()
-  private static BOUNDING_BOX_CACHE_DURATION = 100 // 100ms 캐시
+  private raycaster: THREE.Raycaster = new THREE.Raycaster()
+  private visualizer: BoundingBoxVisualizer
 
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {
     this.scene = scene
     this.models = models
     this.sceneIndex = sceneIndex
+    this.visualizer = new BoundingBoxVisualizer(scene, models, 0xffff00)
   }
 
   // 바닥 높이 계산 (FloorModelManager와 동일한 로직)
@@ -35,44 +37,22 @@ export class WallModelManager {
     return 0
   }
 
-  // 모델 하단 오프셋 계산 (FloorModelManager와 동일한 로직)
+  // 벽 가구용 모델 하단 오프셋 계산
+  // 바운딩박스의 offsetY를 직접 반환 (모델 중심에서 바닥까지의 거리)
   private getModelBottomOffset(model: BaseModel): number {
-    const modelGroup = model.getModel()
-    if (!modelGroup) return 0
-    
-    const boundingBox = this.getCachedBoundingBox(model)
-    return boundingBox ? boundingBox.min.y : 0
-  }
-
-  // 캐시된 바운딩박스 계산
-  private getCachedBoundingBox(model: BaseModel): THREE.Box3 | null {
-    const modelGroup = model.getModel()
-    if (!modelGroup) return null
-
-    const cacheKey = model.getId()
-    const now = Date.now()
-    const cached = this.boundingBoxCache.get(cacheKey)
-    
-    if (cached && (now - cached.lastUpdate) < WallModelManager.BOUNDING_BOX_CACHE_DURATION) {
-      return cached.bounds.clone()
-    }
-
-    const boundingBox = new THREE.Box3().setFromObject(modelGroup)
-    
-    // 캐시에 저장 (너무 많이 쌓이지 않도록 제한)
-    if (this.boundingBoxCache.size < 50) {
-      this.boundingBoxCache.set(cacheKey, { 
-        bounds: boundingBox.clone(), 
-        lastUpdate: now 
-      })
+    const customBB = model.getCustomBoundingBox()
+    if (customBB && customBB.offsetY !== undefined) {
+      return customBB.offsetY
     }
     
-    return boundingBox
-  }
-
-  // 캐시 정리 메서드
-  private clearBoundingBoxCache(): void {
-    this.boundingBoxCache.clear()
+    // 커스텀 바운딩박스가 없으면 메시에서 계산
+    const boundingBox = calculateBoundingBox(model)
+    if (!boundingBox) return 0
+    
+    const position = model.getPosition()
+    const bottomOffset = boundingBox.min.y - position.y
+    
+    return bottomOffset
   }
 
   // 벽 가구 추가 메소드
@@ -121,8 +101,10 @@ export class WallModelManager {
       model.addToScene(this.scene)
       this.models.set(model.getId(), model)
       
-      // 새 모델 추가 시 캐시 정리 (충돌 검사 재계산이 필요할 수 있음)
-      this.clearBoundingBoxCache()
+      // 바운딩박스 헬퍼 업데이트
+      if (this.visualizer.isEnabled()) {
+        this.visualizer.updateHelper(model)
+      }
       
       return model.getId()
     } catch (error) {
@@ -151,7 +133,7 @@ export class WallModelManager {
   }
 
   private isModelSmallerThanWall(model: BaseModel, wall: THREE.Mesh): boolean {
-    const modelBox = this.getCachedBoundingBox(model)
+    const modelBox = calculateBoundingBox(model)
     if (!modelBox) return false
     
     const wallScale = wall.scale
@@ -342,7 +324,7 @@ export class WallModelManager {
     if (!modelGroup) return false
 
     // 모델 크기 계산 (캐시 사용)
-    const tempBounds = this.getCachedBoundingBox(model)
+    const tempBounds = calculateBoundingBox(model)
     if (!tempBounds) return false
     
     const modelSize = {
@@ -356,7 +338,7 @@ export class WallModelManager {
       if (otherId === model.getId() || otherModel.getType() !== 'wallcube') continue
       
       const otherPos = otherModel.getPosition()
-      const otherBounds = this.getCachedBoundingBox(otherModel)
+      const otherBounds = calculateBoundingBox(otherModel)
       if (!otherBounds) continue
 
       const otherSize = {
@@ -381,6 +363,26 @@ export class WallModelManager {
 
     return false // 충돌 없음
   }
+
+  // 바운딩박스 시각화 메서드들 (Visualizer로 위임)
+  public enableBoundingBoxVisualization(): void {
+    this.visualizer.enable((model) => model.getType() === 'wallcube')
+  }
+
+  public disableBoundingBoxVisualization(): void {
+    this.visualizer.disable()
+  }
+
+  public toggleBoundingBoxVisualization(): boolean {
+    this.visualizer.toggle((model) => model.getType() === 'wallcube')
+    return this.visualizer.isEnabled()
+  }
+
+  public updateAllBoundingBoxHelpers(): void {
+    this.visualizer.updateAll((model) => model.getType() === 'wallcube')
+  }
+
+  public updateModelBoundingBox(modelId: string): void {
+    this.visualizer.updateModel(modelId)
+  }
 }
-
-

@@ -37,12 +37,23 @@ export default function ControlsContainer({
 
   // 선택된 메뉴 상태 관리
   const [selectedMenu, setSelectedMenu] = useState<string | null>(null)
+  
+  // 바운딩박스 표시 상태 관리
+  const [showBoundingBoxes, setShowBoundingBoxes] = useState(false)
 
   // 메뉴 선택 핸들러
   const handleMenuSelect = (menuId: string) => {
 
     // 같은 메뉴를 다시 클릭하면 닫기, 다른 메뉴 클릭하면 전환
     setSelectedMenu((prevSelected: string | null) => prevSelected === menuId ? null : menuId)
+  }
+  
+  // 바운딩박스 토글 핸들러
+  const handleToggleBoundingBoxes = () => {
+    if (sceneManager) {
+      sceneManager.toggleBoundingBoxVisualization()
+      setShowBoundingBoxes(!showBoundingBoxes)
+    }
   }
 
   // 뒤로가기 핸들러 (메뉴로 돌아가기)
@@ -139,7 +150,46 @@ export default function ControlsContainer({
             onToggleCollapse={onToggleCollapse}
             onGoBack={selectedMenu ? handleGoBack : undefined}
             isDarkMode={isDarkMode}
+            sceneManager={sceneManager}
           />
+        </div>
+      )}
+
+      {/* 데스크톱 전용 TopBar - 우측 상단 고정 */}
+      {!isMobile && (
+        <div className="fixed top-[12px] right-[12px] z-50">
+          <button
+            onClick={handleToggleBoundingBoxes}
+            className={`flex items-center justify-center w-10 h-10 rounded-full shadow-lg transition-all duration-200 hover:shadow-xl ${
+              showBoundingBoxes 
+                ? 'bg-cyan-500 hover:bg-cyan-600' 
+                : 'bg-white hover:bg-gray-50'
+            }`}
+            aria-label="바운딩박스 표시"
+            title="바운딩박스 토글"
+          >
+            <svg 
+              width="20" 
+              height="20" 
+              viewBox="0 0 16 16" 
+              fill="none"
+            >
+              <rect 
+                x="3" 
+                y="3" 
+                width="10" 
+                height="10" 
+                stroke={showBoundingBoxes ? '#ffffff' : '#6B7280'}
+                strokeWidth="2"
+                strokeDasharray="2 2"
+                fill="none"
+              />
+              <circle cx="3" cy="3" r="1.5" fill={showBoundingBoxes ? '#ffffff' : '#00ffff'} />
+              <circle cx="13" cy="3" r="1.5" fill={showBoundingBoxes ? '#ffffff' : '#00ffff'} />
+              <circle cx="3" cy="13" r="1.5" fill={showBoundingBoxes ? '#ffffff' : '#00ffff'} />
+              <circle cx="13" cy="13" r="1.5" fill={showBoundingBoxes ? '#ffffff' : '#00ffff'} />
+            </svg>
+          </button>
         </div>
       )}
 

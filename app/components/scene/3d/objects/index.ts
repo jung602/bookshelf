@@ -7,7 +7,7 @@ import { WallCube } from './WallCube'
 import { FloorLampModel } from './floorlamp'
 
 // 모델 카테고리 타입 정의
-export type ModelCategory = 'chairs' | 'desks' | 'lighting' | 'decoration' | 'storage'
+export type ModelCategory = 'chairs' | 'desks' | 'lighting' | 'decoration' | 'storage' | 'etc'
 
 // 카테고리 메타데이터 인터페이스
 export interface CategoryMetadata {
@@ -31,9 +31,10 @@ export interface ModelMetadata {
 export const categories: CategoryMetadata[] = [
   { id: 'chairs', name: '의자', icon: '🪑' },
   { id: 'desks', name: '책상', icon: '🗄️' },
+  { id: 'storage', name: '수납', icon: '📦' },
+  { id: 'etc', name: '기타', icon: '📦' },
   { id: 'lighting', name: '조명', icon: '💡' },
   { id: 'decoration', name: '장식', icon: '🎨' },
-  { id: 'storage', name: '수납', icon: '📦' },
 ]
 
 // 모든 모델 메타데이터 (중앙 관리)

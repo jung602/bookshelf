@@ -1,4 +1,5 @@
 import { BaseModel, ModelPosition, ModelScale, ModelRotation } from './BaseModel'
+import * as THREE from 'three'
 
 export class DeskModel extends BaseModel {
   private rotationTime: number = 0
@@ -12,7 +13,23 @@ export class DeskModel extends BaseModel {
   }
 
   protected setupModel(): void {
-    // 추가적인 모델 설정이 필요한 경우 여기에 구현
+    // 책상의 실제 바운딩박스 계산
+    if (this.model) {
+      const boundingBox = new THREE.Box3().setFromObject(this.model)
+      const width = boundingBox.max.x - boundingBox.min.x
+      const height = boundingBox.max.y - boundingBox.min.y
+      const depth = boundingBox.max.z - boundingBox.min.z
+      const offsetY = boundingBox.min.y - this.model.position.y
+      
+      // 박스 바운딩박스 설정
+      this.setCustomBoundingBox({
+        type: 'box',
+        width: width,
+        height: height,
+        depth: depth,
+        offsetY: offsetY
+      })
+    }
   }
 
   public update(): void {

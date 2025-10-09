@@ -70,6 +70,23 @@ export class FloorLampModel extends BaseModel {
     
     // 조명이 포함된 모델이므로 추가적인 조명 설정이 필요할 수 있음
     if (this.model) {
+      // 램프의 실제 바운딩박스 계산
+      const boundingBox = new THREE.Box3().setFromObject(this.model)
+      const width = boundingBox.max.x - boundingBox.min.x
+      const depth = boundingBox.max.z - boundingBox.min.z
+      const height = boundingBox.max.y - boundingBox.min.y
+      const radius = Math.max(width, depth) / 2
+      const offsetY = boundingBox.min.y - this.model.position.y
+      
+      // 원기둥 바운딩박스 설정
+      this.setCustomBoundingBox({
+        type: 'cylinder',
+        radius: radius,
+        height: height,
+        offsetY: offsetY
+      })
+      
+
       // glTF 파일에 포함된 조명 처리
       const lightsToReplace: { parent: THREE.Object3D, oldLight: THREE.Light }[] = []
       

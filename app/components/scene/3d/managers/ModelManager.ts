@@ -146,4 +146,38 @@ export class ModelManager {
   public repositionWallModelsAfterWallChange(): string[] {
     return this.wallManager.repositionWallModelsAfterWallChange()
   }
+
+  // 바운딩박스 시각화 메서드들
+  public toggleBoundingBoxVisualization(): void {
+    this.floorManager.toggleBoundingBoxVisualization()
+    this.wallManager.toggleBoundingBoxVisualization()
+  }
+
+  public enableBoundingBoxVisualization(): void {
+    this.floorManager.enableBoundingBoxVisualization()
+    this.wallManager.enableBoundingBoxVisualization()
+  }
+
+  public disableBoundingBoxVisualization(): void {
+    this.floorManager.disableBoundingBoxVisualization()
+    this.wallManager.disableBoundingBoxVisualization()
+  }
+
+  // 특정 모델의 바운딩박스 업데이트
+  public updateModelBoundingBox(modelId: string): void {
+    const model = this.models.get(modelId)
+    if (!model) return
+
+    if (model.getType() === 'wallcube') {
+      this.wallManager.updateModelBoundingBox(modelId)
+    } else {
+      this.floorManager.updateModelBoundingBox(modelId)
+    }
+  }
+
+  // 모든 바운딩박스 업데이트
+  public updateAllBoundingBoxes(): void {
+    this.floorManager.updateAllBoundingBoxHelpers()
+    this.wallManager.updateAllBoundingBoxHelpers()
+  }
 }

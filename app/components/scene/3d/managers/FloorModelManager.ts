@@ -1,19 +1,22 @@
 import * as THREE from 'three'
 import { BaseModel } from '../objects/BaseModel'
 import { SceneIndex } from './SceneIndex'
+import { BoundingBoxVisualizer } from './BoundingBoxVisualizer'
+import { calculateBoundingBox } from './BoundingBoxUtils'
 
 export class FloorModelManager {
   private scene: THREE.Scene
   private models: Map<string, BaseModel>
   private sceneIndex: SceneIndex
-  private boundingBoxCache: Map<string, { bounds: THREE.Box3, lastUpdate: number }> = new Map()
-  private static BOUNDING_BOX_CACHE_DURATION = 100 // 100ms 캐시
-  private raycaster: THREE.Raycaster = new THREE.Raycaster() // 재사용 가능한 레이캐스터
+  private raycaster: THREE.Raycaster = new THREE.Raycaster()
+  private visualizer: BoundingBoxVisualizer
+  private DEBUG_SUPPORT = false  // 지지 관계 디버깅 로그
 
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {
     this.scene = scene
     this.models = models
     this.sceneIndex = sceneIndex
+    this.visualizer = new BoundingBoxVisualizer(scene, models, 0x00ffff)
   }
 
   // 통합된 바닥 가구 추가 메소드
@@ -57,8 +60,10 @@ export class FloorModelManager {
       model.addToScene(this.scene)
       this.models.set(model.getId(), model)
       
-      // 새 모델 추가 시 캐시 정리 (위치 재계산이 필요할 수 있음)
-      this.clearBoundingBoxCache()
+      // 바운딩박스 헬퍼 업데이트
+      if (this.visualizer.isEnabled()) {
+        this.visualizer.updateHelper(model)
+      }
       
       return model.getId()
     } catch (error) {
@@ -100,12 +105,11 @@ export class FloorModelManager {
     const colliders: THREE.Mesh[] = []
 
     if (targets === 'all-colliders' && targetModel) {
-      // 다른 모델들의 콜라이더 포함
+      // 다른 모델들의 콜라이더 포함 (벽 가구도 포함)
       this.models.forEach((otherModel, modelId) => {
         if (modelId !== targetModel.getId() &&
             !excludeModelIds.includes(modelId) &&
             otherModel.isModelLoaded() &&
-            otherModel.getType() !== 'wallcube' &&
             otherModel.getModel()) {
           const modelColliders = otherModel.getAllColliders()
           if (modelColliders && modelColliders.length > 0) {
@@ -127,40 +131,9 @@ export class FloorModelManager {
     return this.raycaster.intersectObjects(colliders, false)
   }
 
-  // 모델 바운딩 박스 계산 헬퍼 (캐시 지원)
+  // 모델 바운딩 박스 계산 헬퍼
   private getModelBoundsAt(model: BaseModel, x: number, z: number): THREE.Box3 | null {
-    const modelGroup = model.getModel()
-    if (!modelGroup) return null
-
-    const cacheKey = `${model.getId()}_${x.toFixed(2)}_${z.toFixed(2)}_${modelGroup.rotation.y.toFixed(2)}`
-    const now = Date.now()
-    const cached = this.boundingBoxCache.get(cacheKey)
-    
-    if (cached && (now - cached.lastUpdate) < FloorModelManager.BOUNDING_BOX_CACHE_DURATION) {
-      return cached.bounds.clone()
-    }
-
-    const originalPos = modelGroup.position.clone()
-    modelGroup.position.set(x, 0, z)
-    
-    // 매트릭스 업데이트로 회전/애니메이션 상태 반영
-    modelGroup.updateMatrixWorld(true)
-    
-    const boundingBox = new THREE.Box3().setFromObject(modelGroup)
-    modelGroup.position.copy(originalPos)
-    
-    // 원래 위치로 복원 후 매트릭스 재업데이트
-    modelGroup.updateMatrixWorld(true)
-    
-    // 캐시에 저장 (너무 많이 쌓이지 않도록 제한)
-    if (this.boundingBoxCache.size < 100) {
-      this.boundingBoxCache.set(cacheKey, { 
-        bounds: boundingBox.clone(), 
-        lastUpdate: now 
-      })
-    }
-    
-    return boundingBox
+    return calculateBoundingBox(model, x, z)
   }
 
   public hasFloorAt(x: number, z: number): boolean {
@@ -267,12 +240,20 @@ export class FloorModelManager {
     return this.calculateYPosition(model, targetX, targetZ, 'floor-only')
   }
 
+  // 바닥 가구용 모델 하단 오프셋 계산
+  // 바운딩박스의 offsetY를 직접 반환 (모델 중심에서 바닥까지의 거리)
   private getModelBottomOffset(model: BaseModel): number {
-    const modelGroup = model.getModel()
-    if (!modelGroup) { return 0 }
+    const customBB = model.getCustomBoundingBox()
+    if (customBB && customBB.offsetY !== undefined) {
+      return customBB.offsetY
+    }
     
-    const boundingBox = new THREE.Box3().setFromObject(modelGroup)
-    const bottomOffset = boundingBox.min.y - modelGroup.position.y
+    // 커스텀 바운딩박스가 없으면 메시에서 계산
+    const boundingBox = calculateBoundingBox(model)
+    if (!boundingBox) return 0
+    
+    const position = model.getPosition()
+    const bottomOffset = boundingBox.min.y - position.y
     
     return bottomOffset
   }
@@ -282,29 +263,41 @@ export class FloorModelManager {
     const targetModelGroup = targetModel.getModel()
     if (!supportModelGroup || !targetModelGroup) return false
 
-    // 1) 타입 정책: 아래 타입들은 어떤 모델도 지지하지 않음
-    const unsupportableTypes = ['floorlamp', 'wallcube']
-    if (unsupportableTypes.includes(supportModel.getType())) { return false }
+    // 0) 타겟이 벽 가구면 절대 지지 불가 (벽 가구는 무조건 벽에 붙어야 함)
+    if (targetModel.getType() === 'wallcube') return false
 
-    // 지지 모델 매트릭스 업데이트
-    supportModelGroup.updateMatrixWorld(true)
+    // 1) 타입 정책: 아래 타입들은 어떤 모델도 지지하지 않음
+    const unsupportableTypes = ['floorlamp']  // wallcube 제거 - 벽 가구도 지지 가능
+    if (unsupportableTypes.includes(supportModel.getType())) return false
+
+    // 통합 메서드 사용
+    const supportBox = calculateBoundingBox(supportModel)
+    const targetBox = calculateBoundingBox(targetModel, targetX, targetZ)
     
-    const supportBox = new THREE.Box3().setFromObject(supportModelGroup)
-    const originalTargetPosition = targetModelGroup.position.clone()
-    targetModelGroup.position.set(targetX, 0, targetZ)
-    
-    // 타겟 모델 매트릭스 업데이트
-    targetModelGroup.updateMatrixWorld(true)
-    
-    const targetBox = new THREE.Box3().setFromObject(targetModelGroup)
-    targetModelGroup.position.copy(originalTargetPosition)
-    
-    // 원래 위치로 복원 후 매트릭스 재업데이트
-    targetModelGroup.updateMatrixWorld(true)
+    if (!supportBox || !targetBox) return false
+
+    if (this.DEBUG_SUPPORT) {
+      console.log(`[지지체크] ${supportModel.getType()} -> ${targetModel.getType()}`)
+      console.log('  지지모델 box:', {
+        x: [supportBox.min.x.toFixed(2), supportBox.max.x.toFixed(2)],
+        y: [supportBox.min.y.toFixed(2), supportBox.max.y.toFixed(2)],
+        z: [supportBox.min.z.toFixed(2), supportBox.max.z.toFixed(2)]
+      })
+      console.log('  타겟모델 box:', {
+        x: [targetBox.min.x.toFixed(2), targetBox.max.x.toFixed(2)],
+        y: [targetBox.min.y.toFixed(2), targetBox.max.y.toFixed(2)],
+        z: [targetBox.min.z.toFixed(2), targetBox.max.z.toFixed(2)]
+      })
+    }
 
     const xOverlap = Math.min(targetBox.max.x, supportBox.max.x) - Math.max(targetBox.min.x, supportBox.min.x)
     const zOverlap = Math.min(targetBox.max.z, supportBox.max.z) - Math.max(targetBox.min.z, supportBox.min.z)
-    if (xOverlap <= 0 || zOverlap <= 0) { return false }
+    
+    if (this.DEBUG_SUPPORT) {
+      console.log('  XZ 겹침:', { x: xOverlap.toFixed(2), z: zOverlap.toFixed(2) })
+    }
+    
+    if (xOverlap <= 0 || zOverlap <= 0) return false
 
     // 2) 면적 기반 제약: 지지 모델의 발자국 면적이 타겟보다 충분히 커야 함 (페어별 예외 허용)
     const overlapArea = xOverlap * zOverlap
@@ -325,9 +318,7 @@ export class FloorModelManager {
       'stool->chair', // 스툴 위에 의자 금지
       'stool->desk',  // 스툴 위에 책상 금지
     ])
-    if (forbiddenPairs.has(pairKey)) {
-      return false
-    }
+    if (forbiddenPairs.has(pairKey)) return false
 
     // 완화 규칙
     switch (pairKey) {
@@ -353,8 +344,12 @@ export class FloorModelManager {
     const targetCenterZ = (targetBox.min.z + targetBox.max.z) / 2
     const insideX = targetCenterX >= supportBox.min.x && targetCenterX <= supportBox.max.x
     const insideZ = targetCenterZ >= supportBox.min.z && targetCenterZ <= supportBox.max.z
+    
     if (!(insideX && insideZ)) return false
 
+    if (this.DEBUG_SUPPORT) {
+      console.log('  ✅ 지지 관계 성립')
+    }
     
     return true
   }
@@ -368,20 +363,10 @@ export class FloorModelManager {
     if (!this.hasFloorAt(x, z)) {
       return false
     }
-    const modelGroup = model.getModel()
-    if (!modelGroup) return false
     
-    const originalPos = modelGroup.position.clone()
-    modelGroup.position.set(x, 0, z)
-    
-    // 매트릭스 업데이트로 회전/애니메이션 상태 반영
-    modelGroup.updateMatrixWorld(true)
-    
-    const boundingBox = new THREE.Box3().setFromObject(modelGroup)
-    modelGroup.position.copy(originalPos)
-    
-    // 원래 위치로 복원 후 매트릭스 재업데이트
-    modelGroup.updateMatrixWorld(true)
+    // 통합 메서드 사용
+    const boundingBox = calculateBoundingBox(model, x, z)
+    if (!boundingBox) return false
     
     // 가구 크기 계산
     const width = boundingBox.max.x - boundingBox.min.x
@@ -528,7 +513,7 @@ export class FloorModelManager {
     
     // 1. 현재 지지하고 있는 모델들 찾기 (더 넓은 범위로 확장)
     this.models.forEach((model, id) => {
-      if (id === excludeModelId || model.getType() === 'wallcube') return
+      if (id === excludeModelId || model.getType() === 'wallcube') return  // 벽 가구는 항상 벽에 붙음
       
       const modelPosition = model.getPosition()
       
@@ -552,19 +537,17 @@ export class FloorModelManager {
             
             if (prevDistance <= 3.0 && modelPosition.y > previousPosition.y + 0.1) {
               // 이전 위치에서 지지받고 있었는지 확인
-              const modelGroup = draggedModel.getModel()
-              if (modelGroup) {
-                const originalPos = modelGroup.position.clone()
-                modelGroup.position.set(previousPosition.x, previousPosition.y, previousPosition.z)
-                
-                const wasSupported = this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)
-                
-                // 원래 위치로 복원
-                modelGroup.position.copy(originalPos)
-                
-                if (wasSupported) {
-                  affectedModels.add(id)
-                }
+              // Y 값도 임시로 변경해야 바운딩박스가 정확하게 계산됨
+              const originalPos = draggedModel.getPosition()
+              draggedModel.setPosition(previousPosition)
+              
+              const wasSupported = this.canModelSupportAnother(draggedModel, model, modelPosition.x, modelPosition.z)
+              
+              // 원래 위치로 복원
+              draggedModel.setPosition(originalPos)
+              
+              if (wasSupported) {
+                affectedModels.add(id)
               }
             }
           }
@@ -672,10 +655,8 @@ export class FloorModelManager {
       
       // 지지 관계가 성립하는지 확인
       if (this.canModelSupportAnother(model, targetModel, x, z)) {
-        // const modelPosition = model.getPosition() // 사용되지 않는 변수
-        const modelGroup = model.getModel()
-        if (modelGroup) {
-          const boundingBox = new THREE.Box3().setFromObject(modelGroup)
+        const boundingBox = calculateBoundingBox(model)
+        if (boundingBox) {
           const surfaceY = boundingBox.max.y
           
           // 가장 높은 지지 표면을 가진 모델 선택
@@ -747,6 +728,11 @@ export class FloorModelManager {
           // 최후의 수단: 원래 위치 유지
         }
       }
+      
+      // 각 모델의 바운딩박스 업데이트
+      if (this.visualizer.isEnabled()) {
+        this.visualizer.updateHelper(model)
+      }
     }
   }
 
@@ -817,40 +803,31 @@ export class FloorModelManager {
   }
 
   public hasCollisionWithExistingModels(testModel: BaseModel, x: number, z: number): boolean {
-    const testModelGroup = testModel.getModel()
-    if (!testModelGroup) return false
-    const originalPos = testModelGroup.position.clone()
-    testModelGroup.position.set(x, 0, z)
+    // 통합 메서드 사용
+    const testBounds = calculateBoundingBox(testModel, x, z)
+    if (!testBounds) return false
     
-    // 매트릭스 업데이트로 회전/애니메이션 상태 반영
-    testModelGroup.updateMatrixWorld(true)
-    
-    const testBounds = new THREE.Box3().setFromObject(testModelGroup)
     let hasCollision = false
     this.models.forEach((existingModel) => {
       if (existingModel.getId() === testModel.getId()) return
-      const existingGroup = existingModel.getModel()
-      if (!existingGroup) return
       
-      // 기존 모델도 매트릭스 업데이트
-      existingGroup.updateMatrixWorld(true)
+      const existingBounds = calculateBoundingBox(existingModel)
+      if (!existingBounds) return
       
-      const existingBounds = new THREE.Box3().setFromObject(existingGroup)
       const xOverlap = testBounds.max.x >= existingBounds.min.x && testBounds.min.x <= existingBounds.max.x
       const zOverlap = testBounds.max.z >= existingBounds.min.z && testBounds.min.z <= existingBounds.max.z
-      if (xOverlap && zOverlap) {
+      const yOverlap = testBounds.max.y >= existingBounds.min.y && testBounds.min.y <= existingBounds.max.y
+      
+      if (xOverlap && zOverlap && yOverlap) {
+        // 지지 관계가 성립하면 충돌 아님
         if (this.canModelSupportAnother(existingModel, testModel, x, z)) {
-          // OK
+          // OK - 지지 관계
         } else {
-          
+          // 충돌!
           hasCollision = true
         }
       }
     })
-    testModelGroup.position.copy(originalPos)
-    
-    // 원래 위치로 복원 후 매트릭스 재업데이트
-    testModelGroup.updateMatrixWorld(true)
     
     return hasCollision
   }
@@ -963,10 +940,25 @@ export class FloorModelManager {
     return idsToDelete
   }
 
-    // 캐시 정리 메서드
-  private clearBoundingBoxCache(): void {
-      this.boundingBoxCache.clear()
-    }
+  // 바운딩박스 시각화 메서드들 (Visualizer로 위임)
+  public enableBoundingBoxVisualization(): void {
+    this.visualizer.enable((model) => model.getType() !== 'wallcube')
+  }
+
+  public disableBoundingBoxVisualization(): void {
+    this.visualizer.disable()
+  }
+
+  public toggleBoundingBoxVisualization(): boolean {
+    this.visualizer.toggle((model) => model.getType() !== 'wallcube')
+    return this.visualizer.isEnabled()
+  }
+
+  public updateAllBoundingBoxHelpers(): void {
+    this.visualizer.updateAll((model) => model.getType() !== 'wallcube')
+  }
+
+  public updateModelBoundingBox(modelId: string): void {
+    this.visualizer.updateModel(modelId)
+  }
 }
-
-

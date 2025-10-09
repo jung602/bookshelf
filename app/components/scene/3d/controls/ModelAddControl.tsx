@@ -22,7 +22,9 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
   const themeColors = getThemeColors(isDarkMode)
   const [activeCategory, setActiveCategory] = useState<ModelCategory>('chairs')
 
-  const filteredModels = allModels.filter(model => model.category === activeCategory)
+  const filteredModels = allModels
+    .filter(model => model.id !== 'book') // 책 제외
+    .filter(model => model.category === activeCategory)
 
   const handleModelAdd = (modelType: string) => {
     onModelAdd(modelType)

@@ -1,4 +1,5 @@
 import { BaseModel, ModelPosition, ModelScale, ModelRotation } from './BaseModel'
+import * as THREE from 'three'
 
 export class StoolModel extends BaseModel {
   private rotationTime: number = 0
@@ -12,7 +13,20 @@ export class StoolModel extends BaseModel {
   }
 
   protected setupModel(): void {
-    // 추가적인 모델 설정이 필요한 경우 여기에 구현
+    // 스툴의 실제 바운딩박스 계산
+    if (this.model) {
+      const boundingBox = new THREE.Box3().setFromObject(this.model)
+      const height = boundingBox.max.y - boundingBox.min.y
+      const offsetY = boundingBox.min.y - this.model.position.y
+      
+      // 고정된 반지름 0.482를 사용하는 원기둥 바운딩박스 설정
+      this.setCustomBoundingBox({
+        type: 'cylinder',
+        radius: 0.482,
+        height: height,
+        offsetY: offsetY
+      })
+    }
   }
 
   public update(): void {

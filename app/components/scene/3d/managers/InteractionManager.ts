@@ -503,6 +503,13 @@ export class InteractionManager {
             this.dragState.previousPosition || undefined
           )
         }
+
+        // 드래그 완료 후 바운딩박스 헬퍼 업데이트
+        if (selectedModel.getType() === 'wallcube') {
+          this.modelManager.getWallManager().updateModelBoundingBox(selectedModel.getId())
+        } else {
+          this.modelManager.getFloorManager().updateModelBoundingBox(selectedModel.getId())
+        }
       } else {
         // 드래그 안 되었으면 원래 위치로 복귀(필요 시)
         if (this.dragState.previousPosition) {
@@ -677,6 +684,9 @@ export class InteractionManager {
 
     // 회전 후 기즈모 위치 업데이트
     this.showGizmoAtModelTop(model)
+    
+    // 회전 후 바운딩박스 업데이트
+    this.modelManager.updateModelBoundingBox(modelId)
   }
 
   public dispose(): void {

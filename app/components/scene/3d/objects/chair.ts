@@ -26,13 +26,4 @@ export class ChairModel extends BaseModel {
     super.applyTransforms()
     this.setupModel()
   }
-}
-
-// 모델 메타데이터 export
-export const modelMetadata = {
-  id: 'chair',
-  name: '의자',
-  description: '의자 모델',
-  icon: '🪑',
-  modelClass: ChairModel
 } 

@@ -6,6 +6,7 @@ import FloorTileControl from './FloorTileControl'
 import TopBar from './TopBar'
 import MenuBar from './MenuBar'
 import ModelAddControl from './ModelAddControl'
+import CollectionAddControl from './CollectionAddControl'
 import { getModelClass } from '../objects'
 
 interface ControlsContainerProps {
@@ -154,20 +155,15 @@ export default function ControlsContainer({
             />
           )}
           {selectedMenu === 'models' && (
-            <div className="w-full h-full flex p-4">
-              <ModelAddControl 
-                onModelAdd={handleModelAdd}
-                onBookCreate={handleBookCreate}
-              />
-            </div>
+            <ModelAddControl 
+              onModelAdd={handleModelAdd}
+              isDarkMode={isDarkMode}
+            />
           )}
           {selectedMenu === 'layers' && (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
-              <div className="text-center">
-                <div className="text-lg font-semibold mb-2">레이어 관리</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">추후 구현 예정</div>
-              </div>
-            </div>
+            <CollectionAddControl 
+              onBookCreate={handleBookCreate}
+            />
           )}
           {selectedMenu === 'settings' && (
             <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
@@ -207,23 +203,18 @@ export default function ControlsContainer({
             />
           )}
           {selectedMenu === 'models' && (
-            <div className="w-full h-full flex p-4">
-              <ModelAddControl 
-                onModelAdd={handleModelAdd}
-                onBookCreate={handleBookCreate}
-              />
-            </div>
+            <ModelAddControl 
+              onModelAdd={handleModelAdd}
+              isDarkMode={isDarkMode}
+            />
           )}
           {selectedMenu === 'layers' && (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-              <div className="text-center">
-                <div className="text-lg font-semibold mb-2">레이어 관리</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">추후 구현 예정</div>
-              </div>
-            </div>
+            <CollectionAddControl 
+              onBookCreate={handleBookCreate}
+            />
           )}
           {selectedMenu === 'settings' && (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
               <div className="text-center">
                 <div className="text-lg font-semibold mb-2">설정</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">추후 구현 예정</div>

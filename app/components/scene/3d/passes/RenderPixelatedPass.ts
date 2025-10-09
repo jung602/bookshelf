@@ -453,35 +453,7 @@ export class RenderPixelatedPass extends Pass {
           vec2 pixelCoord = vUv * resolution.xy;
           finalColor = dither(finalColor, pixelCoord);
           
-          // Pokemon Palette 팔레트 적용 (0-1 범위로 조절 가능)
-          if (usePalette > 0.0) {
-            vec3 paletteColor = findClosestPokemonColor(finalColor);
-            finalColor = mix(finalColor, paletteColor, usePalette);
-          }
-          
-          // Windows 16 팔레트 적용 (0-1 범위로 조절 가능)
-          if (useMSPaintPalette > 0.0) {
-            vec3 paletteColor = findClosestMspaintColor(finalColor);
-            finalColor = mix(finalColor, paletteColor, useMSPaintPalette);
-          }
-          
-          // Supremo Art 팔레트 적용 (0-1 범위로 조절 가능)
-          if (useSupremoPalette > 0.0) {
-            vec3 paletteColor = findClosestSupremoColor(finalColor);
-            finalColor = mix(finalColor, paletteColor, useSupremoPalette);
-          }
-          
-          // LostGB Creepy 팔레트 적용 (0-1 범위로 조절 가능)
-          if (useLostGBPalette > 0.0) {
-            vec3 paletteColor = findClosestLostGBColor(finalColor);
-            finalColor = mix(finalColor, paletteColor, useLostGBPalette);
-          }
-          
-          // UI Palette 팔레트 적용 (0-1 범위로 조절 가능)
-          if (useUIPalette > 0.0) {
-            vec3 paletteColor = findClosestUiColor(finalColor);
-            finalColor = mix(finalColor, paletteColor, useUIPalette);
-          }
+          ${ColorPalettes.generatePaletteApplicationCode()}
           
           gl_FragColor = vec4(finalColor, texel.a);
         }

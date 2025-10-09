@@ -8,6 +8,7 @@ import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedP
 import { ModelManager } from './managers/ModelManager'
 import { InteractionManager, GizmoState } from './managers/InteractionManager'
 import { getModelClass } from './objects'
+import { ColorPalettes } from './passes/ColorPalettes'
 
 // 타입 정의들
 export interface RoomParams {
@@ -152,14 +153,18 @@ export class SceneManager {
     
     // 픽셀화 해상도 계산 (기본값 사용)
     const defaultParams = { 
-      pixelSize: 2, 
-      ditherStrength: 0, 
+      pixelSize: 2.2, 
+      ditherStrength: 0.01, 
       ditherScale: 0, 
       normalEdgeStrength: 0.15,
-      useUIPalette: 0.,
-      useMSPaintPalette: 0.1,
+      // 팔레트 파라미터 (ColorPalettes.ts의 key와 일치해야 함)
+      usePalette: 0.1, // Pokemon Palette
+      useMSPaintPalette: 0, // MS Tinta
+      useSupremoPalette: 0, // 1bit Monitor Glow
+      useLostGBPalette: 0, // LostGB Creepy
+      useUIPalette: 0.2, // UI Palette
       // Unity 방식 파라미터 기본값
-      depthEdgeStrength: 0.8,
+      depthEdgeStrength: 0.5,
       edgeThreshold: .1,
       outlineDarknessAmount: 0.15,
       useColorAwareOutline: 1.0,

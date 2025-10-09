@@ -27,12 +27,3 @@ export class DeskModel extends BaseModel {
     this.setupModel()
   }
 }
-
-// 모델 메타데이터 export
-export const modelMetadata = {
-  id: 'desk',
-  name: '책상',
-  description: '책상 모델',
-  icon: '🪑',
-  modelClass: DeskModel
-}

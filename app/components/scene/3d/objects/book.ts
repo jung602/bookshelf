@@ -253,13 +253,4 @@ export class Book extends BaseModel {
   public getConfig(): BookConfig {
     return { ...this.config }
   }
-}
-
-// 모델 메타데이터
-export const modelMetadata = {
-  id: 'book',
-  name: '책',
-  description: '이미지와 두께를 설정할 수 있는 책',
-  icon: '📚',
-  modelClass: Book
 } 

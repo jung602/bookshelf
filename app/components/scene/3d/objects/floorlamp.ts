@@ -186,13 +186,4 @@ export class FloorLampModel extends BaseModel {
     super.applyTransforms()
     this.setupModel()
   }
-}
-
-// 모델 메타데이터 export
-export const modelMetadata = {
-  id: 'floorlamp',
-  name: '플로어 램프',
-  description: '바닥 조명 모델',
-  icon: '💡',
-  modelClass: FloorLampModel
 } 

@@ -70,12 +70,4 @@ export class WallCube extends BaseModel {
   public getType(): string {
     return 'wallcube'
   }
-}
-
-export const modelMetadata = {
-  id: 'wallcube',
-  name: '벽 큐브',
-  description: '벽에 부착되는 테스트 큐브',
-  icon: '🟥',
-  modelClass: WallCube
 } 

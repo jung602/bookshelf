@@ -22,19 +22,19 @@ export class ColorPalettes {
     },
     {
       key: 'useMSPaintPalette',
-      name: 'Windows 16',
+      name: 'MS Tinta',
       emoji: '🖥️',
-      colorCount: 16,
+      colorCount: 36,
       shaderArrayName: 'mspaintPalette',
-      description: 'Classic Windows VGA 16색 기본 팔레트'
+      description: 'MS Tinta 36색 팔레트 - MS Paint 스타일'
     },
     {
       key: 'useSupremoPalette',
-      name: 'Supremo Art',
-      emoji: '🎨',
-      colorCount: 12,
+      name: '1bit Monitor Glow',
+      emoji: '💚',
+      colorCount: 2,
       shaderArrayName: 'supremoPalette',
-      description: 'Kazimir Malevich의 아방가르드 예술 작품 스타일'
+      description: 'Polyducks의 대담한 1비트 팔레트 - 청록빛 검정과 녹색빛 흰색'
     },
     {
       key: 'useLostGBPalette',
@@ -101,43 +101,53 @@ export class ColorPalettes {
     );
   `
 
-  // Windows 16색 기본 팔레트 (16 colors) - Classic Windows VGA palette
+  // MS Tinta 팔레트 (36 colors) - MS Paint inspired palette
   static readonly WINDOWS_PALETTE = `
-    vec3 mspaintPalette[16] = vec3[](
-      vec3(0.000, 0.000, 0.000),  // #000000 - Black
-      vec3(0.000, 0.000, 0.502),  // #000080 - Dark Blue
-      vec3(0.000, 0.502, 0.000),  // #008000 - Dark Green
-      vec3(0.000, 0.502, 0.502),  // #008080 - Dark Cyan
-      vec3(0.502, 0.000, 0.000),  // #800000 - Dark Red
-      vec3(0.502, 0.000, 0.502),  // #800080 - Dark Magenta
-      vec3(0.502, 0.502, 0.000),  // #808000 - Brown
-      vec3(0.753, 0.753, 0.753),  // #C0C0C0 - Light Gray
-      vec3(0.502, 0.502, 0.502),  // #808080 - Dark Gray
-      vec3(0.000, 0.000, 1.000),  // #0000FF - Blue
-      vec3(0.000, 1.000, 0.000),  // #00FF00 - Green
-      vec3(0.000, 1.000, 1.000),  // #00FFFF - Cyan
-      vec3(1.000, 0.000, 0.000),  // #FF0000 - Red
-      vec3(1.000, 0.000, 1.000),  // #FF00FF - Magenta
-      vec3(1.000, 1.000, 0.000),  // #FFFF00 - Yellow
-      vec3(1.000, 1.000, 1.000)   // #FFFFFF - White
+    vec3 mspaintPalette[36] = vec3[](
+      vec3(0.000, 0.000, 0.000),  // #000000
+      vec3(0.000, 0.000, 0.502),  // #000080
+      vec3(0.000, 0.251, 0.502),  // #004080
+      vec3(0.439, 0.573, 0.745),  // #7092be
+      vec3(0.600, 0.851, 0.918),  // #99d9ea
+      vec3(0.624, 1.000, 1.000),  // #9fffff
+      vec3(1.000, 1.000, 1.000),  // #ffffff
+      vec3(0.000, 0.251, 0.251),  // #004040
+      vec3(0.000, 0.502, 0.251),  // #008040
+      vec3(0.133, 0.694, 0.298),  // #22b14c
+      vec3(0.710, 0.902, 0.114),  // #b5e61d
+      vec3(1.000, 1.000, 0.502),  // #ffff80
+      vec3(0.000, 0.000, 0.251),  // #000040
+      vec3(0.173, 0.176, 0.329),  // #2c2d54
+      vec3(0.247, 0.282, 0.800),  // #3f48cc
+      vec3(0.502, 0.502, 0.753),  // #8080c0
+      vec3(0.784, 0.749, 0.906),  // #c8bfe7
+      vec3(0.000, 0.635, 0.910),  // #00a2e8
+      vec3(0.502, 1.000, 0.502),  // #80ff80
+      vec3(0.251, 0.000, 0.251),  // #400040
+      vec3(0.639, 0.286, 0.643),  // #a349a4
+      vec3(1.000, 0.502, 0.502),  // #ff8080
+      vec3(1.000, 0.682, 0.788),  // #ffaec9
+      vec3(0.251, 0.000, 0.000),  // #400000
+      vec3(0.533, 0.000, 0.082),  // #880015
+      vec3(0.929, 0.110, 0.141),  // #ed1c24
+      vec3(1.000, 0.502, 0.251),  // #ff8040
+      vec3(1.000, 0.886, 0.463),  // #ffe176
+      vec3(0.502, 0.000, 0.502),  // #800080
+      vec3(1.000, 0.000, 0.502),  // #ff0080
+      vec3(0.502, 0.251, 0.251),  // #804040
+      vec3(0.725, 0.478, 0.341),  // #b97a57
+      vec3(1.000, 0.694, 0.392),  // #ffb164
+      vec3(0.251, 0.000, 0.502),  // #400080
+      vec3(0.937, 0.894, 0.690),  // #efe4b0
+      vec3(0.498, 0.498, 0.498)   // #7f7f7f
     );
   `
 
-  // Supremo 팔레트 (12 colors) - Kazimir Malevich inspired
+  // 1bit Monitor Glow 팔레트 (2 colors) - by Polyducks
   static readonly SUPREMO_PALETTE = `
-    vec3 supremoPalette[12] = vec3[](
-      vec3(0.925, 0.906, 0.882),  // #ece7e1
-      vec3(0.871, 0.835, 0.769),  // #ded5c4
-      vec3(0.886, 0.816, 0.325),  // #e2d053
-      vec3(0.875, 0.525, 0.227),  // #df863a
-      vec3(0.714, 0.278, 0.180),  // #b6472e
-      vec3(0.384, 0.133, 0.110),  // #62221c
-      vec3(0.090, 0.086, 0.094),  // #171618
-      vec3(0.192, 0.231, 0.322),  // #313b52
-      vec3(0.263, 0.380, 0.541),  // #43618a
-      vec3(0.553, 0.651, 0.678),  // #8da6ad
-      vec3(0.427, 0.463, 0.369),  // #6d765e
-      vec3(0.231, 0.333, 0.212)   // #3b5536
+    vec3 supremoPalette[2] = vec3[](
+      vec3(0.133, 0.137, 0.137),  // #222323 - 약간 청록빛 검정
+      vec3(0.941, 0.965, 0.941)   // #f0f6f0 - 약간 녹색빛 흰색
     );
   `
 

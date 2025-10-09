@@ -35,13 +35,4 @@ export class StoolModel extends BaseModel {
     super.applyTransforms()
     this.setupModel()
   }
-}
-
-// 모델 메타데이터 export
-export const modelMetadata = {
-  id: 'stool',
-  name: '스툴',
-  description: '스툴 모델',
-  icon: '🪑',
-  modelClass: StoolModel
 } 

@@ -58,38 +58,28 @@ export class BoundingBoxVisualizer {
     const position = model.getPosition()
     let helper: THREE.Object3D
 
-    // 커스텀 바운딩박스가 있으면 사용
     const customBB = model.getCustomBoundingBox()
     if (customBB && customBB.type === 'cylinder') {
       const radius = customBB.radius || 0
       const height = customBB.height || 0
       const offsetY = customBB.offsetY || 0
 
-      // 원기둥 와이어프레임 생성
       const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 16, 1, true)
-      const cylinderMaterial = new THREE.LineBasicMaterial({
-        color: helperColor,
-        linewidth: 2
-      })
-
-      // Edges geometry를 사용해서 와이어프레임 생성
+      const cylinderMaterial = new THREE.LineBasicMaterial({ color: helperColor, linewidth: 2 })
       const edges = new THREE.EdgesGeometry(cylinderGeometry)
       const cylinderHelper = new THREE.LineSegments(edges, cylinderMaterial)
 
-      // offsetY를 사용하여 바닥부터 시작하도록 위치 조정
       const yCenter = position.y + offsetY + height / 2
       cylinderHelper.position.set(position.x, yCenter, position.z)
       helper = cylinderHelper
 
       cylinderGeometry.dispose()
     } else if (customBB && customBB.type === 'box') {
-      // 커스텀 박스 바운딩박스
       const width = customBB.width || 0
       const height = customBB.height || 0
       const depth = customBB.depth || 0
       const offsetY = customBB.offsetY || 0
 
-      // offsetY를 사용하여 바닥부터 시작
       const yMin = position.y + offsetY
       const yMax = yMin + height
 
@@ -99,7 +89,6 @@ export class BoundingBoxVisualizer {
       )
       helper = new THREE.Box3Helper(boundingBox, helperColor)
     } else {
-      // 커스텀 바운딩박스가 없으면 메시에서 계산
       const boundingBox = new THREE.Box3().setFromObject(modelGroup)
       helper = new THREE.Box3Helper(boundingBox, helperColor)
     }
@@ -132,12 +121,17 @@ export class BoundingBoxVisualizer {
   }
 
   private disposeHelper(helper: THREE.Object3D): void {
-    if (helper instanceof THREE.LineSegments) {
-      helper.geometry.dispose()
-      if (Array.isArray(helper.material)) {
-        helper.material.forEach(m => m.dispose())
-      } else {
-        helper.material.dispose()
+    if (helper instanceof THREE.LineSegments || helper instanceof THREE.Box3Helper) {
+      const mesh = helper as THREE.LineSegments
+      if (mesh.geometry) {
+        mesh.geometry.dispose()
+      }
+      if (mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(m => m.dispose())
+        } else {
+          mesh.material.dispose()
+        }
       }
     }
   }

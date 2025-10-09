@@ -672,7 +672,6 @@ export class InteractionManager {
 
       // 4단계: 배치할 공간이 없으면 모델 삭제
       if (!placementSuccessful) {
-        console.log(`회전 후 배치할 공간이 없어 모델 ${modelId}를 삭제합니다.`)
         this.modelManager.removeModel(modelId)
         this.hideGizmo()
         return
@@ -700,6 +699,9 @@ export class InteractionManager {
     canvas.removeEventListener('touchmove', this.boundTouchMove)
     canvas.removeEventListener('touchend', this.boundTouchEnd)
     canvas.removeEventListener('contextmenu', this.boundContextMenu)
+    
+    // 드래그 캐시 정리
+    this._dragCache.clear()
   }
 
   /**
@@ -896,10 +898,7 @@ export class InteractionManager {
   private setModelAlwaysOnTop(model: BaseModel, alwaysOnTop: boolean): void {
     try {
       const threeObject = model.getModel()
-      if (!threeObject) {
-        console.warn(`[setModelAlwaysOnTop] No Three.js object found for model`)
-        return
-      }
+      if (!threeObject) return
       if (alwaysOnTop) {
         // 스냅샷 준비
         const snap = {

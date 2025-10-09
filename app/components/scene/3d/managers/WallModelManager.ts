@@ -37,22 +37,17 @@ export class WallModelManager {
     return 0
   }
 
-  // 벽 가구용 모델 하단 오프셋 계산
-  // 바운딩박스의 offsetY를 직접 반환 (모델 중심에서 바닥까지의 거리)
   private getModelBottomOffset(model: BaseModel): number {
     const customBB = model.getCustomBoundingBox()
     if (customBB && customBB.offsetY !== undefined) {
       return customBB.offsetY
     }
     
-    // 커스텀 바운딩박스가 없으면 메시에서 계산
     const boundingBox = calculateBoundingBox(model)
     if (!boundingBox) return 0
     
     const position = model.getPosition()
-    const bottomOffset = boundingBox.min.y - position.y
-    
-    return bottomOffset
+    return boundingBox.min.y - position.y
   }
 
   // 벽 가구 추가 메소드

@@ -10,7 +10,6 @@ export class FloorModelManager {
   private sceneIndex: SceneIndex
   private raycaster: THREE.Raycaster = new THREE.Raycaster()
   private visualizer: BoundingBoxVisualizer
-  private DEBUG_SUPPORT = false  // 지지 관계 디버깅 로그
 
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {
     this.scene = scene
@@ -240,22 +239,17 @@ export class FloorModelManager {
     return this.calculateYPosition(model, targetX, targetZ, 'floor-only')
   }
 
-  // 바닥 가구용 모델 하단 오프셋 계산
-  // 바운딩박스의 offsetY를 직접 반환 (모델 중심에서 바닥까지의 거리)
   private getModelBottomOffset(model: BaseModel): number {
     const customBB = model.getCustomBoundingBox()
     if (customBB && customBB.offsetY !== undefined) {
       return customBB.offsetY
     }
     
-    // 커스텀 바운딩박스가 없으면 메시에서 계산
     const boundingBox = calculateBoundingBox(model)
     if (!boundingBox) return 0
     
     const position = model.getPosition()
-    const bottomOffset = boundingBox.min.y - position.y
-    
-    return bottomOffset
+    return boundingBox.min.y - position.y
   }
 
   public canModelSupportAnother(supportModel: BaseModel, targetModel: BaseModel, targetX: number, targetZ: number): boolean {
@@ -263,64 +257,35 @@ export class FloorModelManager {
     const targetModelGroup = targetModel.getModel()
     if (!supportModelGroup || !targetModelGroup) return false
 
-    // 0) 타겟이 벽 가구면 절대 지지 불가 (벽 가구는 무조건 벽에 붙어야 함)
     if (targetModel.getType() === 'wallcube') return false
 
-    // 1) 타입 정책: 아래 타입들은 어떤 모델도 지지하지 않음
-    const unsupportableTypes = ['floorlamp']  // wallcube 제거 - 벽 가구도 지지 가능
+    const unsupportableTypes = ['floorlamp']
     if (unsupportableTypes.includes(supportModel.getType())) return false
 
-    // 통합 메서드 사용
     const supportBox = calculateBoundingBox(supportModel)
     const targetBox = calculateBoundingBox(targetModel, targetX, targetZ)
     
     if (!supportBox || !targetBox) return false
 
-    if (this.DEBUG_SUPPORT) {
-      console.log(`[지지체크] ${supportModel.getType()} -> ${targetModel.getType()}`)
-      console.log('  지지모델 box:', {
-        x: [supportBox.min.x.toFixed(2), supportBox.max.x.toFixed(2)],
-        y: [supportBox.min.y.toFixed(2), supportBox.max.y.toFixed(2)],
-        z: [supportBox.min.z.toFixed(2), supportBox.max.z.toFixed(2)]
-      })
-      console.log('  타겟모델 box:', {
-        x: [targetBox.min.x.toFixed(2), targetBox.max.x.toFixed(2)],
-        y: [targetBox.min.y.toFixed(2), targetBox.max.y.toFixed(2)],
-        z: [targetBox.min.z.toFixed(2), targetBox.max.z.toFixed(2)]
-      })
-    }
-
     const xOverlap = Math.min(targetBox.max.x, supportBox.max.x) - Math.max(targetBox.min.x, supportBox.min.x)
     const zOverlap = Math.min(targetBox.max.z, supportBox.max.z) - Math.max(targetBox.min.z, supportBox.min.z)
     
-    if (this.DEBUG_SUPPORT) {
-      console.log('  XZ 겹침:', { x: xOverlap.toFixed(2), z: zOverlap.toFixed(2) })
-    }
-    
     if (xOverlap <= 0 || zOverlap <= 0) return false
 
-    // 2) 면적 기반 제약: 지지 모델의 발자국 면적이 타겟보다 충분히 커야 함 (페어별 예외 허용)
     const overlapArea = xOverlap * zOverlap
     const targetArea = (targetBox.max.x - targetBox.min.x) * (targetBox.max.z - targetBox.min.z)
     const supportArea = (supportBox.max.x - supportBox.min.x) * (supportBox.max.z - supportBox.min.z)
 
-    // 최소 겹침 비율과 최소 지지 면적 비율 (기본값)
     let minOverlapRatio = 0.3
-    let minSupportAreaRatio = 0.8 // 지지 모델 면적이 타겟의 80% 이상이어야 지지 가능
+    let minSupportAreaRatio = 0.8
 
-    // 페어별 금지/완화 규칙
     const supportType = supportModel.getType()
     const targetType = targetModel.getType()
     const pairKey = `${supportType}->${targetType}`
 
-    // 명시적 금지 페어
-    const forbiddenPairs = new Set<string>([
-      'stool->chair', // 스툴 위에 의자 금지
-      'stool->desk',  // 스툴 위에 책상 금지
-    ])
+    const forbiddenPairs = new Set<string>(['stool->chair', 'stool->desk'])
     if (forbiddenPairs.has(pairKey)) return false
 
-    // 완화 규칙
     switch (pairKey) {
       case 'chair->stool':
       case 'chair->floorlamp':
@@ -331,27 +296,18 @@ export class FloorModelManager {
         minOverlapRatio = 0.2
         minSupportAreaRatio = 0.5
         break
-      default:
-        break
     }
 
     const overlapRatio = overlapArea / targetArea
     if (overlapRatio < minOverlapRatio) return false
     if (supportArea < targetArea * minSupportAreaRatio) return false
 
-    // 3) 안정성: 타겟 중심점이 지지 모델 발자국 안에 있어야 함
     const targetCenterX = (targetBox.min.x + targetBox.max.x) / 2
     const targetCenterZ = (targetBox.min.z + targetBox.max.z) / 2
     const insideX = targetCenterX >= supportBox.min.x && targetCenterX <= supportBox.max.x
     const insideZ = targetCenterZ >= supportBox.min.z && targetCenterZ <= supportBox.max.z
     
-    if (!(insideX && insideZ)) return false
-
-    if (this.DEBUG_SUPPORT) {
-      console.log('  ✅ 지지 관계 성립')
-    }
-    
-    return true
+    return insideX && insideZ
   }
 
   // 다른 모델 위 배치 Y 좌표 계산 (지지 관계 포함)

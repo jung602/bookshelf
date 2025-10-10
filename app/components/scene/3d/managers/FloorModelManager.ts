@@ -283,7 +283,7 @@ export class FloorModelManager {
     const targetType = targetModel.getType()
     const pairKey = `${supportType}->${targetType}`
 
-    const forbiddenPairs = new Set<string>(['stool->chair', 'stool->desk'])
+    const forbiddenPairs = new Set<string>(['stool->chair', 'stool->desk', 'stool->stool'])
     if (forbiddenPairs.has(pairKey)) return false
 
     switch (pairKey) {

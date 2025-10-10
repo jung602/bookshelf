@@ -39,6 +39,7 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
         style={{
           backgroundColor: themeColors.inactiveBlock,
           borderRadius: '8px',
+          border: 'none',
         }}
       >
         <span className="text-2xl mb-1">{model.icon}</span>
@@ -66,6 +67,7 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
           padding: isMobile ? '16px 20px' : '12px 16px',
           minHeight: isMobile ? '56px' : '48px',
           minWidth: isMobile ? '64px' : '56px',
+          border: 'none',
         }}
       >
         <span className={`${isMobile ? 'text-2xl' : 'text-xl'}`} style={{ filter: 'grayscale(100%)' }}>

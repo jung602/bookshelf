@@ -165,7 +165,7 @@ input[type="range"],
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    outline: none;
   }
 
   body {

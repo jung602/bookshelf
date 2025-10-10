@@ -35,7 +35,8 @@ const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, onGoBack, isDarkMode 
           onClick={onGoBack}
           className={`flex items-center justify-center w-8 h-8 bg-white rounded-full hover:bg-gray-50 ${TRANSITIONS.colors}`}
           style={{
-            boxShadow: shadowStyles.inactive
+            boxShadow: shadowStyles.inactive,
+            border: 'none',
           }}
           aria-label="뒤로가기"
         >
@@ -64,7 +65,8 @@ const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, onGoBack, isDarkMode 
           onClick={onToggleCollapse}
           className={`flex items-center justify-center w-8 h-8 bg-white rounded-full hover:bg-gray-50 ${TRANSITIONS.colors}`}
           style={{
-            boxShadow: shadowStyles.inactive
+            boxShadow: shadowStyles.inactive,
+            border: 'none',
           }}
           aria-label={isCollapsed ? "펼치기" : "접기"}
         >
@@ -93,7 +95,8 @@ const TopBar = ({ isMobile, isCollapsed, onToggleCollapse, onGoBack, isDarkMode 
           showBoundingBoxes ? 'bg-cyan-500 hover:bg-cyan-600' : 'bg-white'
         }`}
         style={{
-          boxShadow: shadowStyles.inactive
+          boxShadow: shadowStyles.inactive,
+          border: 'none',
         }}
         aria-label="바운딩박스 표시"
         title="바운딩박스 토글 (B)"

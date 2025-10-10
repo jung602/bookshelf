@@ -165,6 +165,9 @@ export default function ControlsContainer({
                 ? 'bg-cyan-500 hover:bg-cyan-600' 
                 : 'bg-white hover:bg-gray-50'
             }`}
+            style={{
+              border: 'none',
+            }}
             aria-label="바운딩박스 표시"
             title="바운딩박스 토글"
           >

@@ -96,6 +96,7 @@ export default function ModelLayerControl({
           onClick={updateModels}
           className="px-2 py-1 bg-gray-300 text-xs font-w95fa text-black
                      hover:bg-gray-400 transition-colors"
+          style={{ border: 'none' }}
           title="Refresh"
         >
           🔄
@@ -127,6 +128,7 @@ export default function ModelLayerControl({
                     handleVisibilityToggle(model.id)
                   }}
                   className="mr-2 text-xs"
+                  style={{ border: 'none' }}
                   title={visibleModels.has(model.id) ? 'Hide' : 'Show'}
                 >
                   {visibleModels.has(model.id) ? '👁️' : '👁️‍🗨️'}
@@ -150,6 +152,7 @@ export default function ModelLayerControl({
                   }}
                   className="ml-2 px-2 py-1 bg-red-300 text-xs font-w95fa text-black
                              hover:bg-red-400 transition-colors"
+                  style={{ border: 'none' }}
                   title="Delete"
                 >
                   🗑️

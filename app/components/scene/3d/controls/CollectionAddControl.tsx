@@ -49,6 +49,7 @@ export default function CollectionAddControl({ onBookCreate }: CollectionAddCont
           onClick={() => setShowBookCreator(!showBookCreator)}
           className="w-full flex items-center p-3 bg-blue-300 rounded-none
                      hover:bg-blue-400 transition-colors"
+          style={{ border: 'none' }}
         >
           <span className="text-lg mr-3">📚</span>
           <div className="text-left">
@@ -128,6 +129,7 @@ export default function CollectionAddControl({ onBookCreate }: CollectionAddCont
                   onClick={handleBookCreate}
                   className="flex-1 px-3 py-2 bg-green-300 text-xs font-w95fa text-black
                              hover:bg-green-400 transition-colors"
+                  style={{ border: 'none' }}
                   disabled={!imageFile || !bookTitle.trim()}
                 >
                   Create
@@ -136,6 +138,7 @@ export default function CollectionAddControl({ onBookCreate }: CollectionAddCont
                   onClick={() => setShowBookCreator(false)}
                   className="flex-1 px-3 py-2 bg-gray-300 text-xs font-w95fa text-black
                              hover:bg-gray-400 transition-colors"
+                  style={{ border: 'none' }}
                 >
                   Cancel
                 </button>

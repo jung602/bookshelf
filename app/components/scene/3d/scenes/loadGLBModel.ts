@@ -20,8 +20,8 @@ export async function loadGLBModel(path: string): Promise<THREE.Group> {
         
         resolve(model)
       },
-      (progress) => {
-
+      () => {
+        // Progress callback - intentionally empty
       },
       (error) => {
         console.error('Error loading GLB model:', error)

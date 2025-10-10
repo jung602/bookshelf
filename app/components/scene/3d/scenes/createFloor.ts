@@ -23,7 +23,7 @@ export function createFloor(
   
 
   
-  existingFloors.forEach((floor, index) => {
+  existingFloors.forEach((floor) => {
 
     scene.remove(floor)
     
@@ -39,10 +39,6 @@ export function createFloor(
       }
     }
   })
-  
-  // 제거 후 남은 객체 확인
-  const remainingObjects = scene.children.length
-
 
   // 커스텀 격자가 있는 경우 격자별로 타일 생성
   if (customGrid && Array.isArray(customGrid)) {

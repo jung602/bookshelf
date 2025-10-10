@@ -5,7 +5,6 @@ import {
   getThemeColors,
   TRANSITIONS,
   getResponsiveContainerRounding,
-  getResponsiveGridRounding,
   getResponsiveGridPadding,
   getResponsiveGridGap,
 } from './utils/cssUtils'

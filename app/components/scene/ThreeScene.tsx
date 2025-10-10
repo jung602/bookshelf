@@ -145,15 +145,10 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
     const container = containerRef.current
 
     // ResizeObserver로 container 크기 변화 감지
-    resizeObserverRef.current = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect
-
-        
-        // forceUpdate 호출하여 3D 씬 크기 업데이트
-        if (forceUpdate) {
-          forceUpdate()
-        }
+    resizeObserverRef.current = new ResizeObserver(() => {
+      // forceUpdate 호출하여 3D 씬 크기 업데이트
+      if (forceUpdate) {
+        forceUpdate()
       }
     })
 

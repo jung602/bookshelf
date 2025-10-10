@@ -106,7 +106,7 @@ export function useResponsiveScene(
 
     // SceneManager 업데이트
     sceneManager.updateSizeAndFrustum(actualSize.width, actualSize.height, newFrustumSize)
-  }, [sceneManager, getActualSize, calculateFrustumSize, isLandscape])
+  }, [sceneManager, getActualSize, calculateFrustumSize])
 
   // 브라우저 리사이즈 이벤트 핸들러
   useEffect(() => {

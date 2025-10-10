@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { ModelManager } from './ModelManager'
 import { BaseModel } from '../objects/BaseModel'
 
@@ -29,7 +30,7 @@ export class InteractionManager {
   private camera: THREE.Camera
   private renderer: THREE.WebGLRenderer
   private modelManager: ModelManager
-  private controls?: any // OrbitControls 참조
+  private controls?: OrbitControls
   private raycaster: THREE.Raycaster
   private mouse: THREE.Vector2
   private dragState: DragState
@@ -40,9 +41,9 @@ export class InteractionManager {
   private clickStartPosition: { x: number; y: number } = { x: 0, y: 0 }
   private clickHandledOnMouseUp: boolean = false
   private _hoverScheduled: boolean = false
-  private _dragCache: Map<THREE.Object3D, { renderOrder: Map<THREE.Mesh, number>; onBeforeRender: Map<THREE.Mesh, ((...args: any[]) => void) | null>; material: Map<THREE.Mesh, { transparent?: boolean; opacity?: number; depthTest?: boolean; depthWrite?: boolean }>; } > = new Map()
+  private _dragCache: Map<THREE.Object3D, { renderOrder: Map<THREE.Mesh, number>; onBeforeRender: Map<THREE.Mesh, ((renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, geometry: THREE.BufferGeometry, material: THREE.Material, group: THREE.Group) => void) | null>; material: Map<THREE.Mesh, { transparent?: boolean; opacity?: number; depthTest?: boolean; depthWrite?: boolean }>; } > = new Map()
   private suppressClearDepth: boolean = false
-  private renderPixelatedPass?: any
+  private renderPixelatedPass?: { setDragMode?: (enabled: boolean) => void; setClearDepthController?: (controller: (suppress: boolean) => void) => void }
 
   // 이벤트 리스너 참조 저장
   private boundMouseDown: (event: MouseEvent) => void
@@ -62,8 +63,8 @@ export class InteractionManager {
     renderer: THREE.WebGLRenderer,
     modelManager: ModelManager,
     onGizmoStateChange?: (gizmoState: GizmoState) => void,
-    controls?: any,
-    renderPixelatedPass?: any
+    controls?: OrbitControls,
+    renderPixelatedPass?: { setDragMode?: (enabled: boolean) => void; setClearDepthController?: (controller: (suppress: boolean) => void) => void }
   ) {
     this.scene = scene
     this.camera = camera
@@ -195,7 +196,7 @@ export class InteractionManager {
       const selectedModel = this.getModelFromIntersection(intersections[0], true)
 
       if (selectedModel) {
-        this.prepareForDrag(selectedModel, intersections[0].point as THREE.Vector3)
+        this.prepareForDrag(selectedModel)
         this.dragState.isDragging = true
       }
     } else {
@@ -303,7 +304,7 @@ export class InteractionManager {
         const selectedModel = this.getModelFromIntersection(intersections[0], true)
 
         if (selectedModel) {
-          this.prepareForDrag(selectedModel, intersections[0].point as THREE.Vector3)
+          this.prepareForDrag(selectedModel)
           this.dragState.isDragging = true
         }
       } else {
@@ -371,7 +372,7 @@ export class InteractionManager {
     this.endDrag()
   }
 
-  private prepareForDrag(model: BaseModel, intersectionPoint: THREE.Vector3): void {
+  private prepareForDrag(model: BaseModel): void {
     this.dragState.selectedModel = model
 
     const modelPosition = model.getPosition()
@@ -713,7 +714,7 @@ export class InteractionManager {
 
     // 씬에서 벽 객체들만 가져오기 (userData.isWall === true)
     const walls: THREE.Object3D[] = []
-    this.scene.traverse(obj => { if ((obj as any).userData?.isWall === true) walls.push(obj) })
+    this.scene.traverse(obj => { if (obj.userData?.isWall === true) walls.push(obj) })
 
     if (walls.length === 0) {
       return false
@@ -887,7 +888,7 @@ export class InteractionManager {
       this.alignModelFacingWall(model, wallNormal)
 
       return true
-    } catch (error) {
+    } catch {
       return false
     }
   }
@@ -903,7 +904,7 @@ export class InteractionManager {
         // 스냅샷 준비
         const snap = {
           renderOrder: new Map<THREE.Mesh, number>(),
-          onBeforeRender: new Map<THREE.Mesh, ((...args: any[]) => void) | null>(),
+          onBeforeRender: new Map<THREE.Mesh, ((renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, geometry: THREE.BufferGeometry, material: THREE.Material, group: THREE.Group) => void) | null>(),
           material: new Map<THREE.Mesh, { transparent?: boolean; opacity?: number; depthTest?: boolean; depthWrite?: boolean }>()
         }
         // 저장 + 적용
@@ -911,9 +912,9 @@ export class InteractionManager {
           const mesh = child as THREE.Mesh
           if (!mesh.isMesh) return
           snap.renderOrder.set(mesh, mesh.renderOrder)
-          snap.onBeforeRender.set(mesh, (mesh as any).onBeforeRender ?? null)
+          snap.onBeforeRender.set(mesh, mesh.onBeforeRender ?? null)
           // 머티리얼 플래그도 복원용으로만 저장(변경하지 않음)
-          const mat = mesh.material as any
+          const mat = mesh.material as THREE.MeshStandardMaterial
           if (mat) {
             snap.material.set(mesh, {
               transparent: mat.transparent, opacity: mat.opacity,
@@ -940,20 +941,22 @@ export class InteractionManager {
           if (!mesh.isMesh) return
           const origOrder = snap?.renderOrder.get(mesh)
           if (typeof origOrder === 'number') mesh.renderOrder = origOrder
-          const prevBefore = snap?.onBeforeRender.get(mesh) ?? null
-          ;(mesh as any).onBeforeRender = prevBefore
+          const prevBefore = snap?.onBeforeRender.get(mesh)
+          if (prevBefore !== undefined) {
+            mesh.onBeforeRender = prevBefore || (() => {})
+          }
           const origMat = snap?.material.get(mesh)
-          const mat = mesh.material as any
+          const mat = mesh.material as THREE.MeshStandardMaterial
           if (origMat && mat) {
-            mat.transparent = origMat.transparent
-            mat.opacity     = origMat.opacity
-            mat.depthTest   = origMat.depthTest
-            mat.depthWrite  = origMat.depthWrite
+            if (origMat.transparent !== undefined) mat.transparent = origMat.transparent
+            if (origMat.opacity !== undefined) mat.opacity = origMat.opacity
+            if (origMat.depthTest !== undefined) mat.depthTest = origMat.depthTest
+            if (origMat.depthWrite !== undefined) mat.depthWrite = origMat.depthWrite
           }
         })
         if (snap) this._dragCache.delete(threeObject)
       }
-    } catch (error) {
+    } catch {
       // ignore
     }
   }

@@ -8,7 +8,6 @@ import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedP
 import { ModelManager } from './managers/ModelManager'
 import { InteractionManager, GizmoState } from './managers/InteractionManager'
 import { getModelClass } from './objects'
-import { ColorPalettes } from './passes/ColorPalettes'
 
 // 타입 정의들
 export interface RoomParams {

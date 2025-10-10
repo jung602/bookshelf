@@ -206,10 +206,9 @@ export class WallModelManager {
     return idsToDelete
   }
 
-  // 벽 가구 제거 후 캐시 정리 (ModelManager에서 호출)
-  public onWallModelRemoved(model: BaseModel): void {
-    // 특정 모델의 캐시만 정리
-    this.boundingBoxCache.delete(model.getId())
+  // 벽 가구 제거 후 처리 (ModelManager에서 호출)
+  public onWallModelRemoved(): void {
+    // 모델 제거 시 자동으로 정리됨
   }
 
   // 벽 가구 최적 위치 찾기 (충돌 회피)

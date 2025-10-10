@@ -248,7 +248,7 @@ export default function FloorTileControl({
 
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.1);
-    } catch (e) {
+    } catch {
 
     }
   }, []);

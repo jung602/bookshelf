@@ -30,17 +30,16 @@ export class ModelManager {
       
       if (model.getType() === 'wallcube') {
         // 벽 가구는 WallModelManager에서 처리 (스마트 배치)
-        const modelId = await this.wallManager.addWallModel(model)
+        await this.wallManager.addWallModel(model)
         return
       } else {
         // 바닥 가구는 FloorModelManager에서 처리 (스마트 배치)
-        const modelId = await this.floorManager.addFloorModel(model)
+        await this.floorManager.addFloorModel(model)
         return
       }
     }
     
     // 새로운 방식 (modelType과 ModelClass 전달)
-    const modelType = modelOrType as string
     const model = new (ModelClass as new (position?: { x: number; y: number; z: number }) => BaseModel)(position)
     
     if (model.getType() === 'wallcube') {
@@ -63,12 +62,9 @@ export class ModelManager {
   public async removeModel(modelId: string): Promise<void> {
     const model = this.models.get(modelId)
     if (model) {
-      // 삭제 전에 모델 위치 저장
-      const removedPosition = model.getPosition()
-      
-      // 벽 가구인 경우 사용 횟수 감소
+      // 벽 가구인 경우 처리
       if (model.getType() === 'wallcube') {
-        this.wallManager.onWallModelRemoved(model)
+        this.wallManager.onWallModelRemoved()
       }
       
       // 삭제될 모델 위에 있는 모델들을 찾기
@@ -80,14 +76,14 @@ export class ModelManager {
       
       // 영향받는 모델들만 선택적으로 재계산
       if (affectedModels.length > 0) {
-        await this.floorManager.recalculateAffectedModelPositions(affectedModels, removedPosition)
+        await this.floorManager.recalculateAffectedModelPositions(affectedModels)
       } else {
         // 폴백: 삭제된 모델이 바닥 가구이고 다른 모델들이 있다면 모든 모델 재검증
         if (model.getType() !== 'wallcube') {
           const allFloorModels = Array.from(this.models.values()).filter(m => m.getType() !== 'wallcube')
           if (allFloorModels.length > 0) {
             const allModelIds = allFloorModels.map(m => m.getId())
-            await this.floorManager.recalculateAffectedModelPositions(allModelIds, removedPosition)
+            await this.floorManager.recalculateAffectedModelPositions(allModelIds)
           }
         }
       }

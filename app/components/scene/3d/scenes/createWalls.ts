@@ -23,7 +23,7 @@ export function createWalls(
   
 
   
-  existingWalls.forEach((wall, index) => {
+  existingWalls.forEach((wall) => {
 
     scene.remove(wall)
     
@@ -39,10 +39,6 @@ export function createWalls(
       }
     }
   })
-  
-  // 제거 후 남은 객체 확인
-  const remainingObjects = scene.children.length
-
 
   // 커스텀 격자가 있는 경우 격자별로 벽 생성
   if (customGrid && Array.isArray(customGrid)) {

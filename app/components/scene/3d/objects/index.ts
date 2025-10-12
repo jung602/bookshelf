@@ -5,9 +5,14 @@ import { DeskModel } from './desk'
 import { Book } from './book'
 import { WallCube } from './WallCube'
 import { FloorLampModel } from './floorlamp'
+import { GuitarModel } from './guitar'
+import { WoodChairModel } from './woodchair'
+import { BlackStoolModel } from './blackstool'
+import { SofaModel } from './sofa'
+import { TVModel } from './tv'
 
 // 모델 카테고리 타입 정의
-export type ModelCategory = 'chairs' | 'desks' | 'lighting' | 'decoration' | 'storage' | 'etc'
+export type ModelCategory = 'chairs' | 'desks' | 'lighting' | 'decoration' | 'storage' | 'etc' | 'wall'
 
 // 카테고리 메타데이터 인터페이스
 export interface CategoryMetadata {
@@ -29,12 +34,13 @@ export interface ModelMetadata {
 
 // 카테고리 정의
 export const categories: CategoryMetadata[] = [
-  { id: 'chairs', name: '의자', icon: '🪑' },
-  { id: 'desks', name: '책상', icon: '🗄️' },
-  { id: 'storage', name: '수납', icon: '📦' },
-  { id: 'etc', name: '기타', icon: '📦' },
-  { id: 'lighting', name: '조명', icon: '💡' },
-  { id: 'decoration', name: '장식', icon: '🎨' },
+  { id: 'chairs', name: 'Chair', icon: '🪑' },
+  { id: 'desks', name: 'Desk', icon: '🗄️' },
+  { id: 'storage', name: 'Storage', icon: '📦' },
+  { id: 'etc', name: 'Furniture', icon: '📦' },
+  { id: 'lighting', name: 'Lighting', icon: '💡' },
+  { id: 'decoration', name: 'Decoration', icon: '🎨' },
+  { id: 'wall', name: 'Wall', icon: '🎨' },
 ]
 
 // 모든 모델 메타데이터 (중앙 관리)
@@ -86,6 +92,46 @@ export const allModels: ModelMetadata[] = [
     icon: '📚',
     category: 'decoration',
     modelClass: Book
+  },
+  {
+    id: 'guitar',
+    name: '기타',
+    description: '데코레이션용 기타 모델',
+    icon: '🎸',
+    category: 'decoration',
+    modelClass: GuitarModel
+  },
+  {
+    id: 'woodchair',
+    name: '나무 의자',
+    description: '나무 재질의 의자 모델',
+    icon: '🪑',
+    category: 'chairs',
+    modelClass: WoodChairModel
+  },
+  {
+    id: 'blackstool',
+    name: '검정 스툴',
+    description: '검정색 스툴 모델',
+    icon: '🔲',
+    category: 'chairs',
+    modelClass: BlackStoolModel
+  },
+  {
+    id: 'sofa',
+    name: '소파',
+    description: '소파 모델',
+    icon: '🛋️',
+    category: 'chairs',
+    modelClass: SofaModel
+  },
+  {
+    id: 'tv',
+    name: 'TV',
+    description: '데코레이션용 TV 모델',
+    icon: '📺',
+    category: 'decoration',
+    modelClass: TVModel
   }
 ]
 

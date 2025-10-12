@@ -25,12 +25,12 @@ export const getRoundedValues = (isMobile: boolean) => {
   return {
     // 컨테이너용
     container: {
-      desktop: "rounded-[16px]",
-      mobile: "rounded-[16px]"
+      desktop: "rounded-[24px]",
+      mobile: "rounded-[24px]"
     },
     // 그리드 컨테이너용
     gridContainer: {
-      desktop: "rounded-[16px]", 
+      desktop: "rounded-[24px]", 
       mobile: "rounded-[16px]"
     },
     // 센터 블록용
@@ -263,5 +263,6 @@ export const getResponsiveGridGap = (_isMobile: boolean): string => {
 
 // 반응형 버튼 Border Radius 반환 함수
 export const getResponsiveButtonRadius = (isMobile: boolean): string => {
-  return `${getBaseRadius(isMobile)}px`; // 모바일과 데스크톱 동일: 8px
+  const roundedValues = getRoundedValues(isMobile);
+  return roundedValues.corner.radius; // 16px (BASE_RADIUS + 8)
 }; 

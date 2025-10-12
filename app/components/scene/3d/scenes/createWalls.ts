@@ -6,7 +6,8 @@ export function createWalls(
   height: number = 1, 
   wallHeight: number = 1,
   color: string = '#f3f3f3',
-  customGrid?: boolean[][]  // 5x5 격자 패턴
+  customGrid?: boolean[][],  // 5x5 격자 패턴
+  customTexture?: string     // 사용자 정의 텍스처 (data URL)
 ) {
   // 기존 벽 제거 (모델 보호) - 더 안전한 방식
 
@@ -42,9 +43,9 @@ export function createWalls(
 
   // 커스텀 격자가 있는 경우 격자별로 벽 생성
   if (customGrid && Array.isArray(customGrid)) {
-    createCustomGridWalls(scene, customGrid, wallHeight, color)
+    createCustomGridWalls(scene, customGrid, wallHeight, color, customTexture, width, height)
   } else {
-    createRegularWalls(scene, width, height, wallHeight, color)
+    createRegularWalls(scene, width, height, wallHeight, color, customTexture)
   }
 }
 
@@ -53,8 +54,22 @@ function createRegularWalls(
   width: number,
   height: number,
   wallHeight: number,
-  color: string
+  color: string,
+  customTexture?: string
 ) {
+  // 텍스처 로드 (있는 경우)
+  let wallTexture: THREE.Texture | undefined
+  if (customTexture) {
+    const textureLoader = new THREE.TextureLoader()
+    wallTexture = textureLoader.load(customTexture)
+    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping
+    wallTexture.minFilter = THREE.NearestFilter
+    wallTexture.magFilter = THREE.NearestFilter
+    wallTexture.generateMipmaps = false
+    // 벽의 비율(1:3)에 맞춰 텍스처 반복 설정 - 세로로 wallHeight배
+    wallTexture.repeat.set(width, height * wallHeight)
+  }
+
   // 벽 생성 함수
   function createWall(
     position: [number, number, number], 
@@ -63,6 +78,7 @@ function createRegularWalls(
   ) {
     const geometry = new THREE.PlaneGeometry(1, 1)
     const material = new THREE.MeshStandardMaterial({
+      map: wallTexture,
       color: new THREE.Color(color),
       roughness: 0.8,
       metalness: 0.1,
@@ -115,11 +131,27 @@ function createCustomGridWalls(
   scene: THREE.Scene,
   customGrid: boolean[][],
   wallHeight: number,
-  color: string
+  color: string,
+  customTexture?: string,
+  repeatX: number = 1,
+  repeatY: number = 1
 ) {
   const gridSize = customGrid.length
   const tileSize = 1
   const offset = (gridSize - 1) * tileSize / 2
+
+  // 텍스처 로드 (있는 경우)
+  let wallTexture: THREE.Texture | undefined
+  if (customTexture) {
+    const textureLoader = new THREE.TextureLoader()
+    wallTexture = textureLoader.load(customTexture)
+    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping
+    wallTexture.minFilter = THREE.NearestFilter
+    wallTexture.magFilter = THREE.NearestFilter
+    wallTexture.generateMipmaps = false
+    // 벽의 비율(1:3)에 맞춰 텍스처 반복 설정 - 세로로 wallHeight배
+    wallTexture.repeat.set(repeatX, repeatY * wallHeight)
+  }
 
   // 벽 생성 함수
   function createWallSegment(
@@ -129,6 +161,7 @@ function createCustomGridWalls(
   ) {
     const geometry = new THREE.PlaneGeometry(1, 1)
     const material = new THREE.MeshStandardMaterial({
+      map: wallTexture ? wallTexture.clone() : undefined,
       color: new THREE.Color(color),
       roughness: 0.8,
       metalness: 0.1,

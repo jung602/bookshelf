@@ -41,13 +41,13 @@ export function createLights(scene: THREE.Scene) {
   scene.add(hemisphereLight)
 
   // 방향광 - 주요 조명과 그림자 생성
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-  directionalLight.position.set(0, 3, .5)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7)
+  directionalLight.position.set(0, 5, 1)
   directionalLight.castShadow = true
   
   // 그림자 설정 개선
-  directionalLight.shadow.mapSize.width = 1024
-  directionalLight.shadow.mapSize.height = 1024
+  directionalLight.shadow.mapSize.width = 512
+  directionalLight.shadow.mapSize.height = 512
   directionalLight.shadow.camera.near = 0.1
   directionalLight.shadow.camera.far = 50
   directionalLight.shadow.camera.left = -10

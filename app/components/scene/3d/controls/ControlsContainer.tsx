@@ -7,6 +7,7 @@ import TopBar from './TopBar'
 import MenuBar from './MenuBar'
 import ModelAddControl from './ModelAddControl'
 import CollectionAddControl from './CollectionAddControl'
+import TileDesignControl from './TileDesignControl'
 import { getModelClass } from '../objects'
 
 interface ControlsContainerProps {
@@ -140,7 +141,7 @@ export default function ControlsContainer({
 
 
   return (
-    <div className="w-full h-full flex flex-col relative">
+    <div className="w-full h-full flex flex-col gap-[8px] relative">
       {/* 모바일 전용 TopBar - position fixed */}
       {isMobile && (
         <div className={`fixed w-full z-50 ${isCollapsed ? 'bottom-[42px]' : 'top-1/2'}`}>
@@ -198,7 +199,7 @@ export default function ControlsContainer({
 
       {/* 데스크톱에서 메뉴가 선택되었을 때 해당 UI를 위에 표시 */}
       {selectedMenu && !isMobile && (
-        <div className="w-full aspect-square">
+        <div style={{ width: '400px', height: '400px' }}>
           {selectedMenu === 'floor' && (
             <FloorTileControl 
               isDarkMode={isDarkMode}
@@ -219,12 +220,10 @@ export default function ControlsContainer({
             />
           )}
           {selectedMenu === 'settings' && (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
-              <div className="text-center">
-                <div className="text-lg font-semibold mb-2">설정</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">추후 구현 예정</div>
-              </div>
-            </div>
+            <TileDesignControl 
+              isDarkMode={isDarkMode}
+              sceneManager={sceneManager || undefined}
+            />
           )}
         </div>
       )}
@@ -267,12 +266,10 @@ export default function ControlsContainer({
             />
           )}
           {selectedMenu === 'settings' && (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
-              <div className="text-center">
-                <div className="text-lg font-semibold mb-2">설정</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">추후 구현 예정</div>
-              </div>
-            </div>
+            <TileDesignControl 
+              isDarkMode={isDarkMode}
+              sceneManager={sceneManager || undefined}
+            />
           )}
         </div>
       )}

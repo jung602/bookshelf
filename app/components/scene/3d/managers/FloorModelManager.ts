@@ -259,7 +259,7 @@ export class FloorModelManager {
 
     if (targetModel.getType() === 'wallcube') return false
 
-    const unsupportableTypes = ['floorlamp']
+    const unsupportableTypes = ['floorlamp', 'guitar', 'tv']
     if (unsupportableTypes.includes(supportModel.getType())) return false
 
     const supportBox = calculateBoundingBox(supportModel)
@@ -283,16 +283,30 @@ export class FloorModelManager {
     const targetType = targetModel.getType()
     const pairKey = `${supportType}->${targetType}`
 
-    const forbiddenPairs = new Set<string>(['stool->chair', 'stool->desk', 'stool->stool'])
+    // guitar는 desk 위에만 올라갈 수 있음
+    if (targetType === 'guitar' && supportType !== 'desk') return false
+    
+    // tv는 바닥과 desk 위에만 올라갈 수 있음 (바닥은 이 함수가 호출되지 않으므로 desk만 체크)
+    if (targetType === 'tv' && supportType !== 'desk') return false
+
+    const forbiddenPairs = new Set<string>([
+      'stool->chair', 'stool->desk', 'stool->stool',
+      'blackstool->chair', 'blackstool->desk', 'blackstool->stool', 'blackstool->blackstool'
+    ])
     if (forbiddenPairs.has(pairKey)) return false
 
     switch (pairKey) {
       case 'chair->stool':
       case 'chair->floorlamp':
+      case 'woodchair->stool':
+      case 'woodchair->floorlamp':
+      case 'sofa->stool':
+      case 'sofa->floorlamp':
         minOverlapRatio = 0.25
         minSupportAreaRatio = 0.6
         break
       case 'stool->floorlamp':
+      case 'blackstool->floorlamp':
         minOverlapRatio = 0.2
         minSupportAreaRatio = 0.5
         break

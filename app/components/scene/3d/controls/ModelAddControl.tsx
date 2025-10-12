@@ -56,16 +56,13 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
       <button
         key={category.id}
         onClick={() => setActiveCategory(category.id)}
-        className={`flex-shrink-0 cursor-pointer ${TRANSITIONS.default} select-none flex items-center justify-center`}
+        className={`flex-shrink-0 cursor-pointer ${TRANSITIONS.default} select-none flex items-center justify-center aspect-square`}
         style={{
-          backgroundColor: isActive ? '#FFE14D' : '#D4D4D8',
-          borderTopLeftRadius: radius,
-          borderTopRightRadius: radius,
-          borderBottomLeftRadius: isActive ? '0' : radius,
-          borderBottomRightRadius: isActive ? '0' : radius,
-          padding: isMobile ? '16px 20px' : '12px 16px',
-          minHeight: isMobile ? '56px' : '48px',
-          minWidth: isMobile ? '64px' : '56px',
+          backgroundColor: isActive ? '#B6FD83' : '#D4D4D8',
+          borderRadius: radius,
+          padding: isMobile ? '16px' : '12px',
+          width: isMobile ? '56px' : '48px',
+          height: isMobile ? '56px' : '48px',
           border: 'none',
         }}
       >
@@ -78,31 +75,32 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
 
   return (
     <div
-      className={`relative ${getResponsiveContainerRounding(isMobile)} ${isMobile ? 'size-full' : 'w-full aspect-square'} ${TRANSITIONS.fast} flex flex-col overflow-hidden`}
-      style={{ backgroundColor: themeColors.outerContainer }}
+      className={`relative ${getResponsiveContainerRounding(isMobile)} ${TRANSITIONS.fast} flex flex-row overflow-hidden`}
+      style={{ 
+        backgroundColor: themeColors.outerContainer,
+        width: isMobile ? '100%' : '400px',
+        height: isMobile ? '100%' : '400px',
+      }}
     >
-      {/* Tab Area - Fixed at top */}
+      {/* Tab Area - Fixed at left */}
       <div 
-        className="flex-none overflow-x-auto overflow-y-hidden"
+        className="flex-none overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         style={{
-          padding: `${isMobile ? '8px' : '8px'} ${isMobile ? '8px' : '8px'} 0`,
+          padding: `${isMobile ? '8px' : '8px'} 0 ${isMobile ? '8px' : '8px'} ${isMobile ? '8px' : '8px'}`,
         }}
       >
-        <div className={`flex ${isMobile ? 'gap-3' : 'gap-2'}`} style={{ minWidth: 'min-content' }}>
+        <div className={`flex flex-col ${isMobile ? 'gap-3' : 'gap-2'}`}>
           {categories.map(category => renderTabButton(category))}
         </div>
       </div>
 
-      {/* Content Area with rounded background - connected to active tab */}
+      {/* Content Area with rounded background */}
       <div 
         className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
         style={{ 
-          backgroundColor: '#FFE14D',
-          margin: `0 ${isMobile ? '8px' : '8px'} ${isMobile ? '8px' : '8px'}`,
-          borderTopLeftRadius: '0',
-          borderTopRightRadius: '0',
-          borderBottomLeftRadius: isMobile ? '16px' : '16px',
-          borderBottomRightRadius: isMobile ? '16px' : '16px',
+          backgroundColor: '#f0f0f0',
+          margin: `${isMobile ? '8px' : '8px'}`,
+          borderRadius: isMobile ? '16px' : '16px',
         }}
       >
         {/* Grid Area */}

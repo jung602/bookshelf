@@ -489,8 +489,12 @@ export default function FloorTileControl({
 
   return (
     <div
-      className={`relative ${getResponsiveContainerRounding(isMobile)} ${isMobile ? 'size-full' : 'w-80 aspect-square'} ${TRANSITIONS.fast}`}
-      style={{ backgroundColor: themeColors.outerContainer }}
+      className={`relative ${getResponsiveContainerRounding(isMobile)} ${TRANSITIONS.fast}`}
+      style={{ 
+        backgroundColor: themeColors.outerContainer,
+        width: isMobile ? '100%' : '400px',
+        height: isMobile ? '100%' : '400px',
+      }}
       ref={gridRef}
       onTouchMove={handleTouchMove}
     >

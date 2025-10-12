@@ -42,7 +42,7 @@ export function createFloor(
 
   // 커스텀 격자가 있는 경우 격자별로 타일 생성
   if (customGrid && Array.isArray(customGrid)) {
-    createCustomGridFloor(scene, customGrid, color, customTexture)
+    createCustomGridFloor(scene, customGrid, color, customTexture, width, height)
   } else {
     createRegularFloor(scene, width, height, color, customTexture)
   }
@@ -82,6 +82,8 @@ function createRegularFloor(
   const material = new THREE.MeshStandardMaterial({
     map: floorTexture,
     color: new THREE.Color(color), // 색상을 오버레이로 적용
+    roughness: 1.0, // 매트한 질감
+    metalness: 0.0, // 금속성 없음
     side: THREE.DoubleSide
   })
 
@@ -102,7 +104,9 @@ function createCustomGridFloor(
   scene: THREE.Scene,
   customGrid: boolean[][],
   color: string,
-  customTexture?: string
+  customTexture?: string,
+  repeatX: number = 1,
+  repeatY: number = 1
 ) {
   // 텍스처 로더
   const textureLoader = new THREE.TextureLoader()
@@ -122,7 +126,7 @@ function createCustomGridFloor(
   baseTexture.minFilter = THREE.NearestFilter
   baseTexture.magFilter = THREE.NearestFilter
   baseTexture.generateMipmaps = false
-  baseTexture.repeat.set(1, 1) // 각 타일마다 하나의 패턴
+  baseTexture.repeat.set(repeatX, repeatY) // 사용자 지정 배수 적용
 
   const gridSize = customGrid.length
   const tileSize = 1 // 각 타일의 크기
@@ -137,6 +141,8 @@ function createCustomGridFloor(
         const material = new THREE.MeshStandardMaterial({
           map: baseTexture.clone(),
           color: new THREE.Color(color),
+          roughness: 1.0, // 매트한 질감
+          metalness: 0.0, // 금속성 없음
           side: THREE.DoubleSide
         })
 

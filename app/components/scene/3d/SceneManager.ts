@@ -50,7 +50,10 @@ export class SceneManager {
   private isInitialized: boolean = false
   private gizmoState: GizmoState = { visible: false, selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
-  private customFloorTexture?: string
+  private customFloorTexture: string = 'https://threejsfundamentals.org/threejs/resources/images/checker.png'
+  private customWallTexture?: string
+  private floorTextureRepeat: number = 1
+  private wallTextureRepeat: number = 1
   private themeObserver?: MutationObserver
 
   // 크기 애니메이션 관련 변수들
@@ -138,10 +141,10 @@ export class SceneManager {
     createLights(this.scene)
 
     // 바닥 추가 (격자 기반)
-    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+    createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
 
     // 벽들 추가 (격자 기반)
-    createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    createWalls(this.scene, this.wallTextureRepeat, this.wallTextureRepeat, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid, this.customWallTexture)
 
 
   }
@@ -152,10 +155,10 @@ export class SceneManager {
     
     // 픽셀화 해상도 계산 (기본값 사용)
     const defaultParams = { 
-      pixelSize: 2.2, 
+      pixelSize: 2, 
       ditherStrength: 0.01, 
       ditherScale: 0, 
-      normalEdgeStrength: 0.15,
+      normalEdgeStrength: 0.175,
       // 팔레트 파라미터 (ColorPalettes.ts의 key와 일치해야 함)
       usePalette: 0.1, // Pokemon Palette
       useMSPaintPalette: 0, // MS Tinta
@@ -163,14 +166,14 @@ export class SceneManager {
       useLostGBPalette: 0, // LostGB Creepy
       useUIPalette: 0.2, // UI Palette
       // Unity 방식 파라미터 기본값
-      depthEdgeStrength: 0.5,
-      edgeThreshold: .1,
+      depthEdgeStrength: 0.8,
+      edgeThreshold: .05,
       outlineDarknessAmount: 0.15,
       useColorAwareOutline: 1.0,
-      depthIndicatorStrength: 0.3,
+      depthIndicatorStrength: 1,
       // 카메라 거리 기반 조절 파라미터 기본값
       cameraDistance: 10,
-      edgeScaleFactor: 0.8,
+      edgeScaleFactor: 1,
       adaptiveEdgeEnabled: 0
     } as PixelationParams
     
@@ -240,7 +243,7 @@ export class SceneManager {
       this.customFloorTexture = textureDataURL
       
       // 바닥 재생성
-      createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+      createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
       
       // 바닥 텍스처 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
       // 인덱스 재빌드
@@ -251,10 +254,10 @@ export class SceneManager {
     
     // 커스텀 텍스처 리셋 이벤트 리스너
     window.addEventListener('resetCustomTexture', () => {
-      this.customFloorTexture = undefined
+      this.customFloorTexture = 'https://threejsfundamentals.org/threejs/resources/images/checker.png'
       
       // 기본 텍스처로 바닥 재생성
-      createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+      createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
       
       // 인덱스 재빌드
       this.modelManager.rebuildIndex()
@@ -373,7 +376,7 @@ export class SceneManager {
     this.customFloorTexture = textureDataURL
     
     // 바닥 재생성
-    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+    createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
     
     // 바닥 텍스처 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
     
@@ -391,8 +394,8 @@ export class SceneManager {
     Object.assign(this.roomParams, params)
     
     // 바닥과 벽 다시 생성 (격자 기반)
-    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
-    createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+    createWalls(this.scene, this.wallTextureRepeat, this.wallTextureRepeat, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid, this.customWallTexture)
     this.modelManager.rebuildIndex()
     
     // 바닥/벽 생성 완료 후 지연된 모델 재배치 (타이밍 문제 해결)
@@ -434,9 +437,9 @@ export class SceneManager {
     // roomParams 업데이트
     this.roomParams.customGrid = customGrid
     
-    // 바닥과 벽 모두 재생성 (카메라는 건드리지 않음)
-    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
-    createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    // 바닥과 벽 모두 재생성 (카메라는 건드리지 않음, 텍스처와 배수 유지)
+    createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+    createWalls(this.scene, this.wallTextureRepeat, this.wallTextureRepeat, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid, this.customWallTexture)
     this.modelManager.rebuildIndex()
     
     // 바닥 생성 완료 후 지연된 모델 재배치 (타이밍 문제 해결)
@@ -467,8 +470,8 @@ export class SceneManager {
     Object.assign(this.colorParams, params)
     
     // 바닥과 벽 다시 생성 (격자 기반)
-    createFloor(this.scene, 1, 1, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
-    createWalls(this.scene, 1, 1, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid)
+    createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+    createWalls(this.scene, this.wallTextureRepeat, this.wallTextureRepeat, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid, this.customWallTexture)
     this.modelManager.rebuildIndex()
     
     // 바닥/벽 색상 변경은 가구 위치에 영향을 주지 않음 (메시만 교체)
@@ -491,6 +494,49 @@ export class SceneManager {
 
   public getInteractionManager(): InteractionManager {
     return this.interactionManager
+  }
+
+  // 바닥 텍스처 업데이트
+  public updateFloorTexture(textureUrl: string, repeat: number = 1) {
+    this.customFloorTexture = textureUrl
+    this.floorTextureRepeat = repeat
+    
+    // 바닥 다시 생성
+    createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
+    this.modelManager.rebuildIndex()
+    
+    // 바닥 재생성 후 바운딩박스 업데이트
+    this.modelManager.updateAllBoundingBoxes()
+  }
+
+  // 벽 텍스처 업데이트
+  public updateWallTexture(textureUrl: string | null, repeat: number = 1) {
+    this.customWallTexture = textureUrl || undefined
+    this.wallTextureRepeat = repeat
+    
+    // 벽 다시 생성
+    createWalls(this.scene, this.wallTextureRepeat, this.wallTextureRepeat, this.roomParams.wallHeight, this.colorParams.wallColor, this.roomParams.customGrid, this.customWallTexture)
+    this.modelManager.rebuildIndex()
+    
+    // 벽 재생성 후 벽 가구들을 자동으로 재부착
+    const wallDeleteIds = this.modelManager.repositionWallModelsAfterWallChange()
+    if (wallDeleteIds.length > 0) {
+      wallDeleteIds.forEach(async (id) => await this.modelManager.removeModel(id))
+      alert(`${wallDeleteIds.length}개의 벽 가구가 벽이 없어 삭제되었습니다.`)
+    }
+    
+    // 벽 재생성 후 바운딩박스 업데이트
+    this.modelManager.updateAllBoundingBoxes()
+  }
+
+  // 현재 타일 상태 가져오기
+  public getCurrentTileState() {
+    return {
+      floorTexture: this.customFloorTexture,
+      floorRepeat: this.floorTextureRepeat,
+      wallTexture: this.customWallTexture,
+      wallRepeat: this.wallTextureRepeat,
+    }
   }
 
   // 벽 큐브 테스트용 메서드 (스마트 배치 사용)

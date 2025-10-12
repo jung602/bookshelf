@@ -155,20 +155,20 @@ export class SceneManager {
     
     // 픽셀화 해상도 계산 (기본값 사용)
     const defaultParams = { 
-      pixelSize: 2, 
+      pixelSize: 2.3, 
       ditherStrength: 0.01, 
       ditherScale: 0, 
       normalEdgeStrength: 0.175,
       // 팔레트 파라미터 (ColorPalettes.ts의 key와 일치해야 함)
-      usePalette: 0.1, // Pokemon Palette
+      usePalette: 0, // Pokemon Palette
       useMSPaintPalette: 0, // MS Tinta
-      useSupremoPalette: 0, // 1bit Monitor Glow
+      useNeutralPalette: 0, // 1bit Monitor Glow
       useLostGBPalette: 0, // LostGB Creepy
-      useUIPalette: 0.2, // UI Palette
+      useUIPalette: 0, // UI Palette
       // Unity 방식 파라미터 기본값
       depthEdgeStrength: 0.8,
       edgeThreshold: .05,
-      outlineDarknessAmount: 0.15,
+      outlineDarknessAmount: 0.1,
       useColorAwareOutline: 1.0,
       depthIndicatorStrength: 1,
       // 카메라 거리 기반 조절 파라미터 기본값

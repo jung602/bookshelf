@@ -23,18 +23,18 @@ export class ColorPalettes {
     {
       key: 'useMSPaintPalette',
       name: 'MS Tinta',
-      emoji: '🖥️',
+      emoji: '🎨',
       colorCount: 36,
       shaderArrayName: 'mspaintPalette',
-      description: 'MS Tinta 36색 팔레트 - MS Paint 스타일'
+      description: 'Lospec MS Tinta 팔레트 - 올드스쿨 MS Paint 스타일 36색 (by Bruh Aw Man)'
     },
     {
-      key: 'useSupremoPalette',
-      name: '1bit Monitor Glow',
-      emoji: '💚',
-      colorCount: 2,
-      shaderArrayName: 'supremoPalette',
-      description: 'Polyducks의 대담한 1비트 팔레트 - 청록빛 검정과 녹색빛 흰색'
+      key: 'useNeutralPalette',
+      name: 'Tailwind Neutral',
+      emoji: '⚫',
+      colorCount: 11,
+      shaderArrayName: 'neutralPalette',
+      description: 'Tailwind CSS Neutral 팔레트 - 순수한 그레이스케일 11색'
     },
     {
       key: 'useLostGBPalette',
@@ -101,7 +101,8 @@ export class ColorPalettes {
     );
   `
 
-  // MS Tinta 팔레트 (36 colors) - MS Paint inspired palette
+  // MS Tinta 팔레트 (36 colors) - Lospec (by Bruh Aw Man)
+  // https://lospec.com/palette-list/ms-tinta
   static readonly WINDOWS_PALETTE = `
     vec3 mspaintPalette[36] = vec3[](
       vec3(0.000, 0.000, 0.000),  // #000000
@@ -143,11 +144,20 @@ export class ColorPalettes {
     );
   `
 
-  // 1bit Monitor Glow 팔레트 (2 colors) - by Polyducks
-  static readonly SUPREMO_PALETTE = `
-    vec3 supremoPalette[2] = vec3[](
-      vec3(0.133, 0.137, 0.137),  // #222323 - 약간 청록빛 검정
-      vec3(0.941, 0.965, 0.941)   // #f0f6f0 - 약간 녹색빛 흰색
+  // Tailwind Neutral 팔레트 (11 colors) - 순수한 그레이스케일
+  static readonly NEUTRAL_PALETTE = `
+    vec3 neutralPalette[11] = vec3[](
+      vec3(0.985, 0.985, 0.985),  // neutral-50
+      vec3(0.970, 0.970, 0.970),  // neutral-100
+      vec3(0.922, 0.922, 0.922),  // neutral-200
+      vec3(0.870, 0.870, 0.870),  // neutral-300
+      vec3(0.708, 0.708, 0.708),  // neutral-400
+      vec3(0.556, 0.556, 0.556),  // neutral-500
+      vec3(0.439, 0.439, 0.439),  // neutral-600
+      vec3(0.371, 0.371, 0.371),  // neutral-700
+      vec3(0.269, 0.269, 0.269),  // neutral-800
+      vec3(0.205, 0.205, 0.205),  // neutral-900
+      vec3(0.145, 0.145, 0.145)   // neutral-950
     );
   `
 
@@ -236,7 +246,7 @@ export class ColorPalettes {
     return `
       ${this.POKEMON_PALETTE}
       ${this.WINDOWS_PALETTE}
-      ${this.SUPREMO_PALETTE}
+      ${this.NEUTRAL_PALETTE}
       ${this.LOSTGB_PALETTE}
       ${this.UI_PALETTE}
       ${this.generatePaletteFunctions()}

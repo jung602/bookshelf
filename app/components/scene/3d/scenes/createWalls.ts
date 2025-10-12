@@ -5,7 +5,7 @@ export function createWalls(
   width: number = 1, 
   height: number = 1, 
   wallHeight: number = 1,
-  color: string = '#f3f3f3',
+  color: string = '#C0C0C0',
   customGrid?: boolean[][],  // 5x5 격자 패턴
   customTexture?: string     // 사용자 정의 텍스처 (data URL)
 ) {

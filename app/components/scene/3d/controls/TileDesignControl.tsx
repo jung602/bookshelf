@@ -5,8 +5,6 @@ import {
   getThemeColors,
   TRANSITIONS,
   getResponsiveContainerRounding,
-  getResponsiveGridPadding,
-  getResponsiveGridGap,
 } from './utils/cssUtils'
 import { useResponsiveDevice } from '../../../../hooks/useResponsiveDevice'
 import { SceneManager } from '../SceneManager'

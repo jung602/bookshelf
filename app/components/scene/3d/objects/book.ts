@@ -27,7 +27,8 @@ export class Book extends BaseModel {
     try {
       await this.createBookModel()
       this.applyTransforms()
-      this.createBookCollider()
+      // BaseModel의 createCollider()를 호출하여 콜라이더 생성
+      this.createCollider()
       this.isLoaded = true
       
 
@@ -208,35 +209,6 @@ export class Book extends BaseModel {
     this.bookMesh.position.y = depth / 2
   }
 
-  private createBookCollider(): void {
-    if (!this.bookMesh) return
-
-    // 책 메시의 지오메트리를 복제하여 콜라이더 생성
-    const colliderGeometry = this.bookMesh.geometry.clone()
-    
-    const colliderMaterial = new THREE.MeshBasicMaterial({
-      transparent: true,
-      opacity: 0,
-      color: 0x00ff00,
-      visible: true,
-      wireframe: false
-    })
-    
-    this.collider = new THREE.Mesh(colliderGeometry, colliderMaterial)
-    
-    // 원본 메시의 위치 복사
-    this.collider.position.copy(this.bookMesh.position)
-    this.collider.rotation.copy(this.bookMesh.rotation)
-    this.collider.scale.copy(this.bookMesh.scale)
-    
-    // 콜라이더 식별 정보 추가
-    this.collider.userData.modelId = this.id
-    this.collider.userData.isCollider = true
-    
-    this.model.add(this.collider)
-    
-
-  }
 
   protected setupModel(): void {
     // 책의 실제 바운딩박스 계산

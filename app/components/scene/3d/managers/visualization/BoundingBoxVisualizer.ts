@@ -83,12 +83,52 @@ export class BoundingBoxVisualizer {
       const yMin = position.y + offsetY
       const yMax = yMin + height
 
-      const boundingBox = new THREE.Box3(
-        new THREE.Vector3(position.x - width / 2, yMin, position.z - depth / 2),
-        new THREE.Vector3(position.x + width / 2, yMax, position.z + depth / 2)
-      )
-      helper = new THREE.Box3Helper(boundingBox, helperColor)
+      // 회전을 고려한 바운딩박스 계산
+      const rotation = model.getRotation()
+      if (rotation.y !== 0) {
+        // 회전된 박스의 바운딩박스를 계산
+        const cos = Math.cos(rotation.y)
+        const sin = Math.sin(rotation.y)
+        
+        // 회전된 박스의 4개 모서리 점들
+        const halfWidth = width / 2
+        const halfDepth = depth / 2
+        
+        const corners = [
+          new THREE.Vector3(-halfWidth, 0, -halfDepth),
+          new THREE.Vector3(halfWidth, 0, -halfDepth),
+          new THREE.Vector3(halfWidth, 0, halfDepth),
+          new THREE.Vector3(-halfWidth, 0, halfDepth)
+        ]
+        
+        // 회전 적용
+        corners.forEach(corner => {
+          const x = corner.x * cos - corner.z * sin
+          const z = corner.x * sin + corner.z * cos
+          corner.set(x, corner.y, z)
+        })
+        
+        // 회전된 모서리들로부터 바운딩박스 계산
+        const minX = Math.min(...corners.map(c => c.x)) + position.x
+        const maxX = Math.max(...corners.map(c => c.x)) + position.x
+        const minZ = Math.min(...corners.map(c => c.z)) + position.z
+        const maxZ = Math.max(...corners.map(c => c.z)) + position.z
+        
+        const boundingBox = new THREE.Box3(
+          new THREE.Vector3(minX, yMin, minZ),
+          new THREE.Vector3(maxX, yMax, maxZ)
+        )
+        helper = new THREE.Box3Helper(boundingBox, helperColor)
+      } else {
+        // 회전이 없는 경우 기존 로직 사용
+        const boundingBox = new THREE.Box3(
+          new THREE.Vector3(position.x - width / 2, yMin, position.z - depth / 2),
+          new THREE.Vector3(position.x + width / 2, yMax, position.z + depth / 2)
+        )
+        helper = new THREE.Box3Helper(boundingBox, helperColor)
+      }
     } else {
+      // 회전된 모델의 바운딩박스를 정확히 계산
       const boundingBox = new THREE.Box3().setFromObject(modelGroup)
       helper = new THREE.Box3Helper(boundingBox, helperColor)
     }

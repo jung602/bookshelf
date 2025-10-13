@@ -136,6 +136,12 @@ export const MODEL_CONFIGS: Record<string, SimpleModelConfig> = {
     defaultScale: { x: 1.7, y: 1.7, z: 1.7 },
     boundingBoxType: 'box'
   },
+  synthesizer: {
+    modelPath: '/3d/main/models/Synthesizer.glb',
+    typeName: 'synthesizer',
+    defaultScale: { x: 1.7, y: 1.7, z: 1.7 },
+    boundingBoxType: 'box'
+  },
   tv: {
     modelPath: '/3d/main/models/tv.glb',
     typeName: 'tv',

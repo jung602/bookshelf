@@ -73,7 +73,7 @@ export abstract class BaseModel {
     }
   }
 
-  private createCollider(): void {
+  protected createCollider(): void {
     if (!this.model) return
 
     // 모델의 모든 메시를 찾아서 콜라이더 그룹 생성
@@ -155,6 +155,9 @@ export abstract class BaseModel {
     this.rotation = { ...this.rotation, ...rotation }
     if (this.model) {
       this.model.rotation.set(this.rotation.x, this.rotation.y, this.rotation.z)
+      
+      // 콜라이더들도 함께 회전하도록 업데이트
+      this.updateColliderRotation()
     }
   }
 
@@ -174,7 +177,6 @@ export abstract class BaseModel {
   public rotateY90(): void {
     const newRotationY = this.rotation.y + Math.PI / 2
     this.setRotation({ y: newRotationY })
-
   }
 
   public getId(): string {
@@ -200,6 +202,18 @@ export abstract class BaseModel {
     })
     
     return colliders
+  }
+
+  private updateColliderRotation(): void {
+    if (!this.model) return
+    
+    // 모든 콜라이더의 회전을 모델의 회전과 동기화
+    this.model.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.userData.isCollider && child.userData.modelId === this.id) {
+        // 콜라이더의 회전을 모델의 회전과 동일하게 설정
+        child.rotation.copy(this.model.rotation)
+      }
+    })
   }
 
   public isModelLoaded(): boolean {

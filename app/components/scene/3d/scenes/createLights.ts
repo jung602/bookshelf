@@ -21,7 +21,7 @@ export function createLights(scene: THREE.Scene) {
   
   // 테마에 따른 intensity 설정
   const hemisphereIntensity = currentTheme === 'light' ? 2 : 1
-  const ambientIntensity = currentTheme === 'light' ? 2 : 0.3
+  const ambientIntensity = currentTheme === 'light' ? 2 : 0.5
   
   // 기존 조명들 제거 (업데이트 시를 위해)
   const lightsToRemove: THREE.Light[] = []
@@ -41,7 +41,7 @@ export function createLights(scene: THREE.Scene) {
   scene.add(hemisphereLight)
 
   // 방향광 - 주요 조명과 그림자 생성
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7)
   directionalLight.position.set(0, 5, 3)
   directionalLight.castShadow = true
   

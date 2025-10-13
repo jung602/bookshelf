@@ -1,7 +1,7 @@
 // 모든 모델 클래스 import
 import { Book } from './book'
 import { FloorLampModel } from './floorlamp'
-import { SimpleGLBModel, MODEL_CONFIGS, createSimpleModel } from './SimpleGLBModel'
+import { SimpleGLBModel, MODEL_CONFIGS} from './SimpleGLBModel'
 import { ModelPosition, ModelScale, ModelRotation } from './BaseModel'
 
 // 레거시 호환성을 위한 클래스 래퍼
@@ -26,6 +26,12 @@ export class DeskModel extends SimpleGLBModel {
 export class GuitarModel extends SimpleGLBModel {
   constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
     super(MODEL_CONFIGS.guitar, position, scale, rotation)
+  }
+}
+
+export class SynthesizerModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.synthesizer, position, scale, rotation)
   }
 }
 
@@ -140,6 +146,14 @@ export const allModels: ModelMetadata[] = [
     icon: '🎸',
     category: 'decoration',
     modelClass: GuitarModel
+  },
+  {
+    id: 'synthesizer',
+    name: '신디사이저',
+    description: '데코레이션용 신디사이저 모델',
+    icon: '🎹',
+    category: 'decoration',
+    modelClass: SynthesizerModel
   },
   {
     id: 'woodchair',

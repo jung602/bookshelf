@@ -257,7 +257,7 @@ export class FloorModelManager {
     const targetModelGroup = targetModel.getModel()
     if (!supportModelGroup || !targetModelGroup) return false
 
-    if (targetModel.getType() === 'wallcube') return false
+    if (targetModel.getType() === 'wall') return false
 
     const unsupportableTypes = ['floorlamp', 'guitar', 'tv']
     if (unsupportableTypes.includes(supportModel.getType())) return false
@@ -483,7 +483,7 @@ export class FloorModelManager {
     
     // 1. 현재 지지하고 있는 모델들 찾기 (더 넓은 범위로 확장)
     this.models.forEach((model, id) => {
-      const isWallModel = model.getType() === 'wallcube' || model.getType() === 'wall'
+      const isWallModel = model.getType() === 'wall'
       if (id === excludeModelId || isWallModel) return  // 벽 가구는 항상 벽에 붙음
       
       const modelPosition = model.getPosition()
@@ -545,7 +545,7 @@ export class FloorModelManager {
     
     // 모든 모델을 순회하여 지지받을 수 있는 모델 찾기
     this.models.forEach((model, modelId) => {
-      if (modelId === removedModelId || model.getType() === 'wallcube') return
+      if (modelId === removedModelId || model.getType() === 'wall') return
       
               const modelPosition = model.getPosition()
       
@@ -593,7 +593,7 @@ export class FloorModelManager {
     
     // 2. 다른 모델의 지지 확인
     for (const [modelId, model] of this.models) {
-      if (modelId === excludeModelId || modelId === targetModel.getId() || model.getType() === 'wallcube') {
+      if (modelId === excludeModelId || modelId === targetModel.getId() || model.getType() === 'wall') {
         continue
       }
       
@@ -619,7 +619,7 @@ export class FloorModelManager {
     for (const [modelId, model] of this.models) {
       if (excludeModelIds.includes(modelId) || 
           modelId === targetModel.getId() || 
-          model.getType() === 'wallcube' ||
+          model.getType() === 'wall' ||
           !model.isModelLoaded()) {
         continue
       }
@@ -862,14 +862,14 @@ export class FloorModelManager {
     // 바닥이 전혀 없는 경우: 모든 바닥 가구 삭제 대상으로 반환
     if (!this.hasFloorMeshes()) {
       Array.from(this.models.values()).forEach(model => {
-        if (model.getType() !== 'wallcube') {
+        if (model.getType() !== 'wall') {
           idsToDelete.push(model.getId())
         }
       })
       return idsToDelete
     }
 
-    const floorModels = Array.from(this.models.values()).filter(model => model.getType() !== 'wallcube' && model.isModelLoaded())
+    const floorModels = Array.from(this.models.values()).filter(model => model.getType() !== 'wall' && model.isModelLoaded())
     // 아래에서 위로 쌓이는 순서로 재배치
     floorModels.sort((a, b) => a.getPosition().y - b.getPosition().y)
     for (const model of floorModels) {
@@ -913,7 +913,7 @@ export class FloorModelManager {
 
   // 바운딩박스 시각화 메서드들 (Visualizer로 위임)
   public enableBoundingBoxVisualization(): void {
-    this.visualizer.enable((model) => model.getType() !== 'wallcube')
+    this.visualizer.enable((model) => model.getType() !== 'wall')
   }
 
   public disableBoundingBoxVisualization(): void {
@@ -921,12 +921,12 @@ export class FloorModelManager {
   }
 
   public toggleBoundingBoxVisualization(): boolean {
-    this.visualizer.toggle((model) => model.getType() !== 'wallcube')
+    this.visualizer.toggle((model) => model.getType() !== 'wall')
     return this.visualizer.isEnabled()
   }
 
   public updateAllBoundingBoxHelpers(): void {
-    this.visualizer.updateAll((model) => model.getType() !== 'wallcube')
+    this.visualizer.updateAll((model) => model.getType() !== 'wall')
   }
 
   public updateModelBoundingBox(modelId: string): void {

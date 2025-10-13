@@ -80,8 +80,7 @@ export default function ModelLayerControl({
     const typeMap: Record<string, string> = {
       'chair': 'Chair',
       'stool': 'Stool',
-      'book': 'Book',
-      'wallcube': 'Wall Cube'
+      'book': 'Book'
     }
     return typeMap[type] || type
   }

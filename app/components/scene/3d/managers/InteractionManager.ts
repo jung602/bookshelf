@@ -425,7 +425,7 @@ export class InteractionManager {
     const selectedModel = this.dragState.selectedModel
 
     // 모든 가구 공통: 2D 화면 드래그 → 월드 위치로 역투영 이동
-    const isWallModel = selectedModel.getType() === 'wallcube' || selectedModel.getType() === 'wall'
+    const isWallModel = selectedModel.getType() === 'wall'
     selectedModel.setPosition({
       x: intersectionPoint.x,
       y: isWallModel ? this.dragState.startModelY + (this.mouse.y - this.dragState.startMouseY) * Y_SCALE : intersectionPoint.y,
@@ -448,7 +448,7 @@ export class InteractionManager {
         // 드래그 종료 시 렌더링 우선순위/상태 복구
         this.setModelAlwaysOnTop(selectedModel, false)
 
-        const isWallModel = selectedModel.getType() === 'wallcube' || selectedModel.getType() === 'wall'
+        const isWallModel = selectedModel.getType() === 'wall'
         if (isWallModel) {
           // 벽 가구: 2D 드래그 종료 - 화면 위치에서 벽 레이캐스팅
           const attachedToWall = this.attachWallcubeToVisibleWall(selectedModel)
@@ -508,7 +508,7 @@ export class InteractionManager {
         }
 
         // 드래그 완료 후 바운딩박스 헬퍼 업데이트
-        const isWallModelForBBox = selectedModel.getType() === 'wallcube' || selectedModel.getType() === 'wall'
+        const isWallModelForBBox = selectedModel.getType() === 'wall'
         if (isWallModelForBBox) {
           this.modelManager.getWallManager().updateModelBoundingBox(selectedModel.getId())
         } else {
@@ -793,7 +793,7 @@ export class InteractionManager {
     // 다른 가구들의 콜라이더 추가 (지지 관계 고려)
     const allModels = this.modelManager.getAllModels()
     allModels.forEach((otherModel) => {
-      const isOtherWallModel = otherModel.getType() === 'wallcube' || otherModel.getType() === 'wall'
+      const isOtherWallModel = otherModel.getType() === 'wall'
       if (otherModel.getId() !== model.getId() &&
           !isOtherWallModel &&
           otherModel.isModelLoaded() &&

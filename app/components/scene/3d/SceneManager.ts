@@ -546,45 +546,6 @@ export class SceneManager {
     }
   }
 
-  // 벽 큐브 테스트용 메서드 (스마트 배치 사용)
-  public async addTestWallCube(x?: number, z?: number): Promise<string | null> {
-    const { WallCube } = await import('./objects/WallCube')
-    
-    // 위치가 지정되지 않으면 스마트 배치 사용
-    if (x === undefined && z === undefined) {
-      const wallCube = new WallCube()
-      await this.modelManager.addModel(wallCube)
-      return wallCube.getId()
-    } else {
-      // 위치가 지정되면 해당 위치에 배치 (Y는 자동 계산)
-      return await this.modelManager.addModel('wallcube', WallCube, { x: x || 0, y: 1.5, z: z || 0 })
-    }
-  }
-
-  // 플로어 램프 추가 메서드
-  public async addFloorLamp(x: number = 0, z: number = 0): Promise<string | null> {
-    try {
-      const FloorLampClass = getModelClass('floorlamp')
-      if (!FloorLampClass) {
-        console.error('FloorLamp model class not found')
-        return null
-      }
-
-      // 플로어 램프 인스턴스 생성 (중앙에 배치)
-      const floorLamp = new FloorLampClass(
-        { x, y: 0, z },
-        { x: 1.5, y: 1.5, z: 1.5 }, // 스케일
-        { x: 0, y: 0, z: 0 } // 회전
-      )
-
-      await this.modelManager.addModel(floorLamp)
-  
-      return floorLamp.getId()
-    } catch (error) {
-      console.error('Failed to add floor lamp:', error)
-      return null
-    }
-  }
 
   public rotateModel(modelId: string, direction: 'left' | 'right' = 'right'): void {
     this.interactionManager.rotateModel(modelId, direction)

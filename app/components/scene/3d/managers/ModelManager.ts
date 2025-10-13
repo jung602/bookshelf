@@ -28,7 +28,7 @@ export class ModelManager {
     if (typeof modelOrType !== 'string') {
       const model = modelOrType as BaseModel
       
-      if (model.getType() === 'wallcube' || model.getType() === 'wall') {
+      if (model.getType() === 'wall') {
         // 벽 가구는 WallModelManager에서 처리 (스마트 배치)
         await this.wallManager.addWallModel(model)
         return
@@ -63,7 +63,7 @@ export class ModelManager {
     const model = this.models.get(modelId)
     if (model) {
       // 벽 가구인 경우 처리
-      if (model.getType() === 'wallcube') {
+      if (model.getType() === 'wall') {
         this.wallManager.onWallModelRemoved()
       }
       
@@ -79,8 +79,8 @@ export class ModelManager {
         await this.floorManager.recalculateAffectedModelPositions(affectedModels)
       } else {
         // 폴백: 삭제된 모델이 바닥 가구이고 다른 모델들이 있다면 모든 모델 재검증
-        if (model.getType() !== 'wallcube') {
-          const allFloorModels = Array.from(this.models.values()).filter(m => m.getType() !== 'wallcube')
+        if (model.getType() !== 'wall') {
+          const allFloorModels = Array.from(this.models.values()).filter(m => m.getType() !== 'wall')
           if (allFloorModels.length > 0) {
             const allModelIds = allFloorModels.map(m => m.getId())
             await this.floorManager.recalculateAffectedModelPositions(allModelIds)
@@ -164,7 +164,7 @@ export class ModelManager {
     const model = this.models.get(modelId)
     if (!model) return
 
-    if (model.getType() === 'wallcube') {
+    if (model.getType() === 'wall') {
       this.wallManager.updateModelBoundingBox(modelId)
     } else {
       this.floorManager.updateModelBoundingBox(modelId)

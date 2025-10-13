@@ -3,7 +3,6 @@ import { StoolModel } from './stool'
 import { ChairModel } from './chair'
 import { DeskModel } from './desk'
 import { Book } from './book'
-import { WallCube } from './WallCube'
 import { FloorLampModel } from './floorlamp'
 import { GuitarModel } from './guitar'
 import { WoodChairModel } from './woodchair'
@@ -77,14 +76,6 @@ export const allModels: ModelMetadata[] = [
     icon: '💡',
     category: 'lighting',
     modelClass: FloorLampModel
-  },
-  {
-    id: 'wallcube',
-    name: '벽 큐브',
-    description: '벽에 부착되는 테스트 큐브',
-    icon: '📦',
-    category: 'storage',
-    modelClass: WallCube
   },
   {
     id: 'book',

@@ -73,16 +73,6 @@ export default function ControlsContainer({
     try {
       const modelManager = sceneManager.getModelManager()
       
-      // 모델 타입에 따라 다른 처리
-      if (modelType === 'wallcube') {
-        // 벽 큐브는 스마트 배치 사용 (위치 파라미터 없음)
-        const modelId = await sceneManager.addTestWallCube()
-        if (!modelId) {
-          console.error('벽 큐브 추가 실패')
-        }
-        return
-      }
-
       // 일반 모델들 (chair, stool, floorlamp)
       const ModelClass = getModelClass(modelType)
       if (!ModelClass) {

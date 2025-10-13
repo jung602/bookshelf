@@ -217,7 +217,7 @@ export class WallModelManager {
 
   public repositionWallModelsAfterWallChange(): string[] {
     const idsToDelete: string[] = []
-    const wallModels = Array.from(this.models.values()).filter(m => (m.getType() === 'wallcube' || m.getType() === 'wall') && m.isModelLoaded())
+    const wallModels = Array.from(this.models.values()).filter(m => m.getType() === 'wall' && m.isModelLoaded())
     wallModels.forEach(model => {
       const pos = model.getPosition()
       const ok = this.attachToNearestWall(model, pos.x, pos.z, pos.y)
@@ -351,7 +351,7 @@ export class WallModelManager {
 
     // 다른 벽 가구들과의 충돌 검사
     for (const [otherId, otherModel] of this.models) {
-      const isOtherWallModel = otherModel.getType() === 'wallcube' || otherModel.getType() === 'wall'
+      const isOtherWallModel = otherModel.getType() === 'wall'
       if (otherId === model.getId() || !isOtherWallModel) continue
       
       const otherPos = otherModel.getPosition()
@@ -383,7 +383,7 @@ export class WallModelManager {
 
   // 바운딩박스 시각화 메서드들 (Visualizer로 위임)
   public enableBoundingBoxVisualization(): void {
-    this.visualizer.enable((model) => model.getType() === 'wallcube' || model.getType() === 'wall')
+    this.visualizer.enable((model) => model.getType() === 'wall')
   }
 
   public disableBoundingBoxVisualization(): void {
@@ -391,12 +391,12 @@ export class WallModelManager {
   }
 
   public toggleBoundingBoxVisualization(): boolean {
-    this.visualizer.toggle((model) => model.getType() === 'wallcube' || model.getType() === 'wall')
+    this.visualizer.toggle((model) => model.getType() === 'wall')
     return this.visualizer.isEnabled()
   }
 
   public updateAllBoundingBoxHelpers(): void {
-    this.visualizer.updateAll((model) => model.getType() === 'wallcube' || model.getType() === 'wall')
+    this.visualizer.updateAll((model) => model.getType() === 'wall')
   }
 
   public updateModelBoundingBox(modelId: string): void {

@@ -36,7 +36,6 @@ export abstract class BaseModel {
   protected rotation: ModelRotation
   protected isLoaded: boolean = false
   protected id: string
-  protected collider!: THREE.Mesh // 간단한 박스 콜라이더
   protected visible: boolean = true // 가시성 상태
   protected customBoundingBox?: CustomBoundingBox // 커스텀 바운딩박스
 
@@ -63,7 +62,6 @@ export abstract class BaseModel {
       this.model = await loadGLBModel(`${basePath}${this.modelPath}`)
       
       this.applyTransforms()
-      this.createCollider()
       this.isLoaded = true
       
 
@@ -73,49 +71,6 @@ export abstract class BaseModel {
     }
   }
 
-  protected createCollider(): void {
-    if (!this.model) return
-
-    // 모델의 모든 메시를 찾아서 콜라이더 그룹 생성
-    const colliderGroup = new THREE.Group()
-    
-    this.model.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        // 원본 메시의 지오메트리를 복제
-        const colliderGeometry = child.geometry.clone()
-        
-        // 투명한 재질로 콜라이더 메시 생성
-        const colliderMaterial = new THREE.MeshBasicMaterial({
-          transparent: true,
-          opacity: 0, // 다시 완전히 투명하게 설정
-          color: 0x00ff00,
-          visible: true,
-          wireframe: false // 와이어프레임 비활성화
-        })
-        
-        const colliderMesh = new THREE.Mesh(colliderGeometry, colliderMaterial)
-        
-        // 원본 메시의 변환 정보 복사
-        colliderMesh.position.copy(child.position)
-        colliderMesh.rotation.copy(child.rotation)
-        colliderMesh.scale.copy(child.scale)
-        
-        // 콜라이더 식별 정보 추가
-        colliderMesh.userData.modelId = this.id
-        colliderMesh.userData.isCollider = true
-        
-        colliderGroup.add(colliderMesh)
-      }
-    })
-    
-    // 콜라이더 그룹을 모델에 추가
-    this.model.add(colliderGroup)
-    
-    // 첫 번째 콜라이더 메시를 참조용으로 저장 (기존 코드 호환성)
-    this.collider = colliderGroup.children[0] as THREE.Mesh
-    
-
-  }
 
   protected applyTransforms(): void {
     if (!this.model) return
@@ -155,9 +110,6 @@ export abstract class BaseModel {
     this.rotation = { ...this.rotation, ...rotation }
     if (this.model) {
       this.model.rotation.set(this.rotation.x, this.rotation.y, this.rotation.z)
-      
-      // 콜라이더들도 함께 회전하도록 업데이트
-      this.updateColliderRotation()
     }
   }
 
@@ -187,34 +139,6 @@ export abstract class BaseModel {
     return this.model
   }
 
-  public getCollider(): THREE.Mesh | undefined {
-    return this.collider
-  }
-
-  public getAllColliders(): THREE.Mesh[] {
-    if (!this.model) return []
-    
-    const colliders: THREE.Mesh[] = []
-    this.model.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.userData.isCollider && child.userData.modelId === this.id) {
-        colliders.push(child)
-      }
-    })
-    
-    return colliders
-  }
-
-  private updateColliderRotation(): void {
-    if (!this.model) return
-    
-    // 모든 콜라이더의 회전을 모델의 회전과 동기화
-    this.model.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.userData.isCollider && child.userData.modelId === this.id) {
-        // 콜라이더의 회전을 모델의 회전과 동일하게 설정
-        child.rotation.copy(this.model.rotation)
-      }
-    })
-  }
 
   public isModelLoaded(): boolean {
     return this.isLoaded

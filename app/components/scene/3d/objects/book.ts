@@ -27,8 +27,7 @@ export class Book extends BaseModel {
     try {
       await this.createBookModel()
       this.applyTransforms()
-      // BaseModel의 createCollider()를 호출하여 콜라이더 생성
-      this.createCollider()
+      // 콜라이더는 더 이상 사용하지 않음
       this.isLoaded = true
       
 

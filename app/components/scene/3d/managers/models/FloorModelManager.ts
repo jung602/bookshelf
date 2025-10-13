@@ -96,7 +96,7 @@ export class FloorModelManager extends BaseModelManager {
     z: number, 
     options: {
       rayOriginY?: number,
-      targets?: 'floor-only' | 'all-colliders',
+      targets?: 'floor-only' | 'all-models',
       excludeModelIds?: string[],
       targetModel?: BaseModel
     } = {}
@@ -112,23 +112,23 @@ export class FloorModelManager extends BaseModelManager {
     const rayDirection = new THREE.Vector3(0, -1, 0)
     this.raycaster.set(rayOrigin, rayDirection)
 
-    const colliders: THREE.Mesh[] = []
+    const meshes: THREE.Mesh[] = []
 
-    if (targets === 'all-colliders' && targetModel) {
-      // 다른 모델들의 콜라이더 포함 (벽 가구도 포함)
+    if (targets === 'all-models' && targetModel) {
+      // 다른 모델들의 메시 포함 (벽 가구도 포함)
       this.models.forEach((otherModel, modelId) => {
         if (modelId !== targetModel.getId() &&
             !excludeModelIds.includes(modelId) &&
-            otherModel.isModelLoaded() &&
-            otherModel.getModel()) {
-          const modelColliders = otherModel.getAllColliders()
-          if (modelColliders && modelColliders.length > 0) {
-            const validColliders = modelColliders.filter(collider => {
-              return collider.parent && this.scene.getObjectById(collider.id) !== undefined
+            otherModel.isModelLoaded()) {
+          const modelGroup = otherModel.getModel()
+          if (modelGroup) {
+            // 모델 그룹 내부의 모든 메시를 찾아서 추가
+            modelGroup.traverse((child) => {
+              if (child instanceof THREE.Mesh) {
+                child.userData.modelId = modelId
+                meshes.push(child)
+              }
             })
-            if (validColliders.length > 0) {
-              colliders.push(...validColliders)
-            }
           }
         }
       })
@@ -136,9 +136,9 @@ export class FloorModelManager extends BaseModelManager {
 
     // 바닥 메시 추가
     const floorMeshes = this.sceneIndex.getFloorMeshes()
-    colliders.push(...floorMeshes)
+    meshes.push(...floorMeshes)
 
-    return this.raycaster.intersectObjects(colliders, false)
+    return this.raycaster.intersectObjects(meshes, false)
   }
 
   // 모델 바운딩 박스 계산 헬퍼
@@ -213,7 +213,7 @@ export class FloorModelManager extends BaseModelManager {
     
     // 바닥 + 다른 모델들 고려 (통합된 raycasting 사용)
     const intersections = this.performFloorRaycast(x, z, {
-      targets: 'all-colliders',
+      targets: 'all-models',
       targetModel: model,
       excludeModelIds
     })

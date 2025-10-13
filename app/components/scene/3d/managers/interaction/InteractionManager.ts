@@ -133,30 +133,27 @@ export class InteractionManager {
   private getIntersectedModels(isInteraction: boolean = false): THREE.Intersection[] {
     this.raycaster.setFromCamera(this.mouse, this.camera)
 
-    const colliders: THREE.Mesh[] = []
+    const meshes: THREE.Mesh[] = []
     const allModels = this.modelManager.getAllModels()
 
     allModels.forEach((model: BaseModel) => {
       if (!model.isModelLoaded()) return
-      const threeObject = model.getModel()
-      if (!threeObject) return
-      const modelColliders = model.getAllColliders()
-      if (!modelColliders || modelColliders.length === 0) return
+      const modelGroup = model.getModel()
+      if (!modelGroup) return
 
-      // 가시성/씬 존재 여부 확인 후 추가
-      modelColliders.forEach((collider) => {
-        if (
-          collider && collider.parent && this.scene.getObjectById(collider.id) !== undefined
-        ) {
-          colliders.push(collider)
+      // 모델 그룹 내부의 모든 메시를 찾아서 레이캐스팅 타겟으로 추가
+      modelGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.userData.modelId = model.getId()
+          meshes.push(child)
         }
       })
     })
 
-    if (colliders.length === 0) return []
+    if (meshes.length === 0) return []
 
     // 교차 검사
-    const intersections = this.raycaster.intersectObjects(colliders, false)
+    const intersections = this.raycaster.intersectObjects(meshes, false)
 
     if (isInteraction) {
       // 상호작용 시 화면에 가장 가까운 것만 (closest)
@@ -722,38 +719,38 @@ export class InteractionManager {
     // 현재 마우스 위치에서 레이캐스팅
     this.raycaster.setFromCamera(this.mouse, this.camera)
 
-    const colliders: THREE.Object3D[] = []
+    const meshes: THREE.Mesh[] = []
 
     // 바닥 메시 추가
     const floorMeshes = this.modelManager.getFloorManager().getFloorMeshes()
-    colliders.push(...floorMeshes)
+    meshes.push(...floorMeshes)
 
-    // 다른 가구들의 콜라이더 추가 (지지 관계 고려)
+    // 다른 가구들의 모델 메시 추가 (지지 관계 고려)
     const allModels = this.modelManager.getAllModels()
     allModels.forEach((otherModel) => {
       const isOtherWallModel = otherModel.getType() === 'wall'
       if (otherModel.getId() !== model.getId() &&
           !isOtherWallModel &&
-          otherModel.isModelLoaded() &&
-          otherModel.getModel()) {
-        const modelColliders = otherModel.getAllColliders()
-        if (modelColliders && modelColliders.length > 0) {
-          const validColliders = modelColliders.filter(collider => {
-            return collider.parent && this.scene.getObjectById(collider.id) !== undefined
+          otherModel.isModelLoaded()) {
+        const modelGroup = otherModel.getModel()
+        if (modelGroup) {
+          // 모델 그룹 내부의 모든 메시를 찾아서 추가
+          modelGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.userData.modelId = otherModel.getId()
+              meshes.push(child)
+            }
           })
-          if (validColliders.length > 0) {
-            colliders.push(...validColliders)
-          }
         }
       }
     })
 
-    if (colliders.length === 0) {
+    if (meshes.length === 0) {
       return false
     }
 
-    // 모든 콜라이더와의 교차점 검사
-    const intersections = this.raycaster.intersectObjects(colliders, false)
+    // 모든 모델과의 교차점 검사
+    const intersections = this.raycaster.intersectObjects(meshes, false)
 
     if (intersections.length > 0) {
       const closestIntersection = intersections[0]

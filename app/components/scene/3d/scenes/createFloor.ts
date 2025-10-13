@@ -16,7 +16,7 @@ export function createFloor(
     // userData.isFloor가 명시적으로 true인 객체만 제거
     // 그리고 모델이 아닌 것만 (모델은 Group이고 다른 특성을 가짐)
     const isFloor = child.userData.isFloor === true
-    const isNotModel = !child.userData.modelId && !child.userData.isCollider
+    const isNotModel = !child.userData.modelId
     
     return isFloor && isNotModel
   })

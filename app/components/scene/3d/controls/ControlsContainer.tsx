@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { SceneManager, RoomParams } from '../SceneManager'
-import FloorTileControl from './FloorTileControl'
-import TopBar from './TopBar'
-import MenuBar from './MenuBar'
-import ModelAddControl from './ModelAddControl'
-import CollectionAddControl from './CollectionAddControl'
-import TileDesignControl from './TileDesignControl'
+import FloorTileControl from './panels/FloorTileControl'
+import TopBar from './navigation/TopBar'
+import MenuBar from './navigation/MenuBar'
+import ModelAddControl from './panels/ModelAddControl'
+import CollectionAddControl from './panels/CollectionAddControl'
+import TileDesignControl from './panels/TileDesignControl'
 import { getModelClass } from '../objects'
+import { ControlButton, BoundingBoxIcon } from './components'
 
 interface ControlsContainerProps {
   sceneManager: SceneManager | null
@@ -132,8 +133,8 @@ export default function ControlsContainer({
 
   return (
     <div className="w-full h-full flex flex-col gap-[8px] relative">
-      {/* 모바일 전용 TopBar - position fixed */}
-      {isMobile && (
+      {/* TopBar - 모바일은 fixed, 데스크톱은 메뉴바 위에 배치 */}
+      {isMobile ? (
         <div className={`fixed w-full z-50 ${isCollapsed ? 'bottom-[42px]' : 'top-1/2'}`}>
           <TopBar 
             isMobile={isMobile}
@@ -144,46 +145,16 @@ export default function ControlsContainer({
             sceneManager={sceneManager}
           />
         </div>
-      )}
-
-      {/* 데스크톱 전용 TopBar - 우측 상단 고정 */}
-      {!isMobile && (
-        <div className="fixed top-[12px] right-[12px] z-50">
-          <button
-            onClick={handleToggleBoundingBoxes}
-            className={`flex items-center justify-center w-10 h-10 rounded-full shadow-lg transition-all duration-200 hover:shadow-xl ${
-              showBoundingBoxes 
-                ? 'bg-cyan-500 hover:bg-cyan-600' 
-                : 'bg-white hover:bg-gray-50'
-            }`}
-            style={{
-              border: 'none',
-            }}
-            aria-label="바운딩박스 표시"
-            title="바운딩박스 토글"
-          >
-            <svg 
-              width="20" 
-              height="20" 
-              viewBox="0 0 16 16" 
-              fill="none"
-            >
-              <rect 
-                x="3" 
-                y="3" 
-                width="10" 
-                height="10" 
-                stroke={showBoundingBoxes ? '#ffffff' : '#6B7280'}
-                strokeWidth="2"
-                strokeDasharray="2 2"
-                fill="none"
-              />
-              <circle cx="3" cy="3" r="1.5" fill={showBoundingBoxes ? '#ffffff' : '#00ffff'} />
-              <circle cx="13" cy="3" r="1.5" fill={showBoundingBoxes ? '#ffffff' : '#00ffff'} />
-              <circle cx="3" cy="13" r="1.5" fill={showBoundingBoxes ? '#ffffff' : '#00ffff'} />
-              <circle cx="13" cy="13" r="1.5" fill={showBoundingBoxes ? '#ffffff' : '#00ffff'} />
-            </svg>
-          </button>
+      ) : (
+        <div className="w-full">
+          <TopBar 
+            isMobile={isMobile}
+            isCollapsed={isCollapsed}
+            onToggleCollapse={onToggleCollapse}
+            onGoBack={selectedMenu ? handleGoBack : undefined}
+            isDarkMode={isDarkMode}
+            sceneManager={sceneManager}
+          />
         </div>
       )}
 

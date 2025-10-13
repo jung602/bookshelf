@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import { BaseModel } from '../objects/BaseModel'
-import { SceneIndex } from './SceneIndex'
+import { BaseModel } from '../../objects/BaseModel'
+import { SceneIndex } from '../SceneIndex'
 import { FloorModelManager } from './FloorModelManager'
 import { WallModelManager } from './WallModelManager'
 

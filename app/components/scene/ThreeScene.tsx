@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { SceneManager, RoomParams } from './3d/SceneManager'
-import { ModelGizmo } from './3d/managers/ModelGizmo'
-import type { GizmoState } from './3d/managers/InteractionManager'
+import { ModelGizmo, type GizmoState } from './3d/managers'
 import { useResponsiveScene } from '../../hooks/useResponsiveScene'
 
 // 전역 플래그로 SceneManager 중복 생성 방지

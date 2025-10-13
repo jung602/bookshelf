@@ -4,7 +4,7 @@ import {
   useRef,
   useEffect,
 } from "react";
-import { SceneManager } from "../SceneManager";
+import { SceneManager } from "../../SceneManager";
 import {
   getThemeColors,
   getGridArea,
@@ -16,8 +16,8 @@ import {
   getCenterBlockRounding,
   getResponsiveGridPadding,
   getResponsiveGridGap,
-} from "./utils/cssUtils";
-import { useResponsiveDevice } from "../../../../hooks/useResponsiveDevice";
+} from "../utils/cssUtils";
+import { useResponsiveDevice } from "../../../../../hooks/useResponsiveDevice";
 
 interface BlockState {
   row: number;

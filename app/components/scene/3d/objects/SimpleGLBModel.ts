@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { BaseModel, ModelPosition, ModelScale, ModelRotation } from './BaseModel'
-import { setupBoxBoundingBox, setupCylinderBoundingBox } from '../managers/BoundingBoxUtils'
+import { setupBoxBoundingBox, setupCylinderBoundingBox } from '../managers/visualization/BoundingBoxUtils'
 
 /**
  * 간단한 GLB 모델을 위한 설정 인터페이스

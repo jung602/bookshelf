@@ -1,9 +1,15 @@
-export { ModelManager } from './ModelManager'
-export { InteractionManager, type GizmoState, type DragState } from './InteractionManager'
-export { ModelGizmo } from './ModelGizmo' 
-export { SceneIndex } from './SceneIndex'
-export { BoundingBoxVisualizer } from './BoundingBoxVisualizer'
-export { BaseModelManager } from './BaseModelManager'
+// Model Managers
+export { ModelManager } from './models/ModelManager'
+export { BaseModelManager } from './models/BaseModelManager'
+export { FloorModelManager } from './models/FloorModelManager'
+export { WallModelManager } from './models/WallModelManager'
 
-export { FloorModelManager } from './FloorModelManager'
-export { WallModelManager } from './WallModelManager'
+// Interaction
+export { InteractionManager, type GizmoState, type DragState } from './interaction/InteractionManager'
+
+// Visualization
+export { ModelGizmo } from './visualization/ModelGizmo' 
+export { BoundingBoxVisualizer } from './visualization/BoundingBoxVisualizer'
+
+// Scene Index
+export { SceneIndex } from './SceneIndex'

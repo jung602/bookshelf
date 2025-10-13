@@ -1,5 +1,77 @@
 // CSS 유틸리티 함수들과 상수들
 
+// ============================================================================
+// DESIGN TOKENS (CSS Variable 기반)
+// ============================================================================
+
+export const CONTROL_TOKENS = {
+  // 크기
+  size: {
+    container: 'var(--size-control-container)',
+    button: 'var(--size-control-button)',
+    buttonLg: 'var(--size-control-button-lg)',
+  },
+  // 색상
+  color: {
+    container: 'var(--color-control-container)',
+    panel: 'var(--color-control-panel)',
+    panelActive: 'var(--color-control-panel-active)',
+    button: 'var(--color-control-button)',
+    buttonHover: 'var(--color-control-button-hover)',
+    buttonActive: 'var(--color-control-button-active)',
+    icon: 'var(--color-control-icon)',
+    iconActive: 'var(--color-control-icon-active)',
+    iconAccent: 'var(--color-control-icon-accent)',
+  },
+  // Border Radius
+  radius: {
+    container: 'var(--radius-control-container)',
+    panel: 'var(--radius-control-panel)',
+    button: 'var(--radius-control-button)',
+  },
+  // Spacing
+  spacing: {
+    xs: 'var(--space-control-xs)',
+    sm: 'var(--space-control-sm)',
+    md: 'var(--space-control-md)',
+    lg: 'var(--space-control-lg)',
+  },
+  // Shadow
+  shadow: {
+    sm: 'var(--control-shadow-sm)',
+    md: 'var(--control-shadow-md)',
+    inner: 'var(--control-shadow-inner)',
+  }
+} as const;
+
+// ============================================================================
+// DESIGN TOKEN 기반 스타일 생성 함수
+// ============================================================================
+
+// 컨트롤 컨테이너 스타일
+export const getControlContainerStyle = (isMobile: boolean): React.CSSProperties => ({
+  backgroundColor: CONTROL_TOKENS.color.container,
+  borderRadius: CONTROL_TOKENS.radius.container,
+  width: isMobile ? '100%' : CONTROL_TOKENS.size.container,
+  height: isMobile ? '100%' : CONTROL_TOKENS.size.container,
+});
+
+// 컨트롤 버튼 스타일
+export const getControlButtonStyle = (isActive: boolean): React.CSSProperties => ({
+  backgroundColor: isActive ? CONTROL_TOKENS.color.buttonActive : CONTROL_TOKENS.color.button,
+  borderRadius: CONTROL_TOKENS.radius.button,
+  boxShadow: CONTROL_TOKENS.shadow.sm,
+  border: 'none',
+});
+
+// 아이콘 색상 반환
+export const getIconColor = (isActive: boolean): string => 
+  isActive ? CONTROL_TOKENS.color.iconActive : CONTROL_TOKENS.color.icon;
+
+// ============================================================================
+// LEGACY 코드 (하위 호환성을 위해 유지, 추후 제거 예정)
+// ============================================================================
+
 // 테마 색상 타입 정의
 export interface ThemeColors {
   outerContainer: string;

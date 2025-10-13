@@ -4,10 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import {
   getThemeColors,
   TRANSITIONS,
-  getResponsiveContainerRounding,
-} from './utils/cssUtils'
-import { useResponsiveDevice } from '../../../../hooks/useResponsiveDevice'
-import { SceneManager } from '../SceneManager'
+  CONTROL_TOKENS,
+  getControlContainerStyle,
+} from '../utils/cssUtils'
+import { useResponsiveDevice } from '../../../../../hooks/useResponsiveDevice'
+import { SceneManager } from '../../SceneManager'
 
 interface TileDesignControlProps {
   isDarkMode?: boolean
@@ -138,7 +139,6 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
 
   const renderTabButton = (category: CategoryMetadata) => {
     const isActive = activeCategory === category.id
-    const radius = '16px'
     return (
       <button
         key={category.id}
@@ -146,12 +146,12 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
         className={`flex-1 cursor-pointer ${TRANSITIONS.default} select-none flex items-center justify-center`}
         style={{
           backgroundColor: isActive ? themeColors.inactiveBlock : themeColors.outerContainer,
-          borderTopLeftRadius: radius,
-          borderTopRightRadius: radius,
-          borderBottomLeftRadius: isActive ? '0' : radius,
-          borderBottomRightRadius: isActive ? '0' : radius,
-          padding: isMobile ? '12px 16px' : '8px 12px',
-          minHeight: isMobile ? '44px' : '36px',
+          borderTopLeftRadius: CONTROL_TOKENS.radius.panel,
+          borderTopRightRadius: CONTROL_TOKENS.radius.panel,
+          borderBottomLeftRadius: isActive ? '0' : CONTROL_TOKENS.radius.panel,
+          borderBottomRightRadius: isActive ? '0' : CONTROL_TOKENS.radius.panel,
+          padding: isMobile ? `${CONTROL_TOKENS.spacing.md} ${CONTROL_TOKENS.spacing.lg}` : `${CONTROL_TOKENS.spacing.sm} ${CONTROL_TOKENS.spacing.md}`,
+          minHeight: isMobile ? CONTROL_TOKENS.size.buttonLg : '36px',
           border: 'none',
         }}
       >
@@ -164,21 +164,20 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
 
   return (
     <div
-      className={`relative ${getResponsiveContainerRounding(isMobile)} ${TRANSITIONS.fast} flex flex-col overflow-hidden`}
+      className={`relative ${TRANSITIONS.fast} flex flex-col overflow-hidden`}
       style={{ 
+        ...getControlContainerStyle(isMobile),
         backgroundColor: themeColors.outerContainer,
-        width: isMobile ? '100%' : '400px',
-        height: isMobile ? '100%' : '400px',
       }}
     >
       {/* Tab Area - Fixed at top (축소된 높이) */}
       <div 
         className="flex-none"
         style={{
-          padding: `8px 8px 0`,
+          padding: `${CONTROL_TOKENS.spacing.sm} ${CONTROL_TOKENS.spacing.sm} 0`,
         }}
       >
-        <div className={`flex ${isMobile ? 'gap-3' : 'gap-2'}`}>
+        <div className={`flex`} style={{ gap: isMobile ? CONTROL_TOKENS.spacing.md : CONTROL_TOKENS.spacing.sm }}>
           {categories.map(category => renderTabButton(category))}
         </div>
       </div>
@@ -188,20 +187,20 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
         className="flex-1 overflow-hidden flex flex-col"
         style={{ 
           backgroundColor: themeColors.inactiveBlock,
-          margin: `0 ${isMobile ? '8px' : '8px'} ${isMobile ? '8px' : '8px'}`,
-          borderTopLeftRadius: activeCategory === 'wall' ? '16px' : '0',
-          borderTopRightRadius: activeCategory === 'floor' ? '16px' : '0',
-          borderBottomLeftRadius: '16px',
-          borderBottomRightRadius: '16px',
-          padding: isMobile ? '12px' : '12px',
-          gap: isMobile ? '8px' : '8px',
+          margin: `0 ${CONTROL_TOKENS.spacing.sm} ${CONTROL_TOKENS.spacing.sm}`,
+          borderTopLeftRadius: activeCategory === 'wall' ? CONTROL_TOKENS.radius.panel : '0',
+          borderTopRightRadius: activeCategory === 'floor' ? CONTROL_TOKENS.radius.panel : '0',
+          borderBottomLeftRadius: CONTROL_TOKENS.radius.panel,
+          borderBottomRightRadius: CONTROL_TOKENS.radius.panel,
+          padding: CONTROL_TOKENS.spacing.md,
+          gap: CONTROL_TOKENS.spacing.sm,
         }}
       >
         {/* 상단 그리드: 3x2 정사각형 셀 */}
         <div 
           className="grid grid-cols-3 grid-rows-2"
           style={{
-            gap: isMobile ? '8px' : '8px',
+            gap: CONTROL_TOKENS.spacing.sm,
             aspectRatio: '3/2',
             width: '100%',
           }}
@@ -284,7 +283,7 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
         <div 
           className="grid grid-cols-3"
           style={{
-            gap: '8px',
+            gap: CONTROL_TOKENS.spacing.sm,
             height: '100%',
           }}
         >

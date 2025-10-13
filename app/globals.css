@@ -83,6 +83,38 @@ input[type="range"],
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Control Design Tokens */
+  --control-container-size: 400px;
+  --control-container-bg: #D4D4D8;
+  --control-container-radius: 24px;
+  
+  --control-panel-bg: #E4E4E7;
+  --control-panel-active-bg: #B6FD83;
+  --control-panel-radius: 16px;
+  
+  --control-button-bg: #ffffff;
+  --control-button-hover-bg: #f9fafb;
+  --control-button-active-bg: #00ffff;
+  --control-button-radius: 12px;
+  --control-button-size: 32px;
+  --control-button-size-lg: 44px;
+  
+  --control-icon-default: #6B7280;
+  --control-icon-active: #ffffff;
+  --control-icon-accent: #00ffff;
+  
+  --control-gap-xs: 4px;
+  --control-gap-sm: 8px;
+  --control-gap-md: 12px;
+  --control-gap-lg: 16px;
+  
+  --control-shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
+  --control-shadow-md: 0px 1px 2px 0px rgba(0, 0, 0, 0.15);
+  --control-shadow-inner: 0px 1px 2px 0px inset rgba(255, 255, 255, 0.75);
+  
+  --control-button-size-mobile: 44px;
+  --control-gap-mobile: 12px;
 }
 
 .dark {
@@ -120,6 +152,15 @@ input[type="range"],
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+
+  /* Control Design Tokens (Dark Mode) */
+  --control-container-bg: #1a1a1a;
+  --control-panel-bg: #ffffff10;
+  --control-button-bg: #ffffff10;
+  --control-button-hover-bg: #ffffff15;
+  --control-icon-default: #d1d5db;
+  --control-shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+  --control-shadow-inner: 0px 1px 2px 0px inset rgba(255, 255, 255, 0.1);
 }
 
 @theme inline {
@@ -161,6 +202,30 @@ input[type="range"],
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Control Tokens */
+  --color-control-container: var(--control-container-bg);
+  --color-control-panel: var(--control-panel-bg);
+  --color-control-panel-active: var(--control-panel-active-bg);
+  --color-control-button: var(--control-button-bg);
+  --color-control-button-hover: var(--control-button-hover-bg);
+  --color-control-button-active: var(--control-button-active-bg);
+  --color-control-icon: var(--control-icon-default);
+  --color-control-icon-active: var(--control-icon-active);
+  --color-control-icon-accent: var(--control-icon-accent);
+  
+  --size-control-container: var(--control-container-size);
+  --size-control-button: var(--control-button-size);
+  --size-control-button-lg: var(--control-button-size-lg);
+  
+  --radius-control-container: var(--control-container-radius);
+  --radius-control-panel: var(--control-panel-radius);
+  --radius-control-button: var(--control-button-radius);
+  
+  --space-control-xs: var(--control-gap-xs);
+  --space-control-sm: var(--control-gap-sm);
+  --space-control-md: var(--control-gap-md);
+  --space-control-lg: var(--control-gap-lg);
 }
 
 @layer base {

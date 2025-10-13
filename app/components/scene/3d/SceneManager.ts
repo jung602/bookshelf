@@ -5,8 +5,7 @@ import { createLights } from './scenes/createLights'
 import { createFloor } from './scenes/createFloor'
 import { createWalls } from './scenes/createWalls'
 import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
-import { ModelManager } from './managers/ModelManager'
-import { InteractionManager, GizmoState } from './managers/InteractionManager'
+import { ModelManager, InteractionManager, type GizmoState } from './managers'
 import { getModelClass } from './objects'
 
 // 타입 정의들

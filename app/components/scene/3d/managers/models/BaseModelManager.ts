@@ -1,8 +1,8 @@
 import * as THREE from 'three'
-import { BaseModel } from '../objects/BaseModel'
-import { SceneIndex } from './SceneIndex'
-import { BoundingBoxVisualizer } from './BoundingBoxVisualizer'
-import { calculateBoundingBox } from './BoundingBoxUtils'
+import { BaseModel } from '../../objects/BaseModel'
+import { SceneIndex } from '../SceneIndex'
+import { BoundingBoxVisualizer } from '../visualization/BoundingBoxVisualizer'
+import { calculateBoundingBox } from '../visualization/BoundingBoxUtils'
 
 /**
  * FloorModelManager와 WallModelManager의 공통 기능을 제공하는 추상 베이스 클래스

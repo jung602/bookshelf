@@ -4,12 +4,13 @@ import { useState } from 'react'
 import {
   getThemeColors,
   TRANSITIONS,
-  getResponsiveContainerRounding,
+  CONTROL_TOKENS,
+  getControlContainerStyle,
   getResponsiveGridPadding,
   getResponsiveGridGap,
-} from './utils/cssUtils'
-import { useResponsiveDevice } from '../../../../hooks/useResponsiveDevice'
-import { categories, allModels, type ModelCategory, type ModelMetadata, type CategoryMetadata } from '../objects'
+} from '../utils/cssUtils'
+import { useResponsiveDevice } from '../../../../../hooks/useResponsiveDevice'
+import { categories, allModels, type ModelCategory, type ModelMetadata, type CategoryMetadata } from '../../objects'
 
 interface ModelAddControlProps {
   onModelAdd: (modelType: string) => void
@@ -37,7 +38,7 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
         className={`relative shrink-0 cursor-pointer ${TRANSITIONS.default} select-none flex flex-col items-center justify-center p-2 aspect-square`}
         style={{
           backgroundColor: themeColors.inactiveBlock,
-          borderRadius: '8px',
+          borderRadius: CONTROL_TOKENS.spacing.sm,
           border: 'none',
         }}
       >
@@ -51,16 +52,15 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
 
   const renderTabButton = (category: CategoryMetadata) => {
     const isActive = activeCategory === category.id
-    const radius = isMobile ? '16px' : '12px'
     return (
       <button
         key={category.id}
         onClick={() => setActiveCategory(category.id)}
         className={`flex-shrink-0 cursor-pointer ${TRANSITIONS.default} select-none flex items-center justify-center aspect-square`}
         style={{
-          backgroundColor: isActive ? '#B6FD83' : '#D4D4D8',
-          borderRadius: radius,
-          padding: isMobile ? '16px' : '12px',
+          backgroundColor: isActive ? CONTROL_TOKENS.color.panelActive : CONTROL_TOKENS.color.container,
+          borderRadius: isMobile ? CONTROL_TOKENS.radius.panel : CONTROL_TOKENS.radius.button,
+          padding: isMobile ? CONTROL_TOKENS.spacing.lg : CONTROL_TOKENS.spacing.md,
           width: isMobile ? '56px' : '48px',
           height: isMobile ? '56px' : '48px',
           border: 'none',
@@ -75,21 +75,20 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
 
   return (
     <div
-      className={`relative ${getResponsiveContainerRounding(isMobile)} ${TRANSITIONS.fast} flex flex-row overflow-hidden`}
+      className={`relative ${TRANSITIONS.fast} flex flex-row overflow-hidden`}
       style={{ 
+        ...getControlContainerStyle(isMobile),
         backgroundColor: themeColors.outerContainer,
-        width: isMobile ? '100%' : '400px',
-        height: isMobile ? '100%' : '400px',
       }}
     >
       {/* Tab Area - Fixed at left */}
       <div 
         className="flex-none overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         style={{
-          padding: `${isMobile ? '8px' : '8px'} 0 ${isMobile ? '8px' : '8px'} ${isMobile ? '8px' : '8px'}`,
+          padding: `${CONTROL_TOKENS.spacing.sm} 0 ${CONTROL_TOKENS.spacing.sm} ${CONTROL_TOKENS.spacing.sm}`,
         }}
       >
-        <div className={`flex flex-col ${isMobile ? 'gap-3' : 'gap-2'}`}>
+        <div className={`flex flex-col`} style={{ gap: isMobile ? CONTROL_TOKENS.spacing.md : CONTROL_TOKENS.spacing.sm }}>
           {categories.map(category => renderTabButton(category))}
         </div>
       </div>
@@ -98,9 +97,9 @@ export default function ModelAddControl({ onModelAdd, isDarkMode = false }: Mode
       <div 
         className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
         style={{ 
-          backgroundColor: '#f0f0f0',
-          margin: `${isMobile ? '8px' : '8px'}`,
-          borderRadius: isMobile ? '16px' : '16px',
+          backgroundColor: CONTROL_TOKENS.color.panel,
+          margin: CONTROL_TOKENS.spacing.sm,
+          borderRadius: CONTROL_TOKENS.radius.panel,
         }}
       >
         {/* Grid Area */}

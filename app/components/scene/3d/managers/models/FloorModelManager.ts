@@ -1,8 +1,8 @@
 import * as THREE from 'three'
-import { BaseModel } from '../objects/BaseModel'
-import { SceneIndex } from './SceneIndex'
+import { BaseModel } from '../../objects/BaseModel'
+import { SceneIndex } from '../SceneIndex'
 import { BaseModelManager } from './BaseModelManager'
-import { calculateBoundingBox } from './BoundingBoxUtils'
+import { calculateBoundingBox } from '../visualization/BoundingBoxUtils'
 
 export class FloorModelManager extends BaseModelManager {
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {

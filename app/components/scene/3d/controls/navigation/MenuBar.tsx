@@ -3,13 +3,13 @@ import {
 } from "react";
 import {
   getThemeColors,
-  getResponsiveButtonRadius,
+  CONTROL_TOKENS,
   getResponsiveGridPadding,
-  getResponsiveContainerRounding,
+  getControlContainerStyle,
   getResponsiveGridGap,
   TRANSITIONS,
-} from "./utils/cssUtils";
-import { useResponsiveDevice } from "../../../../hooks/useResponsiveDevice";
+} from "../utils/cssUtils";
+import { useResponsiveDevice } from "../../../../../hooks/useResponsiveDevice";
 
 interface MenuButtonState {
   id: string;
@@ -58,7 +58,7 @@ export default function MenuBar({
           className={`cursor-pointer ${TRANSITIONS.default} flex items-center justify-center aspect-square`}
           style={{
             backgroundColor: isActive ? themeColors.activeBackdrop : themeColors.inactiveBlock,
-            borderRadius: getResponsiveButtonRadius(isMobile),
+            borderRadius: CONTROL_TOKENS.radius.panel,
           }}
           onClick={() => handleMenuClick(button.id)}
         >
@@ -77,8 +77,13 @@ export default function MenuBar({
   };
 
   return (
-    <div className={`${getResponsiveContainerRounding(isMobile)} ${isMobile ? 'w-full h-full' : 'w-80 h-auto'}`}
-      style={{ backgroundColor: themeColors.outerContainer }}
+    <div 
+      className={`${isMobile ? 'w-full h-full' : ''}`}
+      style={{ 
+        ...getControlContainerStyle(isMobile),
+        backgroundColor: themeColors.outerContainer,
+        height: isMobile ? '100%' : 'auto',
+      }}
     >
       <div 
         className={`

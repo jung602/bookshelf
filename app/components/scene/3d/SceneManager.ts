@@ -45,7 +45,7 @@ export class SceneManager {
       return grid
     })()
   }
-  private colorParams: ColorParams = { wallColor: '#f3f3f3', floorColor: '#ffffff' }
+  private colorParams: ColorParams = { wallColor: '#f5f5f5', floorColor: '#f0f0f0' }
   private isInitialized: boolean = false
   private gizmoState: GizmoState = { visible: false, selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
@@ -166,13 +166,13 @@ export class SceneManager {
       ditherScale: 0, 
       normalEdgeStrength: 0.15,
       // 팔레트 파라미터 (ColorPalettes.ts의 key와 일치해야 함)
-      usePalette: 0, // Pokemon Palette
+      usePalette: 0.15, // Pokemon Palette
       useMSPaintPalette: 0, // MS Tinta
       useNeutralPalette: 0, // 1bit Monitor Glow
       useLostGBPalette: 0, // LostGB Creepy
       useUIPalette: 0, // UI Palette
       // Unity 방식 파라미터 기본값
-      depthEdgeStrength: 0.8,
+      depthEdgeStrength: 0.5,
       edgeThreshold: .05,
       outlineDarknessAmount: 0.1,
       useColorAwareOutline: 1.0,

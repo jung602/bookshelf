@@ -4,7 +4,7 @@ export function createFloor(
   scene: THREE.Scene, 
   width: number = 1, 
   height: number = 1,
-  color: string = '#ffffff',
+  color: string = '#C0C0C0',
   customGrid?: boolean[][],  // 5x5 격자 패턴
   customTexture?: string     // 사용자 정의 텍스처 (data URL)
 ) {

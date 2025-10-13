@@ -1,15 +1,63 @@
 // 모든 모델 클래스 import
-import { StoolModel } from './stool'
-import { ChairModel } from './chair'
-import { DeskModel } from './desk'
 import { Book } from './book'
 import { FloorLampModel } from './floorlamp'
-import { GuitarModel } from './guitar'
-import { WoodChairModel } from './woodchair'
-import { BlackStoolModel } from './blackstool'
-import { SofaModel } from './sofa'
-import { TVModel } from './tv'
-import { CardboardModel } from './cardboard'
+import { SimpleGLBModel, MODEL_CONFIGS, createSimpleModel } from './SimpleGLBModel'
+import { ModelPosition, ModelScale, ModelRotation } from './BaseModel'
+
+// 레거시 호환성을 위한 클래스 래퍼
+export class StoolModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.stool, position, scale, rotation)
+  }
+}
+
+export class ChairModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.chair, position, scale, rotation)
+  }
+}
+
+export class DeskModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.desk, position, scale, rotation)
+  }
+}
+
+export class GuitarModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.guitar, position, scale, rotation)
+  }
+}
+
+export class WoodChairModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.woodchair, position, scale, rotation)
+  }
+}
+
+export class BlackStoolModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.blackstool, position, scale, rotation)
+  }
+}
+
+export class SofaModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.sofa, position, scale, rotation)
+  }
+}
+
+export class TVModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.tv, position, scale, rotation)
+  }
+}
+
+export class CardboardModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.cardboard, position, scale, rotation)
+  }
+}
 
 // 모델 카테고리 타입 정의
 export type ModelCategory = 'chairs' | 'desks' | 'lighting' | 'decoration' | 'storage' | 'etc' | 'wall'
@@ -143,4 +191,8 @@ export function getModelClass(modelId: string) {
 
 // UI에서 사용할 모델 리스트 (ModelClass 제외)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const availableModels = allModels.map(({ modelClass, ...rest }) => rest) 
+export const availableModels = allModels.map(({ modelClass, ...rest }) => rest)
+
+// SimpleGLBModel 시스템 export
+export { SimpleGLBModel, MODEL_CONFIGS, createSimpleModel } from './SimpleGLBModel'
+export type { SimpleModelConfig } from './SimpleGLBModel' 

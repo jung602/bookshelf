@@ -5,7 +5,6 @@ export class FloorLampModel extends BaseModel {
   private lightIntensity: number = 1
   private isLightOn: boolean = true
   private isDarkMode: boolean = true
-  private themeListener: MediaQueryList | null = null
 
   constructor(
     position: ModelPosition = { x: 0, y: 0, z: 0 },
@@ -13,20 +12,18 @@ export class FloorLampModel extends BaseModel {
     rotation: ModelRotation = { x: 0, y: 0, z: 0 }
   ) {
     super('/3d/main/models/floorlamp.glb', position, scale, rotation)
-    this.setupThemeListener()
+    // 초기 테마는 SceneManager에서 설정됩니다
+    if (typeof window !== 'undefined') {
+      this.isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    }
   }
 
-  private setupThemeListener(): void {
-    if (typeof window !== 'undefined') {
-      this.themeListener = window.matchMedia('(prefers-color-scheme: dark)')
-      this.isDarkMode = this.themeListener.matches
-      
-      // 테마 변경 리스너 추가
-      this.themeListener.addEventListener('change', (e) => {
-        this.isDarkMode = e.matches
-        this.updateThemeBasedSettings()
-      })
-    }
+  /**
+   * SceneManager에서 호출하는 테마 설정 메서드
+   */
+  public setTheme(isDark: boolean): void {
+    this.isDarkMode = isDark
+    this.updateThemeBasedSettings()
   }
 
   private updateThemeBasedSettings(): void {
@@ -190,13 +187,6 @@ export class FloorLampModel extends BaseModel {
 
   public isDarkTheme(): boolean {
     return this.isDarkMode
-  }
-
-  public cleanup(): void {
-    // 테마 리스너 정리
-    if (this.themeListener) {
-      this.themeListener.removeEventListener('change', this.updateThemeBasedSettings)
-    }
   }
 
   protected applyTransforms(): void {

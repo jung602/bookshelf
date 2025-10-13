@@ -59,3 +59,46 @@ export function calculateBoundingBox(
   return boundingBox
 }
 
+/**
+ * Box 타입 바운딩박스를 자동으로 계산하여 모델에 설정합니다.
+ */
+export function setupBoxBoundingBox(model: BaseModel): void {
+  const modelGroup = model.getModel()
+  if (!modelGroup) return
+  
+  const boundingBox = new THREE.Box3().setFromObject(modelGroup)
+  const width = boundingBox.max.x - boundingBox.min.x
+  const height = boundingBox.max.y - boundingBox.min.y
+  const depth = boundingBox.max.z - boundingBox.min.z
+  const offsetY = boundingBox.min.y - modelGroup.position.y
+  
+  model.setCustomBoundingBox({ type: 'box', width, height, depth, offsetY })
+}
+
+/**
+ * Cylinder 타입 바운딩박스를 계산하여 모델에 설정합니다.
+ * @param radiusType 'dynamic'이면 width/depth에서 자동 계산, 숫자면 고정 반지름 사용
+ */
+export function setupCylinderBoundingBox(
+  model: BaseModel,
+  radiusType: 'dynamic' | number
+): void {
+  const modelGroup = model.getModel()
+  if (!modelGroup) return
+  
+  const boundingBox = new THREE.Box3().setFromObject(modelGroup)
+  const height = boundingBox.max.y - boundingBox.min.y
+  const offsetY = boundingBox.min.y - modelGroup.position.y
+  
+  let radius: number
+  if (radiusType === 'dynamic') {
+    const width = boundingBox.max.x - boundingBox.min.x
+    const depth = boundingBox.max.z - boundingBox.min.z
+    radius = Math.max(width, depth) / 2
+  } else {
+    radius = radiusType
+  }
+  
+  model.setCustomBoundingBox({ type: 'cylinder', radius, height, offsetY })
+}
+

@@ -41,7 +41,7 @@ export function createLights(scene: THREE.Scene) {
   scene.add(hemisphereLight)
 
   // 방향광 - 주요 조명과 그림자 생성
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
   directionalLight.position.set(0, 5, 3)
   directionalLight.castShadow = true
   

@@ -375,8 +375,22 @@ export class SceneManager {
     // 조명을 테마에 맞게 업데이트
     if (this.scene) {
       createLights(this.scene)
-  
     }
+    
+    // FloorLamp 모델들에게 테마 변경 알림
+    this.updateFloorLampTheme()
+  }
+
+  private updateFloorLampTheme() {
+    const isDarkMode = this.getCurrentTheme() === 'dark'
+    
+    // 모든 FloorLamp 모델에 테마 적용
+    const allModels = this.modelManager.getAllModels()
+    allModels.forEach((model) => {
+      if (model.getType() === 'floorlamp' && typeof (model as any).setTheme === 'function') {
+        (model as any).setTheme(isDarkMode)
+      }
+    })
   }
 
   public applyCustomFloorTexture(textureDataURL: string) {

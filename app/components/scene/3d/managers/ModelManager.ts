@@ -62,11 +62,6 @@ export class ModelManager {
   public async removeModel(modelId: string): Promise<void> {
     const model = this.models.get(modelId)
     if (model) {
-      // 벽 가구인 경우 처리
-      if (model.getType() === 'wall') {
-        this.wallManager.onWallModelRemoved()
-      }
-      
       // 삭제될 모델 위에 있는 모델들을 찾기
       const affectedModels = this.floorManager.findModelsAffectedByRemoval(modelId)
 
@@ -145,13 +140,13 @@ export class ModelManager {
 
   // 바운딩박스 시각화 메서드들
   public toggleBoundingBoxVisualization(): void {
-    this.floorManager.toggleBoundingBoxVisualization()
-    this.wallManager.toggleBoundingBoxVisualization()
+    this.floorManager.toggleBoundingBoxVisualization((model) => model.getType() !== 'wall')
+    this.wallManager.toggleBoundingBoxVisualization((model) => model.getType() === 'wall')
   }
 
   public enableBoundingBoxVisualization(): void {
-    this.floorManager.enableBoundingBoxVisualization()
-    this.wallManager.enableBoundingBoxVisualization()
+    this.floorManager.enableBoundingBoxVisualization((model) => model.getType() !== 'wall')
+    this.wallManager.enableBoundingBoxVisualization((model) => model.getType() === 'wall')
   }
 
   public disableBoundingBoxVisualization(): void {
@@ -173,7 +168,7 @@ export class ModelManager {
 
   // 모든 바운딩박스 업데이트
   public updateAllBoundingBoxes(): void {
-    this.floorManager.updateAllBoundingBoxHelpers()
-    this.wallManager.updateAllBoundingBoxHelpers()
+    this.floorManager.updateAllBoundingBoxHelpers((model) => model.getType() !== 'wall')
+    this.wallManager.updateAllBoundingBoxHelpers((model) => model.getType() === 'wall')
   }
 }

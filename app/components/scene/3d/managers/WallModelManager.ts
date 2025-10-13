@@ -1,53 +1,27 @@
 import * as THREE from 'three'
 import { BaseModel } from '../objects/BaseModel'
 import { SceneIndex } from './SceneIndex'
-import { BoundingBoxVisualizer } from './BoundingBoxVisualizer'
+import { BaseModelManager } from './BaseModelManager'
 import { calculateBoundingBox } from './BoundingBoxUtils'
 
 // 상수 정의
 const CUBE_SIZE = 0.1
 
-export class WallModelManager {
-  private scene: THREE.Scene
-  private models: Map<string, BaseModel>
-  private sceneIndex: SceneIndex
-  private raycaster: THREE.Raycaster = new THREE.Raycaster()
-  private visualizer: BoundingBoxVisualizer
-
+export class WallModelManager extends BaseModelManager {
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {
-    this.scene = scene
-    this.models = models
-    this.sceneIndex = sceneIndex
-    this.visualizer = new BoundingBoxVisualizer(scene, models, 0xffff00)
+    super(scene, models, sceneIndex, 0xffff00)
   }
 
-  // 바닥 높이 계산 (FloorModelManager와 동일한 로직)
-  private getFloorHeight(x: number, z: number): number {
-    const rayOrigin = new THREE.Vector3(x, 100, z) // 위에서 아래로 쏴보기
-    const rayDirection = new THREE.Vector3(0, -1, 0)
-    this.raycaster.set(rayOrigin, rayDirection)
-    
-    const floorMeshes = this.sceneIndex.getFloorMeshes()
-    if (floorMeshes.length === 0) return 0
-    
-    const intersections = this.raycaster.intersectObjects(floorMeshes)
-    if (intersections.length > 0) {
-      return intersections[0].point.y
+  // BaseModelManager의 추상 메서드 구현
+  public async addModel(...args: unknown[]): Promise<string> {
+    // addWallModel에 위임
+    if (args.length >= 1 && typeof args[0] === 'object') {
+      return this.addWallModel(args[0] as BaseModel, args[1] as {
+        position?: { x: number, y: number, z: number },
+        useOptimalPlacement?: boolean
+      })
     }
-    return 0
-  }
-
-  private getModelBottomOffset(model: BaseModel): number {
-    const customBB = model.getCustomBoundingBox()
-    if (customBB && customBB.offsetY !== undefined) {
-      return customBB.offsetY
-    }
-    
-    const boundingBox = calculateBoundingBox(model)
-    if (!boundingBox) return 0
-    
-    const position = model.getPosition()
-    return boundingBox.min.y - position.y
+    throw new Error('Invalid arguments for WallModelManager.addModel')
   }
 
   // 벽 가구 추가 메소드
@@ -95,6 +69,14 @@ export class WallModelManager {
       
       model.addToScene(this.scene)
       this.models.set(model.getId(), model)
+      
+      // FloorLamp 모델인 경우 현재 테마 적용
+      if (model.getType() === 'floorlamp' && typeof (model as any).setTheme === 'function') {
+        const isDarkMode = typeof window !== 'undefined' && 
+          (document.documentElement.classList.contains('dark') || 
+           window.matchMedia('(prefers-color-scheme: dark)').matches)
+        ;(model as any).setTheme(isDarkMode)
+      }
       
       // 바운딩박스 헬퍼 업데이트
       if (this.visualizer.isEnabled()) {
@@ -200,19 +182,123 @@ export class WallModelManager {
     return true
   }
 
-  // 모델을 벽과 평행하게 정렬
-  private alignModelToWall(model: BaseModel, wallRotation: number): void {
+  // 모델을 벽과 평행하게 정렬 (wallRotation 또는 wallNormal 지원)
+  public alignModelToWall(model: BaseModel, wallRotationOrNormal: number | THREE.Vector3, camera?: THREE.Camera): void {
+    let targetRotation: number
+    
+    if (typeof wallRotationOrNormal === 'number') {
+      // 회전 각도 직접 사용
+      targetRotation = wallRotationOrNormal
+    } else {
+      // 법선 벡터에서 회전 각도 계산
+      let wallNormal = wallRotationOrNormal.clone()
+      
+      // 카메라가 제공된 경우, 카메라 방향을 고려하여 법선 조정
+      if (camera) {
+        const cameraDirection = new THREE.Vector3()
+        camera.getWorldDirection(cameraDirection)
+        
+        if (wallNormal.dot(cameraDirection) > 0) {
+          wallNormal.negate() // 카메라 쪽을 향하면 반대로
+        }
+      }
+      
+      targetRotation = Math.atan2(wallNormal.x, wallNormal.z)
+    }
+    
     const modelObj = model.getModel()
     if (modelObj) {
-      // 벽 회전에 맞춰서 모델도 회전
       const currentRotation = model.getRotation()
-      const targetRotation = wallRotation // 벽과 같은 방향으로 회전
       model.setRotation({ y: targetRotation })
-      // x, z 회전은 유지하고 y만 변경
-      if (modelObj) {
-        modelObj.rotation.set(currentRotation.x, targetRotation, currentRotation.z)
+      modelObj.rotation.set(currentRotation.x, targetRotation, currentRotation.z)
+    }
+  }
+
+  // 벽의 법선 벡터 계산 (카메라 방향 고려 옵션)
+  public getWallNormal(wall: THREE.Mesh, camera?: THREE.Camera): THREE.Vector3 {
+    // 벽의 월드 매트릭스에서 법선 벡터 추출
+    const wallMatrix = wall.matrixWorld
+    const wallNormal = new THREE.Vector3(0, 0, 1) // 기본 법선
+    wallNormal.transformDirection(wallMatrix).normalize()
+
+    // 카메라 방향과 비교해서 바깥쪽을 향하도록 조정
+    if (camera) {
+      const cameraDirection = new THREE.Vector3()
+      camera.getWorldDirection(cameraDirection)
+
+      if (wallNormal.dot(cameraDirection) > 0) {
+        wallNormal.negate() // 카메라 쪽을 향하면 반대로
       }
     }
+
+    return wallNormal
+  }
+
+  // 특정 벽 메시에 모델 부착
+  public attachToSpecificWall(model: BaseModel, wall: THREE.Mesh, hitPoint: THREE.Vector3, camera?: THREE.Camera): boolean {
+    try {
+      // 벽의 법선 벡터 계산
+      const wallNormal = this.getWallNormal(wall, camera)
+
+      // 벽에 딱 붙도록 설정 (오프셋 최소화)
+      const offsetDistance = 0.01
+      const attachPosition = hitPoint.clone().add(wallNormal.clone().multiplyScalar(offsetDistance))
+
+      // 벽/모델 AABB 기반 Y 클램프 (폴백 포함)
+      let minClamp = 0.3
+      let maxClamp = 2.5
+      const wallBox = new THREE.Box3().setFromObject(wall)
+      const obj = model.getModel()
+      if (wallBox && isFinite(wallBox.min.y) && isFinite(wallBox.max.y)) {
+        minClamp = wallBox.min.y + 0.05
+        maxClamp = wallBox.max.y - 0.05
+        if (obj) {
+          const mb = new THREE.Box3().setFromObject(obj)
+          const mH = mb.max.y - mb.min.y
+          if (isFinite(mH) && mH > 0) {
+            minClamp = wallBox.min.y + mH * 0.5
+            maxClamp = wallBox.max.y - mH * 0.05
+          }
+        }
+      }
+      const clampedY = Math.max(minClamp, Math.min(maxClamp, hitPoint.y))
+      attachPosition.y = clampedY
+
+      // 모델 위치/방향 설정 (벽을 바라보도록 정렬)
+      model.setPosition({ x: attachPosition.x, y: attachPosition.y, z: attachPosition.z })
+      this.alignModelToWall(model, wallNormal, camera)
+
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  // 레이캐스팅을 통해 보이는 벽에 모델 부착
+  public attachToVisibleWall(model: BaseModel, raycaster: THREE.Raycaster, camera: THREE.Camera): boolean {
+    // 씬에서 벽 객체들만 가져오기 (userData.isWall === true)
+    const walls: THREE.Object3D[] = []
+    this.scene.traverse(obj => { 
+      if (obj.userData?.isWall === true) walls.push(obj) 
+    })
+
+    if (walls.length === 0) {
+      return false
+    }
+
+    // 벽들과의 교차점 검사 (하위까지 재귀)
+    const intersections = raycaster.intersectObjects(walls, true)
+
+    if (intersections.length > 0) {
+      const closestIntersection = intersections[0]
+      const hitWall = closestIntersection.object as THREE.Mesh
+      const hitPoint = closestIntersection.point
+
+      // 히트한 벽에 모델 부착
+      return this.attachToSpecificWall(model, hitWall, hitPoint, camera)
+    }
+
+    return false
   }
 
   public repositionWallModelsAfterWallChange(): string[] {
@@ -226,11 +312,6 @@ export class WallModelManager {
       }
     })
     return idsToDelete
-  }
-
-  // 벽 가구 제거 후 처리 (ModelManager에서 호출)
-  public onWallModelRemoved(): void {
-    // 모델 제거 시 자동으로 정리됨
   }
 
   // 벽 가구 최적 위치 찾기 (충돌 회피)
@@ -379,27 +460,5 @@ export class WallModelManager {
     }
 
     return false // 충돌 없음
-  }
-
-  // 바운딩박스 시각화 메서드들 (Visualizer로 위임)
-  public enableBoundingBoxVisualization(): void {
-    this.visualizer.enable((model) => model.getType() === 'wall')
-  }
-
-  public disableBoundingBoxVisualization(): void {
-    this.visualizer.disable()
-  }
-
-  public toggleBoundingBoxVisualization(): boolean {
-    this.visualizer.toggle((model) => model.getType() === 'wall')
-    return this.visualizer.isEnabled()
-  }
-
-  public updateAllBoundingBoxHelpers(): void {
-    this.visualizer.updateAll((model) => model.getType() === 'wall')
-  }
-
-  public updateModelBoundingBox(modelId: string): void {
-    this.visualizer.updateModel(modelId)
   }
 }

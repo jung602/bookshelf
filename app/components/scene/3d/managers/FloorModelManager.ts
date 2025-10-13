@@ -1,21 +1,24 @@
 import * as THREE from 'three'
 import { BaseModel } from '../objects/BaseModel'
 import { SceneIndex } from './SceneIndex'
-import { BoundingBoxVisualizer } from './BoundingBoxVisualizer'
+import { BaseModelManager } from './BaseModelManager'
 import { calculateBoundingBox } from './BoundingBoxUtils'
 
-export class FloorModelManager {
-  private scene: THREE.Scene
-  private models: Map<string, BaseModel>
-  private sceneIndex: SceneIndex
-  private raycaster: THREE.Raycaster = new THREE.Raycaster()
-  private visualizer: BoundingBoxVisualizer
-
+export class FloorModelManager extends BaseModelManager {
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {
-    this.scene = scene
-    this.models = models
-    this.sceneIndex = sceneIndex
-    this.visualizer = new BoundingBoxVisualizer(scene, models, 0x00ffff)
+    super(scene, models, sceneIndex, 0x00ffff)
+  }
+
+  // BaseModelManager의 추상 메서드 구현
+  public async addModel(...args: unknown[]): Promise<string> {
+    // addFloorModel에 위임
+    if (args.length >= 1 && typeof args[0] === 'object') {
+      return this.addFloorModel(args[0] as BaseModel, args[1] as {
+        position?: { x: number, y: number, z: number },
+        useOptimalPlacement?: boolean
+      })
+    }
+    throw new Error('Invalid arguments for FloorModelManager.addModel')
   }
 
   // 통합된 바닥 가구 추가 메소드
@@ -58,6 +61,14 @@ export class FloorModelManager {
       
       model.addToScene(this.scene)
       this.models.set(model.getId(), model)
+      
+      // FloorLamp 모델인 경우 현재 테마 적용
+      if (model.getType() === 'floorlamp' && typeof (model as any).setTheme === 'function') {
+        const isDarkMode = typeof window !== 'undefined' && 
+          (document.documentElement.classList.contains('dark') || 
+           window.matchMedia('(prefers-color-scheme: dark)').matches)
+        ;(model as any).setTheme(isDarkMode)
+      }
       
       // 바운딩박스 헬퍼 업데이트
       if (this.visualizer.isEnabled()) {
@@ -145,8 +156,8 @@ export class FloorModelManager {
   }
 
   public getFloorHeight(x: number, z: number): number {
-    const intersections = this.performFloorRaycast(x, z)
-    return intersections.length > 0 ? intersections[0].point.y : 0
+    // 부모 클래스의 protected 메서드 사용
+    return super.getFloorHeight(x, z)
   }
 
   public clampToBounds(model: BaseModel, x: number, z: number, inset: number = 0): { x: number, z: number } {
@@ -237,19 +248,6 @@ export class FloorModelManager {
     const targetX = x !== undefined ? x : pos.x
     const targetZ = z !== undefined ? z : pos.z
     return this.calculateYPosition(model, targetX, targetZ, 'floor-only')
-  }
-
-  private getModelBottomOffset(model: BaseModel): number {
-    const customBB = model.getCustomBoundingBox()
-    if (customBB && customBB.offsetY !== undefined) {
-      return customBB.offsetY
-    }
-    
-    const boundingBox = calculateBoundingBox(model)
-    if (!boundingBox) return 0
-    
-    const position = model.getPosition()
-    return boundingBox.min.y - position.y
   }
 
   public canModelSupportAnother(supportModel: BaseModel, targetModel: BaseModel, targetX: number, targetZ: number): boolean {
@@ -909,27 +907,5 @@ export class FloorModelManager {
       }
     }
     return idsToDelete
-  }
-
-  // 바운딩박스 시각화 메서드들 (Visualizer로 위임)
-  public enableBoundingBoxVisualization(): void {
-    this.visualizer.enable((model) => model.getType() !== 'wall')
-  }
-
-  public disableBoundingBoxVisualization(): void {
-    this.visualizer.disable()
-  }
-
-  public toggleBoundingBoxVisualization(): boolean {
-    this.visualizer.toggle((model) => model.getType() !== 'wall')
-    return this.visualizer.isEnabled()
-  }
-
-  public updateAllBoundingBoxHelpers(): void {
-    this.visualizer.updateAll((model) => model.getType() !== 'wall')
-  }
-
-  public updateModelBoundingBox(modelId: string): void {
-    this.visualizer.updateModel(modelId)
   }
 }

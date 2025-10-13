@@ -451,7 +451,12 @@ export class InteractionManager {
         const isWallModel = selectedModel.getType() === 'wall'
         if (isWallModel) {
           // 벽 가구: 2D 드래그 종료 - 화면 위치에서 벽 레이캐스팅
-          const attachedToWall = this.attachWallcubeToVisibleWall(selectedModel)
+          this.raycaster.setFromCamera(this.mouse, this.camera)
+          const attachedToWall = this.modelManager.getWallManager().attachToVisibleWall(
+            selectedModel,
+            this.raycaster,
+            this.camera
+          )
 
           if (!attachedToWall) {
             // 폴백: 기존 방식으로 가장 가까운 벽에 부착
@@ -709,73 +714,6 @@ export class InteractionManager {
     this._dragCache.clear()
   }
 
-  /**
-   * 2D 드래그 종료 시 화면 위치에서 보이는 벽에 wallcube 부착
-   */
-  private attachWallcubeToVisibleWall(model: BaseModel): boolean {
-    // 현재 마우스 위치에서 레이캐스팅
-    this.raycaster.setFromCamera(this.mouse, this.camera)
-
-    // 씬에서 벽 객체들만 가져오기 (userData.isWall === true)
-    const walls: THREE.Object3D[] = []
-    this.scene.traverse(obj => { if (obj.userData?.isWall === true) walls.push(obj) })
-
-    if (walls.length === 0) {
-      return false
-    }
-
-    // 벽들과의 교차점 검사 (하위까지 재귀)
-    const intersections = this.raycaster.intersectObjects(walls, true)
-
-    if (intersections.length > 0) {
-      const closestIntersection = intersections[0]
-      const hitWall = closestIntersection.object as THREE.Mesh
-      const hitPoint = closestIntersection.point
-
-      // 히트한 벽에 모델 부착
-      return this.attachModelToSpecificWall(model, hitWall, hitPoint)
-    }
-
-    return false
-  }
-
-  /**
-   * 벽의 법선 벡터 계산 (카메라 방향으로)
-   */
-  private getWallNormal(wall: THREE.Mesh): THREE.Vector3 {
-    // 벽의 월드 매트릭스에서 법선 벡터 추출
-    const wallMatrix = wall.matrixWorld
-    const wallNormal = new THREE.Vector3(0, 0, 1) // 기본 법선
-    wallNormal.transformDirection(wallMatrix).normalize()
-
-    // 카메라 방향과 비교해서 바깥쪽을 향하도록 조정
-    const cameraDirection = new THREE.Vector3()
-    this.camera.getWorldDirection(cameraDirection)
-
-    if (wallNormal.dot(cameraDirection) > 0) {
-      wallNormal.negate() // 카메라 쪽을 향하면 반대로
-    }
-
-    return wallNormal
-  }
-
-  /**
-   * 벽 법선을 바라보도록 모델의 Y 회전 정렬
-   */
-  private alignModelFacingWall(model: BaseModel, wallNormal: THREE.Vector3) {
-    try {
-      const yaw = Math.atan2(wallNormal.x, wallNormal.z)
-      const targetY = yaw // 벽과 같은 방향으로 (법선 방향 그대로)
-      const obj = model.getModel()
-      if (obj) {
-        // BaseModel의 상태도 업데이트
-        const currentRotation = model.getRotation()
-        model.setRotation({ y: targetY })
-        // x, z 회전은 유지하고 y만 변경
-        obj.rotation.set(currentRotation.x, targetY, currentRotation.z)
-      }
-    } catch {}
-  }
 
   /**
    * 2D 드래그 종료 시 화면 위치에서 보이는 표면(바닥 또는 다른 가구)에 floorModel 부착
@@ -861,45 +799,6 @@ export class InteractionManager {
     }
 
     return false
-  }
-
-  private attachModelToSpecificWall(model: BaseModel, wall: THREE.Mesh, hitPoint: THREE.Vector3): boolean {
-    try {
-      // 벽의 법선 벡터 계산
-      const wallNormal = this.getWallNormal(wall)
-
-      // 벽에 딱 붙도록 설정 (오프셋 최소화)
-      const offsetDistance = 0.01
-      const attachPosition = hitPoint.clone().add(wallNormal.clone().multiplyScalar(offsetDistance))
-
-      // 벽/모델 AABB 기반 Y 클램프 (폴백 포함)
-      let minClamp = 0.3
-      let maxClamp = 2.5
-      const wallBox = new THREE.Box3().setFromObject(wall)
-      const obj = model.getModel()
-      if (wallBox && isFinite(wallBox.min.y) && isFinite(wallBox.max.y)) {
-        minClamp = wallBox.min.y + 0.05
-        maxClamp = wallBox.max.y - 0.05
-        if (obj) {
-          const mb = new THREE.Box3().setFromObject(obj)
-          const mH = mb.max.y - mb.min.y
-          if (isFinite(mH) && mH > 0) {
-            minClamp = wallBox.min.y + mH * 0.5
-            maxClamp = wallBox.max.y - mH * 0.05
-          }
-        }
-      }
-      const clampedY = Math.max(minClamp, Math.min(maxClamp, hitPoint.y))
-      attachPosition.y = clampedY
-
-      // 모델 위치/방향 설정 (벽을 바라보도록 정렬)
-      model.setPosition({ x: attachPosition.x, y: attachPosition.y, z: attachPosition.z })
-      this.alignModelFacingWall(model, wallNormal)
-
-      return true
-    } catch {
-      return false
-    }
   }
 
   /**

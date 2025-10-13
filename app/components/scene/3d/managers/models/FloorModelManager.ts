@@ -63,10 +63,12 @@ export class FloorModelManager extends BaseModelManager {
       this.models.set(model.getId(), model)
       
       // FloorLamp 모델인 경우 현재 테마 적용
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (model.getType() === 'floorlamp' && typeof (model as any).setTheme === 'function') {
         const isDarkMode = typeof window !== 'undefined' && 
           (document.documentElement.classList.contains('dark') || 
            window.matchMedia('(prefers-color-scheme: dark)').matches)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(model as any).setTheme(isDarkMode)
       }
       

@@ -6,7 +6,7 @@ import { createFloor } from './scenes/createFloor'
 import { createWalls } from './scenes/createWalls'
 import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
 import { ModelManager, InteractionManager, type GizmoState } from './managers'
-import { getModelClass } from './objects'
+// import { getModelClass } from './objects' // 사용하지 않음
 
 // 타입 정의들
 export interface RoomParams {
@@ -386,7 +386,9 @@ export class SceneManager {
     // 모든 FloorLamp 모델에 테마 적용
     const allModels = this.modelManager.getAllModels()
     allModels.forEach((model) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (model.getType() === 'floorlamp' && typeof (model as any).setTheme === 'function') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (model as any).setTheme(isDarkMode)
       }
     })

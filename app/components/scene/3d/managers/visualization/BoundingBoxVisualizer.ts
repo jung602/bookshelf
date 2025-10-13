@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { BaseModel } from '../objects/BaseModel'
+import { BaseModel } from '../../objects/BaseModel'
 
 export class BoundingBoxVisualizer {
   private scene: THREE.Scene

@@ -1,4 +1,4 @@
-import * as THREE from 'three'
+// import * as THREE from 'three' // 사용하지 않음
 import { BaseModel, ModelPosition, ModelScale, ModelRotation } from './BaseModel'
 // setupBoxBoundingBox, setupCylinderBoundingBox는 더 이상 사용하지 않음
 

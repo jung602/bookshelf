@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { ModelManager } from './ModelManager'
-import { BaseModel } from '../objects/BaseModel'
+import { ModelManager } from '../models/ModelManager'
+import { BaseModel } from '../../objects/BaseModel'
 
 // 상수 정의 (DPI 보정)
 const Y_SCALE = 2.0 // 벽 가구 Y축 드래그 민감도

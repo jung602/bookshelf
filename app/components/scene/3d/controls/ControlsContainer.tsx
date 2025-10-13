@@ -9,7 +9,7 @@ import ModelAddControl from './panels/ModelAddControl'
 import CollectionAddControl from './panels/CollectionAddControl'
 import TileDesignControl from './panels/TileDesignControl'
 import { getModelClass } from '../objects'
-import { ControlButton, BoundingBoxIcon } from './components'
+// import { ControlButton, BoundingBoxIcon } from './components' // 사용하지 않음
 
 interface ControlsContainerProps {
   sceneManager: SceneManager | null
@@ -40,8 +40,8 @@ export default function ControlsContainer({
   // 선택된 메뉴 상태 관리
   const [selectedMenu, setSelectedMenu] = useState<string | null>(null)
   
-  // 바운딩박스 표시 상태 관리
-  const [showBoundingBoxes, setShowBoundingBoxes] = useState(false)
+  // 바운딩박스 표시 상태 관리 (사용하지 않음)
+  // const [showBoundingBoxes, setShowBoundingBoxes] = useState(false)
 
   // 메뉴 선택 핸들러
   const handleMenuSelect = (menuId: string) => {
@@ -50,13 +50,13 @@ export default function ControlsContainer({
     setSelectedMenu((prevSelected: string | null) => prevSelected === menuId ? null : menuId)
   }
   
-  // 바운딩박스 토글 핸들러
-  const handleToggleBoundingBoxes = () => {
-    if (sceneManager) {
-      sceneManager.toggleBoundingBoxVisualization()
-      setShowBoundingBoxes(!showBoundingBoxes)
-    }
-  }
+  // 바운딩박스 토글 핸들러 (사용하지 않음)
+  // const handleToggleBoundingBoxes = () => {
+  //   if (sceneManager) {
+  //     sceneManager.toggleBoundingBoxVisualization()
+  //     setShowBoundingBoxes(!showBoundingBoxes)
+  //   }
+  // }
 
   // 뒤로가기 핸들러 (메뉴로 돌아가기)
   const handleGoBack = () => {

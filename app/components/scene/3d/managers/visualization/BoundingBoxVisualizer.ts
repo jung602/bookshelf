@@ -62,7 +62,9 @@ export class BoundingBoxVisualizer {
     if (customBB && customBB.type === 'cylinder') {
       const radius = customBB.radius || 0
       const height = customBB.height || 0
+      const offsetX = customBB.offsetX || 0
       const offsetY = customBB.offsetY || 0
+      const offsetZ = customBB.offsetZ || 0
 
       const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 16, 1, true)
       const cylinderMaterial = new THREE.LineBasicMaterial({ color: helperColor, linewidth: 2 })
@@ -70,7 +72,9 @@ export class BoundingBoxVisualizer {
       const cylinderHelper = new THREE.LineSegments(edges, cylinderMaterial)
 
       const yCenter = position.y + offsetY + height / 2
-      cylinderHelper.position.set(position.x, yCenter, position.z)
+      const centerX = position.x + offsetX
+      const centerZ = position.z + offsetZ
+      cylinderHelper.position.set(centerX, yCenter, centerZ)
       helper = cylinderHelper
 
       cylinderGeometry.dispose()
@@ -78,10 +82,14 @@ export class BoundingBoxVisualizer {
       const width = customBB.width || 0
       const height = customBB.height || 0
       const depth = customBB.depth || 0
+      const offsetX = customBB.offsetX || 0
       const offsetY = customBB.offsetY || 0
+      const offsetZ = customBB.offsetZ || 0
 
       const yMin = position.y + offsetY
       const yMax = yMin + height
+      const centerX = position.x + offsetX
+      const centerZ = position.z + offsetZ
 
       // 회전을 고려한 바운딩박스 계산
       const rotation = model.getRotation()
@@ -108,11 +116,11 @@ export class BoundingBoxVisualizer {
           corner.set(x, corner.y, z)
         })
         
-        // 회전된 모서리들로부터 바운딩박스 계산
-        const minX = Math.min(...corners.map(c => c.x)) + position.x
-        const maxX = Math.max(...corners.map(c => c.x)) + position.x
-        const minZ = Math.min(...corners.map(c => c.z)) + position.z
-        const maxZ = Math.max(...corners.map(c => c.z)) + position.z
+        // 회전된 모서리들로부터 바운딩박스 계산 (오프셋 중심 사용)
+        const minX = Math.min(...corners.map(c => c.x)) + centerX
+        const maxX = Math.max(...corners.map(c => c.x)) + centerX
+        const minZ = Math.min(...corners.map(c => c.z)) + centerZ
+        const maxZ = Math.max(...corners.map(c => c.z)) + centerZ
         
         const boundingBox = new THREE.Box3(
           new THREE.Vector3(minX, yMin, minZ),
@@ -120,15 +128,15 @@ export class BoundingBoxVisualizer {
         )
         helper = new THREE.Box3Helper(boundingBox, helperColor)
       } else {
-        // 회전이 없는 경우 기존 로직 사용
+        // 회전이 없는 경우 오프셋 중심 사용
         const boundingBox = new THREE.Box3(
-          new THREE.Vector3(position.x - width / 2, yMin, position.z - depth / 2),
-          new THREE.Vector3(position.x + width / 2, yMax, position.z + depth / 2)
+          new THREE.Vector3(centerX - width / 2, yMin, centerZ - depth / 2),
+          new THREE.Vector3(centerX + width / 2, yMax, centerZ + depth / 2)
         )
         helper = new THREE.Box3Helper(boundingBox, helperColor)
       }
     } else {
-      // 회전된 모델의 바운딩박스를 정확히 계산
+      // 실제 메시의 바운딩박스를 사용 (OBB 지원)
       const boundingBox = new THREE.Box3().setFromObject(modelGroup)
       helper = new THREE.Box3Helper(boundingBox, helperColor)
     }

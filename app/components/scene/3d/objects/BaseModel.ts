@@ -26,6 +26,8 @@ export interface CustomBoundingBox {
   depth?: number
   radius?: number
   offsetY?: number // 모델 중심에서 바운딩박스 바닥까지의 오프셋
+  offsetX?: number // X축 오프셋
+  offsetZ?: number // Z축 오프셋
 }
 
 export abstract class BaseModel {

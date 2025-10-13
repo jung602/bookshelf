@@ -210,23 +210,8 @@ export class Book extends BaseModel {
 
 
   protected setupModel(): void {
-    // 책의 실제 바운딩박스 계산
-    if (this.model) {
-      const boundingBox = new THREE.Box3().setFromObject(this.model)
-      const width = boundingBox.max.x - boundingBox.min.x
-      const height = boundingBox.max.y - boundingBox.min.y
-      const depth = boundingBox.max.z - boundingBox.min.z
-      const offsetY = boundingBox.min.y - this.model.position.y
-      
-      // 박스 바운딩박스 설정
-      this.setCustomBoundingBox({
-        type: 'box',
-        width: width,
-        height: height,
-        depth: depth,
-        offsetY: offsetY
-      })
-    }
+    // 커스텀 바운딩박스 대신 실제 메시의 바운딩박스를 사용
+    // calculateBoundingBox가 실제 메시의 바운딩박스를 직접 계산함
   }
 
   public update(): void {

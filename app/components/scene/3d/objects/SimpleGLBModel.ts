@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { BaseModel, ModelPosition, ModelScale, ModelRotation } from './BaseModel'
-import { setupBoxBoundingBox, setupCylinderBoundingBox } from '../managers/visualization/BoundingBoxUtils'
+// setupBoxBoundingBox, setupCylinderBoundingBox는 더 이상 사용하지 않음
 
 /**
  * 간단한 GLB 모델을 위한 설정 인터페이스
@@ -41,24 +41,9 @@ export class SimpleGLBModel extends BaseModel {
   protected setupModel(): void {
     if (!this.model) return
 
-    switch (this.config.boundingBoxType) {
-      case 'box':
-        setupBoxBoundingBox(this)
-        break
-
-      case 'cylinder-dynamic':
-        setupCylinderBoundingBox(this, 'dynamic')
-        break
-
-      case 'cylinder-fixed':
-        if (this.config.cylinderRadius !== undefined) {
-          setupCylinderBoundingBox(this, this.config.cylinderRadius)
-        } else {
-          console.warn(`cylinder-fixed requires cylinderRadius for ${this.config.typeName}`)
-          setupBoxBoundingBox(this)
-        }
-        break
-    }
+    // 커스텀 바운딩박스 대신 실제 메시의 바운딩박스를 사용
+    // setupBoxBoundingBox, setupCylinderBoundingBox 등은 더 이상 사용하지 않음
+    // calculateBoundingBox가 실제 메시의 바운딩박스를 직접 계산함
   }
 
   public update(): void {

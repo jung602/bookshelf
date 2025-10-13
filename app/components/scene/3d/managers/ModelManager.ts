@@ -28,7 +28,7 @@ export class ModelManager {
     if (typeof modelOrType !== 'string') {
       const model = modelOrType as BaseModel
       
-      if (model.getType() === 'wallcube') {
+      if (model.getType() === 'wallcube' || model.getType() === 'wall') {
         // 벽 가구는 WallModelManager에서 처리 (스마트 배치)
         await this.wallManager.addWallModel(model)
         return
@@ -42,7 +42,7 @@ export class ModelManager {
     // 새로운 방식 (modelType과 ModelClass 전달)
     const model = new (ModelClass as new (position?: { x: number; y: number; z: number }) => BaseModel)(position)
     
-    if (model.getType() === 'wallcube') {
+    if (model.getType() === 'wallcube' || model.getType() === 'wall') {
       // 벽 가구인 경우 - WallModelManager에 위임 (스마트 배치 활성화)
       const modelId = await this.wallManager.addWallModel(model, {
         position,

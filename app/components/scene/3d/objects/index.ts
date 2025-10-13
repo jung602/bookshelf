@@ -10,6 +10,7 @@ import { WoodChairModel } from './woodchair'
 import { BlackStoolModel } from './blackstool'
 import { SofaModel } from './sofa'
 import { TVModel } from './tv'
+import { CardboardModel } from './cardboard'
 
 // 모델 카테고리 타입 정의
 export type ModelCategory = 'chairs' | 'desks' | 'lighting' | 'decoration' | 'storage' | 'etc' | 'wall'
@@ -132,6 +133,14 @@ export const allModels: ModelMetadata[] = [
     icon: '📺',
     category: 'decoration',
     modelClass: TVModel
+  },
+  {
+    id: 'cardboard',
+    name: '카드보드 박스',
+    description: '벽에 부착되는 카드보드 박스',
+    icon: '📦',
+    category: 'wall',
+    modelClass: CardboardModel
   }
 ]
 

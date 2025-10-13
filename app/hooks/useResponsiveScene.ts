@@ -6,8 +6,15 @@ interface ResponsiveConfig {
   animationSpeed: number
 }
 
+// 모바일 감지 함수
+const getDefaultBaseFrustumSize = (): number => {
+  if (typeof window === 'undefined') return 10
+  const isMobile = window.innerWidth < 450
+  return isMobile ? 7 : 10 // 모바일에서 줌인
+}
+
 const DEFAULT_CONFIG: ResponsiveConfig = {
-  baseFrustumSize: 10,
+  baseFrustumSize: getDefaultBaseFrustumSize(),
   animationSpeed: 0.15
 }
 
@@ -51,6 +58,9 @@ export function useResponsiveScene(
     const { baseFrustumSize } = configRef.current
     const sceneArea = getSceneAreaSize()
     const effectiveWidth = Math.min(sceneArea.width, sceneArea.height * 1.5) // 가로세로 비율 고려
+    
+    // 모바일 감지 (450px 이하)
+    const isMobile = viewportSize.width < 450
 
     // 실제 3D 씬 영역 크기에 따라 frustumSize 조절
     if (effectiveWidth > 720) {
@@ -60,11 +70,13 @@ export function useResponsiveScene(
     } else if (effectiveWidth > 384) {
       return baseFrustumSize * 1.0;      // 기본 3D 씬 영역 - 기본 시야
     } else if (effectiveWidth > 240) {
-      return baseFrustumSize * 1.3;      // 작은 3D 씬 영역 - 넓은 시야 (줌아웃)
+      // 모바일에서는 줌인 (frustumSize를 줄임)
+      return baseFrustumSize * (isMobile ? 1 : 1.3);      // 작은 3D 씬 영역
     } else {
-      return baseFrustumSize * 1.5;      // 매우 작은 3D 씬 영역 - 더 넓은 시야 (더 줌아웃)
+      // 모바일에서는 더 줌인
+      return baseFrustumSize * (isMobile ? 1.2 : 1.5);      // 매우 작은 3D 씬 영역
     }
-  }, [getSceneAreaSize, configRef])
+  }, [getSceneAreaSize, configRef, viewportSize.width])
 
   // 실제 사용 가능한 크기 가져오기
   const getActualSize = useCallback(() => {

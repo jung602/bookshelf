@@ -483,7 +483,8 @@ export class FloorModelManager {
     
     // 1. 현재 지지하고 있는 모델들 찾기 (더 넓은 범위로 확장)
     this.models.forEach((model, id) => {
-      if (id === excludeModelId || model.getType() === 'wallcube') return  // 벽 가구는 항상 벽에 붙음
+      const isWallModel = model.getType() === 'wallcube' || model.getType() === 'wall'
+      if (id === excludeModelId || isWallModel) return  // 벽 가구는 항상 벽에 붙음
       
       const modelPosition = model.getPosition()
       

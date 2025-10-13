@@ -45,8 +45,8 @@ export default function ThreeScene({ onSceneManagerReady, roomParams }: ThreeSce
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
   // 반응형 씬 설정 (frustumSize 기반)
+  // baseFrustumSize는 useResponsiveScene에서 자동으로 모바일 감지
   const responsiveConfig = {
-    baseFrustumSize: 10, // 기본 frustumSize
     animationSpeed: 0.12 // 부드러운 애니메이션을 위한 속도 (0.01-1)
   }
 

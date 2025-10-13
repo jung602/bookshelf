@@ -35,14 +35,14 @@ export function createLights(scene: THREE.Scene) {
   // 반구광 - 전체적인 부드러운 조명 제공
   const hemisphereLight = new THREE.HemisphereLight(
     0xf3f3f3, // sky color
-    0xf0f0f0, // ground color
+    0xCACACA, // ground color
     hemisphereIntensity // 테마에 따른 intensity
   )
   scene.add(hemisphereLight)
 
   // 방향광 - 주요 조명과 그림자 생성
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
-  directionalLight.position.set(0, 5, 2)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3)
+  directionalLight.position.set(0, 5, 3)
   directionalLight.castShadow = true
   
   // 그림자 설정 개선
@@ -62,7 +62,7 @@ export function createLights(scene: THREE.Scene) {
   scene.add(directionalLight)
 
   // 환경광 추가 - 전체적인 최소 밝기 보장
-  const ambientLight = new THREE.AmbientLight(0xf3f3f3, ambientIntensity)
+  const ambientLight = new THREE.AmbientLight(0xf0f0f0, ambientIntensity)
   scene.add(ambientLight)
   
 

@@ -176,26 +176,48 @@ export class WallModelManager {
       const preferredY = 1.5 // 벽 중앙 높이
       attachY = Math.max(minAllowedY, Math.max(wallMinY, Math.min(wallPos.y + wallScale.y/2 - cubeSize/2, preferredY)))
     }
+    
+    // 벽 방향에 따라 위치 및 회전 설정
+    const offsetDistance = 0.01 // 벽에 딱 붙도록 최소 오프셋
     if (Math.abs(wallRotation) < 0.1 || Math.abs(wallRotation - Math.PI) < 0.1) {
       const wallMinX = wallPos.x - wallScale.x/2 + cubeSize
       const wallMaxX = wallPos.x + wallScale.x/2 - cubeSize
       const clampedX = Math.max(wallMinX, Math.min(wallMaxX, targetX))
       attachX = clampedX
-      attachZ = wallRotation < 0.1 ? wallPos.z + cubeSize : wallPos.z - cubeSize
+      attachZ = wallRotation < 0.1 ? wallPos.z + offsetDistance : wallPos.z - offsetDistance
+      // 벽과 평행하게 회전 설정
+      this.alignModelToWall(model, wallRotation)
     } else {
       const wallMinZ = wallPos.z - wallScale.x/2 + cubeSize
       const wallMaxZ = wallPos.z + wallScale.x/2 - cubeSize
       const clampedZ = Math.max(wallMinZ, Math.min(wallMaxZ, targetZ))
       attachZ = clampedZ
-      attachX = Math.abs(wallRotation - Math.PI/2) < 0.1 ? wallPos.x + cubeSize : wallPos.x - cubeSize
+      attachX = Math.abs(wallRotation - Math.PI/2) < 0.1 ? wallPos.x + offsetDistance : wallPos.x - offsetDistance
+      // 벽과 평행하게 회전 설정
+      this.alignModelToWall(model, wallRotation)
     }
     model.setPosition({ x: attachX, y: attachY, z: attachZ })
     return true
   }
 
+  // 모델을 벽과 평행하게 정렬
+  private alignModelToWall(model: BaseModel, wallRotation: number): void {
+    const modelObj = model.getModel()
+    if (modelObj) {
+      // 벽 회전에 맞춰서 모델도 회전
+      const currentRotation = model.getRotation()
+      const targetRotation = wallRotation // 벽과 같은 방향으로 회전
+      model.setRotation({ y: targetRotation })
+      // x, z 회전은 유지하고 y만 변경
+      if (modelObj) {
+        modelObj.rotation.set(currentRotation.x, targetRotation, currentRotation.z)
+      }
+    }
+  }
+
   public repositionWallModelsAfterWallChange(): string[] {
     const idsToDelete: string[] = []
-    const wallModels = Array.from(this.models.values()).filter(m => m.getType() === 'wallcube' && m.isModelLoaded())
+    const wallModels = Array.from(this.models.values()).filter(m => (m.getType() === 'wallcube' || m.getType() === 'wall') && m.isModelLoaded())
     wallModels.forEach(model => {
       const pos = model.getPosition()
       const ok = this.attachToNearestWall(model, pos.x, pos.z, pos.y)
@@ -329,7 +351,8 @@ export class WallModelManager {
 
     // 다른 벽 가구들과의 충돌 검사
     for (const [otherId, otherModel] of this.models) {
-      if (otherId === model.getId() || otherModel.getType() !== 'wallcube') continue
+      const isOtherWallModel = otherModel.getType() === 'wallcube' || otherModel.getType() === 'wall'
+      if (otherId === model.getId() || !isOtherWallModel) continue
       
       const otherPos = otherModel.getPosition()
       const otherBounds = calculateBoundingBox(otherModel)
@@ -360,7 +383,7 @@ export class WallModelManager {
 
   // 바운딩박스 시각화 메서드들 (Visualizer로 위임)
   public enableBoundingBoxVisualization(): void {
-    this.visualizer.enable((model) => model.getType() === 'wallcube')
+    this.visualizer.enable((model) => model.getType() === 'wallcube' || model.getType() === 'wall')
   }
 
   public disableBoundingBoxVisualization(): void {
@@ -368,12 +391,12 @@ export class WallModelManager {
   }
 
   public toggleBoundingBoxVisualization(): boolean {
-    this.visualizer.toggle((model) => model.getType() === 'wallcube')
+    this.visualizer.toggle((model) => model.getType() === 'wallcube' || model.getType() === 'wall')
     return this.visualizer.isEnabled()
   }
 
   public updateAllBoundingBoxHelpers(): void {
-    this.visualizer.updateAll((model) => model.getType() === 'wallcube')
+    this.visualizer.updateAll((model) => model.getType() === 'wallcube' || model.getType() === 'wall')
   }
 
   public updateModelBoundingBox(modelId: string): void {

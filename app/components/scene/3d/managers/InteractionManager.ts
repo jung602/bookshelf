@@ -425,9 +425,10 @@ export class InteractionManager {
     const selectedModel = this.dragState.selectedModel
 
     // 모든 가구 공통: 2D 화면 드래그 → 월드 위치로 역투영 이동
+    const isWallModel = selectedModel.getType() === 'wallcube' || selectedModel.getType() === 'wall'
     selectedModel.setPosition({
       x: intersectionPoint.x,
-      y: selectedModel.getType() === 'wallcube' ? this.dragState.startModelY + (this.mouse.y - this.dragState.startMouseY) * Y_SCALE : intersectionPoint.y,
+      y: isWallModel ? this.dragState.startModelY + (this.mouse.y - this.dragState.startMouseY) * Y_SCALE : intersectionPoint.y,
       z: intersectionPoint.z
     })
 
@@ -447,7 +448,8 @@ export class InteractionManager {
         // 드래그 종료 시 렌더링 우선순위/상태 복구
         this.setModelAlwaysOnTop(selectedModel, false)
 
-        if (selectedModel.getType() === 'wallcube') {
+        const isWallModel = selectedModel.getType() === 'wallcube' || selectedModel.getType() === 'wall'
+        if (isWallModel) {
           // 벽 가구: 2D 드래그 종료 - 화면 위치에서 벽 레이캐스팅
           const attachedToWall = this.attachWallcubeToVisibleWall(selectedModel)
 
@@ -506,7 +508,8 @@ export class InteractionManager {
         }
 
         // 드래그 완료 후 바운딩박스 헬퍼 업데이트
-        if (selectedModel.getType() === 'wallcube') {
+        const isWallModelForBBox = selectedModel.getType() === 'wallcube' || selectedModel.getType() === 'wall'
+        if (isWallModelForBBox) {
           this.modelManager.getWallManager().updateModelBoundingBox(selectedModel.getId())
         } else {
           this.modelManager.getFloorManager().updateModelBoundingBox(selectedModel.getId())
@@ -625,7 +628,8 @@ export class InteractionManager {
       model.rotateY90()
     }
 
-    if (model.getType() === 'wallcube') {
+    const isWallModel = model.getType() === 'wallcube' || model.getType() === 'wall'
+    if (isWallModel) {
       // 벽 가구: 회전 후 벽에 다시 부착
       const pos = model.getPosition()
       this.modelManager.getWallManager().attachToNearestWall(model, pos.x, pos.z, pos.y)
@@ -761,10 +765,14 @@ export class InteractionManager {
   private alignModelFacingWall(model: BaseModel, wallNormal: THREE.Vector3) {
     try {
       const yaw = Math.atan2(wallNormal.x, wallNormal.z)
-      const targetY = yaw + Math.PI // 벽을 바라보게
+      const targetY = yaw // 벽과 같은 방향으로 (법선 방향 그대로)
       const obj = model.getModel()
       if (obj) {
-        obj.rotation.y = targetY
+        // BaseModel의 상태도 업데이트
+        const currentRotation = model.getRotation()
+        model.setRotation({ y: targetY })
+        // x, z 회전은 유지하고 y만 변경
+        obj.rotation.set(currentRotation.x, targetY, currentRotation.z)
       }
     } catch {}
   }
@@ -785,8 +793,9 @@ export class InteractionManager {
     // 다른 가구들의 콜라이더 추가 (지지 관계 고려)
     const allModels = this.modelManager.getAllModels()
     allModels.forEach((otherModel) => {
+      const isOtherWallModel = otherModel.getType() === 'wallcube' || otherModel.getType() === 'wall'
       if (otherModel.getId() !== model.getId() &&
-          otherModel.getType() !== 'wallcube' &&
+          !isOtherWallModel &&
           otherModel.isModelLoaded() &&
           otherModel.getModel()) {
         const modelColliders = otherModel.getAllColliders()
@@ -859,8 +868,8 @@ export class InteractionManager {
       // 벽의 법선 벡터 계산
       const wallNormal = this.getWallNormal(wall)
 
-      // 벽에서 약간 떨어진 위치 계산 (0.1 단위)
-      const offsetDistance = 0.1
+      // 벽에 딱 붙도록 설정 (오프셋 최소화)
+      const offsetDistance = 0.01
       const attachPosition = hitPoint.clone().add(wallNormal.clone().multiplyScalar(offsetDistance))
 
       // 벽/모델 AABB 기반 Y 클램프 (폴백 포함)

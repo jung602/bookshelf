@@ -1,4 +1,4 @@
-// import * as THREE from 'three' // 사용하지 않음
+import * as THREE from 'three'
 import { BaseModel, ModelPosition, ModelScale, ModelRotation } from './BaseModel'
 // setupBoxBoundingBox, setupCylinderBoundingBox는 더 이상 사용하지 않음
 
@@ -41,9 +41,23 @@ export class SimpleGLBModel extends BaseModel {
   protected setupModel(): void {
     if (!this.model) return
 
-    // 커스텀 바운딩박스 대신 실제 메시의 바운딩박스를 사용
-    // setupBoxBoundingBox, setupCylinderBoundingBox 등은 더 이상 사용하지 않음
-    // calculateBoundingBox가 실제 메시의 바운딩박스를 직접 계산함
+    // roundtable의 경우 원기둥 바운딩박스 설정 (floorlamp.ts와 동일한 방식)
+    if (this.config.typeName === 'roundtable') {
+      const boundingBox = new THREE.Box3().setFromObject(this.model)
+      const width = boundingBox.max.x - boundingBox.min.x
+      const depth = boundingBox.max.z - boundingBox.min.z
+      const height = boundingBox.max.y - boundingBox.min.y
+      const radius = Math.max(width, depth) / 2
+      const offsetY = boundingBox.min.y - this.model.position.y
+      
+      // 원기둥 바운딩박스 설정
+      this.setCustomBoundingBox({
+        type: 'cylinder',
+        radius: radius,
+        height: height,
+        offsetY: offsetY
+      })
+    }
   }
 
   public update(): void {
@@ -80,6 +94,12 @@ export const MODEL_CONFIGS: Record<string, SimpleModelConfig> = {
     typeName: 'desk',
     defaultScale: { x: 1.5, y: 1.5, z: 1.5 },
     boundingBoxType: 'box'
+  },
+  roundtable: {
+    modelPath: '/3d/main/models/roundtable.glb',
+    typeName: 'roundtable',
+    defaultScale: { x: 1.7, y: 1.7, z: 1.7 },
+    boundingBoxType: 'cylinder-dynamic'
   },
   stool: {
     modelPath: '/3d/main/models/stool.glb',
@@ -127,6 +147,12 @@ export const MODEL_CONFIGS: Record<string, SimpleModelConfig> = {
     defaultScale: { x: 1.7, y: 1.7, z: 1.7 },
     boundingBoxType: 'box'
   },
+  camera: {
+    modelPath: '/3d/main/models/camera.glb',
+    typeName: 'camera',
+    defaultScale: { x: 1.7, y: 1.7, z: 1.7 },
+    boundingBoxType: 'box'
+  },
   tv: {
     modelPath: '/3d/main/models/tv.glb',
     typeName: 'tv',
@@ -137,6 +163,12 @@ export const MODEL_CONFIGS: Record<string, SimpleModelConfig> = {
     modelPath: '/3d/main/models/cardboard.glb',
     typeName: 'wall', // 중요: 벽 가구로 분류
     defaultScale: { x: 2.5, y: 2.5, z: 2.5 },
+    boundingBoxType: 'box'
+  },
+  kittyrug: {
+    modelPath: '/3d/main/models/kittyrug.glb',
+    typeName: 'rug',
+    defaultScale: { x: 1.5, y: 1.5, z: 1.5 },
     boundingBoxType: 'box'
   }
 }

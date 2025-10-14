@@ -23,6 +23,12 @@ export class DeskModel extends SimpleGLBModel {
   }
 }
 
+export class RoundTableModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.roundtable, position, scale, rotation)
+  }
+}
+
 export class GuitarModel extends SimpleGLBModel {
   constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
     super(MODEL_CONFIGS.guitar, position, scale, rotation)
@@ -32,6 +38,12 @@ export class GuitarModel extends SimpleGLBModel {
 export class SynthesizerModel extends SimpleGLBModel {
   constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
     super(MODEL_CONFIGS.synthesizer, position, scale, rotation)
+  }
+}
+
+export class CameraModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.camera, position, scale, rotation)
   }
 }
 
@@ -65,8 +77,14 @@ export class CardboardModel extends SimpleGLBModel {
   }
 }
 
+export class KittyRugModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.kittyrug, position, scale, rotation)
+  }
+}
+
 // 모델 카테고리 타입 정의
-export type ModelCategory = 'chairs' | 'desks' | 'lighting' | 'decoration' | 'storage' | 'etc' | 'wall'
+export type ModelCategory = 'chairs' | 'desks' | 'lighting' | 'decoration' | 'storage' | 'etc' | 'wall' | 'rug'
 
 // 카테고리 메타데이터 인터페이스
 export interface CategoryMetadata {
@@ -94,6 +112,7 @@ export const categories: CategoryMetadata[] = [
   { id: 'etc', name: 'Furniture', icon: '📦' },
   { id: 'lighting', name: 'Lighting', icon: '💡' },
   { id: 'decoration', name: 'Decoration', icon: '🎨' },
+  { id: 'rug', name: 'Rug', icon: '🟫' },
   { id: 'wall', name: 'Wall', icon: '🎨' },
 ]
 
@@ -122,6 +141,14 @@ export const allModels: ModelMetadata[] = [
     icon: '🗄️',
     category: 'desks',
     modelClass: DeskModel
+  },
+  {
+    id: 'roundtable',
+    name: '원형 테이블',
+    description: '책상 모델',
+    icon: '🗄️',
+    category: 'desks',
+    modelClass: RoundTableModel
   },
   {
     id: 'floorlamp',
@@ -154,6 +181,14 @@ export const allModels: ModelMetadata[] = [
     icon: '🎹',
     category: 'decoration',
     modelClass: SynthesizerModel
+  },
+  {
+    id: 'camera',
+    name: '카메라',
+    description: '데코레이션용 카메라 모델',
+    icon: '📷',
+    category: 'decoration',
+    modelClass: CameraModel
   },
   {
     id: 'woodchair',
@@ -194,6 +229,14 @@ export const allModels: ModelMetadata[] = [
     icon: '📦',
     category: 'wall',
     modelClass: CardboardModel
+  },
+  {
+    id: 'kittyrug',
+    name: '키티 러그',
+    description: '귀여운 고양이 무늬 러그',
+    icon: '🐱',
+    category: 'rug',
+    modelClass: KittyRugModel
   }
 ]
 

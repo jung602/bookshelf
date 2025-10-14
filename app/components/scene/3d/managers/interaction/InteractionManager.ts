@@ -484,13 +484,21 @@ export class InteractionManager {
             } else {
               // 현재 위치가 안전하지 않으면 가까운 유효 위치 찾기
               const nearestValid = floorManager.findNearestValidPositionNear(selectedModel, currentPosition.x, currentPosition.z)
+              const isRug = selectedModel.getType() === 'rug'
+              
               if (nearestValid) {
-                const newY = floorManager.calculateSurfaceY(selectedModel, nearestValid.x, nearestValid.z)
+                let newY = isRug
+                  ? floorManager.calculateModelFloorY(selectedModel, nearestValid.x, nearestValid.z)
+                  : floorManager.calculateSurfaceY(selectedModel, nearestValid.x, nearestValid.z)
+                if (isRug) newY += 0.013
                 selectedModel.setPosition({ x: nearestValid.x, y: newY, z: nearestValid.z })
               } else {
                 // 마지막 폴백: 경계 클램프 및 표면 높이 계산
                 const clamped = floorManager.clampToBounds(selectedModel, currentPosition.x, currentPosition.z)
-                const newY = floorManager.calculateSurfaceY(selectedModel, clamped.x, clamped.z)
+                let newY = isRug
+                  ? floorManager.calculateModelFloorY(selectedModel, clamped.x, clamped.z)
+                  : floorManager.calculateSurfaceY(selectedModel, clamped.x, clamped.z)
+                if (isRug) newY += 0.013
                 selectedModel.setPosition({ x: clamped.x, y: newY, z: clamped.z })
               }
             }

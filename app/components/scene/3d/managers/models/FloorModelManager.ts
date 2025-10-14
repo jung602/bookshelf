@@ -39,6 +39,9 @@ export class FloorModelManager extends BaseModelManager {
       
       const { position, useOptimalPlacement = true } = options
       
+      // rug는 항상 바닥에만 배치
+      const isRug = model.getType() === 'rug'
+      
       if (useOptimalPlacement || !position) {
         // 스마트 배치: 최적의 위치 찾기
         const optimalPosition = this.findOptimalPlacement(model)
@@ -55,12 +58,34 @@ export class FloorModelManager extends BaseModelManager {
         }
         
         // 표면 Y 좌표 계산하여 배치
-        const surfaceY = this.calculateSurfaceY(model, position.x, position.z)
+        // rug는 항상 바닥에만 배치 (다른 가구 위에 올라가지 않음)
+        let surfaceY = isRug 
+          ? this.calculateModelFloorY(model, position.x, position.z)
+          : this.calculateSurfaceY(model, position.x, position.z)
+        
+        // rug는 바닥 매쉬와 겹치지 않도록 약간 위로 올림
+        if (isRug) {
+          surfaceY += 0.013 // 1mm 위로
+        }
+        
         model.setPosition({ x: position.x, y: surfaceY, z: position.z })
       }
       
       model.addToScene(this.scene)
       this.models.set(model.getId(), model)
+      
+      // rug 모델인 경우 렌더링 순서를 낮게 설정 (가구 밑에 깔림)
+      if (model.getType() === 'rug') {
+        const threeObject = model.getModel()
+        if (threeObject) {
+          threeObject.traverse((child: THREE.Object3D) => {
+            const mesh = child as THREE.Mesh
+            if (mesh.isMesh) {
+              mesh.renderOrder = -1 // 가구보다 먼저 렌더링
+            }
+          })
+        }
+      }
       
       // FloorLamp 모델인 경우 현재 테마 적용
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -259,7 +284,13 @@ export class FloorModelManager extends BaseModelManager {
 
     if (targetModel.getType() === 'wall') return false
 
-    const unsupportableTypes = ['floorlamp', 'guitar', 'tv']
+    // rug는 가구 위에 올라갈 수 없음
+    if (targetModel.getType() === 'rug') return false
+
+    // rug는 모든 가구를 지지할 수 있음 (다른 체크 없이 통과)
+    if (supportModel.getType() === 'rug') return true
+
+    const unsupportableTypes = ['floorlamp', 'guitar', 'tv', 'synthesizer', 'camera']
     if (unsupportableTypes.includes(supportModel.getType())) return false
 
     const supportBox = calculateBoundingBox(supportModel)
@@ -465,7 +496,16 @@ export class FloorModelManager extends BaseModelManager {
 
     // 4. 최적 Y 좌표 계산
     try {
-      const surfaceY = this.calculateSurfaceY(targetModel, adjustedX, adjustedZ)
+      const isRug = targetModel.getType() === 'rug'
+      let surfaceY = isRug 
+        ? this.calculateModelFloorY(targetModel, adjustedX, adjustedZ)
+        : this.calculateSurfaceY(targetModel, adjustedX, adjustedZ)
+      
+      // rug는 바닥 매쉬와 겹치지 않도록 약간 위로 올림
+      if (isRug) {
+        surfaceY += 0.013
+      }
+      
       return { x: adjustedX, y: Math.max(0, surfaceY), z: adjustedZ }
     } catch {
       const currentPosition = targetModel.getPosition()
@@ -778,6 +818,9 @@ export class FloorModelManager extends BaseModelManager {
     const testBounds = calculateBoundingBox(testModel, x, z)
     if (!testBounds) return false
     
+    // rug는 다른 가구 및 rug와 겹칠 수 있음
+    const isTestModelRug = testModel.getType() === 'rug'
+    
     let hasCollision = false
     this.models.forEach((existingModel) => {
       if (existingModel.getId() === testModel.getId()) return
@@ -790,6 +833,14 @@ export class FloorModelManager extends BaseModelManager {
       const yOverlap = testBounds.max.y >= existingBounds.min.y && testBounds.min.y <= existingBounds.max.y
       
       if (xOverlap && zOverlap && yOverlap) {
+        const isExistingModelRug = existingModel.getType() === 'rug'
+        
+        // rug는 다른 모든 가구 및 rug와 겹칠 수 있음
+        if (isTestModelRug || isExistingModelRug) {
+          // OK - rug는 겹침 허용
+          return
+        }
+        
         // 지지 관계가 성립하면 충돌 아님
         if (this.canModelSupportAnother(existingModel, testModel, x, z)) {
           // OK - 지지 관계
@@ -838,13 +889,24 @@ export class FloorModelManager extends BaseModelManager {
       gridSize
     })
 
+    const isRug = model.getType() === 'rug'
+    
     for (const pos of candidates) {
       if (!this.canPlaceOnFloor(model, pos.x, pos.z)) continue
       if (this.hasCollisionWithExistingModels(model, pos.x, pos.z)) continue
       
       if (includeY) {
         try {
-          const y = this.calculateSurfaceY(model, pos.x, pos.z)
+          // rug는 항상 바닥에만 배치
+          let y = isRug 
+            ? this.calculateModelFloorY(model, pos.x, pos.z)
+            : this.calculateSurfaceY(model, pos.x, pos.z)
+          
+          // rug는 바닥 매쉬와 겹치지 않도록 약간 위로 올림
+          if (isRug) {
+            y += 0.013 // 1mm 위로
+          }
+          
           return { x: pos.x, y, z: pos.z }
         } catch {
           continue

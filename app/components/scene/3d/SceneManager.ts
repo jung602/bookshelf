@@ -161,15 +161,15 @@ export class SceneManager {
     
     // 픽셀화 해상도 계산 (모바일/데스크탑에 따라 다른 기본값)
     const defaultParams = { 
-      pixelSize: isMobile ? 1.9 : 2.3, // 모바일에서 더 큰 픽셀 사이즈
-      ditherStrength: 0.01, 
+      pixelSize: isMobile ? 1.7 : 2, // 모바일에서 더 큰 픽셀 사이즈
+      ditherStrength: 0.1, 
       ditherScale: 0, 
-      normalEdgeStrength: 0.15,
+      normalEdgeStrength: 0.2,
       // 팔레트 파라미터 (ColorPalettes.ts의 key와 일치해야 함)
       usePalette: 0, // Pokemon Palette
       useMSPaintPalette: 0, // MS Tinta
       useNeutralPalette: 0, // 1bit Monitor Glow
-      useUIPalette: 0.2, // UI Palette
+      useUIPalette: 0, // UI Palette
       // Unity 방식 파라미터 기본값
       depthEdgeStrength: 0.8,
       edgeThreshold: .05,

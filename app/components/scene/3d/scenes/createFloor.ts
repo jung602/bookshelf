@@ -55,35 +55,14 @@ function createRegularFloor(
   color: string,
   customTexture?: string
 ) {
-  // 텍스처 로더
-  const textureLoader = new THREE.TextureLoader()
-  
-  let floorTexture: THREE.Texture
-  
-  if (customTexture) {
-    // 사용자 정의 텍스처 사용
-    floorTexture = textureLoader.load(customTexture)
-  } else {
-    // 기본 타일 텍스처 로드
-    floorTexture = textureLoader.load('/ui/BasicTile.png')
-  }
-
-  // 텍스처 반복 설정
-  floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping
-  floorTexture.minFilter = THREE.NearestFilter
-  floorTexture.magFilter = THREE.NearestFilter
-  floorTexture.generateMipmaps = false
-  
-  // 텍스처 반복 횟수 (각 타일마다 패턴이 보이도록)
-  floorTexture.repeat.set(width, height)
-
-  // 지오메트리와 머티리얼 생성
+  // 지오메트리 생성 (텍스처 없이 먼저)
   const geometry = new THREE.PlaneGeometry(width, height)
+  
+  // 텍스처 없이 임시 material 생성
   const material = new THREE.MeshStandardMaterial({
-    map: floorTexture,
-    color: new THREE.Color(color), // 색상을 오버레이로 적용
-    roughness: 1.0, // 매트한 질감
-    metalness: 0.0, // 금속성 없음
+    color: new THREE.Color(color),
+    roughness: 1.0,
+    metalness: 0.0,
     side: THREE.DoubleSide
   })
 
@@ -95,9 +74,36 @@ function createRegularFloor(
   floor.scale.set(1, 1, 1)
   floor.rotation.set(-Math.PI / 2, 0, 0)
   floor.receiveShadow = true
-  floor.userData.isFloor = true // 식별용 플래그
+  floor.userData.isFloor = true
 
   scene.add(floor)
+
+  // 텍스처 로더
+  const textureLoader = new THREE.TextureLoader()
+  
+  const texturePath = customTexture || 
+    (process.env.NODE_ENV === 'production' ? '/bookshelf/ui/BasicTile.png' : '/ui/BasicTile.png')
+  
+  // 텍스처 로드 완료 후 적용
+  textureLoader.load(
+    texturePath,
+    (texture) => {
+      // 텍스처 설정
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+      texture.minFilter = THREE.NearestFilter
+      texture.magFilter = THREE.NearestFilter
+      texture.generateMipmaps = false
+      texture.repeat.set(width, height)
+      
+      // material에 텍스처 적용
+      material.map = texture
+      material.needsUpdate = true
+    },
+    undefined,
+    (error) => {
+      console.error('Failed to load floor texture:', error)
+    }
+  )
 }
 
 function createCustomGridFloor(
@@ -108,59 +114,89 @@ function createCustomGridFloor(
   repeatX: number = 1,
   repeatY: number = 1
 ) {
-  // 텍스처 로더
-  const textureLoader = new THREE.TextureLoader()
-  
-  let baseTexture: THREE.Texture
-  
-  if (customTexture) {
-    // 사용자 정의 텍스처 사용
-    baseTexture = textureLoader.load(customTexture)
-  } else {
-    // 기본 타일 텍스처 로드
-    baseTexture = textureLoader.load('/ui/BasicTile.png')
-  }
-
-  // 텍스처 반복 설정
-  baseTexture.wrapS = baseTexture.wrapT = THREE.RepeatWrapping
-  baseTexture.minFilter = THREE.NearestFilter
-  baseTexture.magFilter = THREE.NearestFilter
-  baseTexture.generateMipmaps = false
-  baseTexture.repeat.set(repeatX, repeatY) // 사용자 지정 배수 적용
-
   const gridSize = customGrid.length
   const tileSize = 1 // 각 타일의 크기
   const offset = (gridSize - 1) * tileSize / 2 // 중앙 정렬을 위한 오프셋
 
-  // 격자의 각 셀에 대해 타일 생성
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      if (customGrid[row][col]) {
-        // 지오메트리와 머티리얼 생성
-        const geometry = new THREE.PlaneGeometry(tileSize, tileSize)
-        const material = new THREE.MeshStandardMaterial({
-          map: baseTexture.clone(),
-          color: new THREE.Color(color),
-          roughness: 1.0, // 매트한 질감
-          metalness: 0.0, // 금속성 없음
-          side: THREE.DoubleSide
-        })
+  // 텍스처 로더
+  const textureLoader = new THREE.TextureLoader()
+  
+  const texturePath = customTexture || 
+    (process.env.NODE_ENV === 'production' ? '/bookshelf/ui/BasicTile.png' : '/ui/BasicTile.png')
+  
+  // 텍스처 로드 완료 후 타일 생성
+  textureLoader.load(
+    texturePath,
+    (baseTexture) => {
+      // 텍스처 설정
+      baseTexture.wrapS = baseTexture.wrapT = THREE.RepeatWrapping
+      baseTexture.minFilter = THREE.NearestFilter
+      baseTexture.magFilter = THREE.NearestFilter
+      baseTexture.generateMipmaps = false
+      baseTexture.repeat.set(repeatX, repeatY)
 
-        // 메시 생성
-        const tile = new THREE.Mesh(geometry, material)
-        
-        // 타일 위치 설정 (격자 좌표를 3D 좌표로 변환)
-        const x = col * tileSize - offset
-        const z = row * tileSize - offset
-        
-        tile.position.set(x, 0, z)
-        tile.rotation.set(-Math.PI / 2, 0, 0)
-        tile.receiveShadow = true
-        tile.userData.isFloor = true
-        tile.userData.gridPosition = { row, col } // 격자 위치 정보 저장
+      // 격자의 각 셀에 대해 타일 생성
+      for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+          if (customGrid[row][col]) {
+            // 지오메트리와 머티리얼 생성
+            const geometry = new THREE.PlaneGeometry(tileSize, tileSize)
+            const material = new THREE.MeshStandardMaterial({
+              map: baseTexture.clone(),
+              color: new THREE.Color(color),
+              roughness: 1.0,
+              metalness: 0.0,
+              side: THREE.DoubleSide
+            })
 
-        scene.add(tile)
+            // 메시 생성
+            const tile = new THREE.Mesh(geometry, material)
+            
+            // 타일 위치 설정 (격자 좌표를 3D 좌표로 변환)
+            const x = col * tileSize - offset
+            const z = row * tileSize - offset
+            
+            tile.position.set(x, 0, z)
+            tile.rotation.set(-Math.PI / 2, 0, 0)
+            tile.receiveShadow = true
+            tile.userData.isFloor = true
+            tile.userData.gridPosition = { row, col }
+
+            scene.add(tile)
+          }
+        }
+      }
+    },
+    undefined,
+    (error) => {
+      console.error('Failed to load floor texture:', error)
+      
+      // 에러 발생시 텍스처 없이 타일 생성
+      for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+          if (customGrid[row][col]) {
+            const geometry = new THREE.PlaneGeometry(tileSize, tileSize)
+            const material = new THREE.MeshStandardMaterial({
+              color: new THREE.Color(color),
+              roughness: 1.0,
+              metalness: 0.0,
+              side: THREE.DoubleSide
+            })
+
+            const tile = new THREE.Mesh(geometry, material)
+            const x = col * tileSize - offset
+            const z = row * tileSize - offset
+            
+            tile.position.set(x, 0, z)
+            tile.rotation.set(-Math.PI / 2, 0, 0)
+            tile.receiveShadow = true
+            tile.userData.isFloor = true
+            tile.userData.gridPosition = { row, col }
+
+            scene.add(tile)
+          }
+        }
       }
     }
-  }
+  )
 } 

@@ -57,19 +57,6 @@ function createRegularWalls(
   color: string,
   customTexture?: string
 ) {
-  // 텍스처 로드 (있는 경우)
-  let wallTexture: THREE.Texture | undefined
-  if (customTexture) {
-    const textureLoader = new THREE.TextureLoader()
-    wallTexture = textureLoader.load(customTexture)
-    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping
-    wallTexture.minFilter = THREE.NearestFilter
-    wallTexture.magFilter = THREE.NearestFilter
-    wallTexture.generateMipmaps = false
-    // 벽의 비율(1:3)에 맞춰 텍스처 반복 설정 - 세로로 wallHeight배
-    wallTexture.repeat.set(width, height * wallHeight)
-  }
-
   // 벽 생성 함수
   function createWall(
     position: [number, number, number], 
@@ -78,7 +65,6 @@ function createRegularWalls(
   ) {
     const geometry = new THREE.PlaneGeometry(1, 1)
     const material = new THREE.MeshStandardMaterial({
-      map: wallTexture,
       color: new THREE.Color(color),
       roughness: 0.8,
       metalness: 0.1,
@@ -90,8 +76,30 @@ function createRegularWalls(
     wall.scale.set(...scale)
     wall.rotation.set(...rotation)
     wall.receiveShadow = true
-    wall.userData.isWall = true // 식별용 플래그
+    wall.userData.isWall = true
     scene.add(wall)
+
+    // 텍스처가 있는 경우 로드 후 적용
+    if (customTexture) {
+      const textureLoader = new THREE.TextureLoader()
+      textureLoader.load(
+        customTexture,
+        (texture) => {
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+          texture.minFilter = THREE.NearestFilter
+          texture.magFilter = THREE.NearestFilter
+          texture.generateMipmaps = false
+          texture.repeat.set(width, height * wallHeight)
+          
+          material.map = texture
+          material.needsUpdate = true
+        },
+        undefined,
+        (error) => {
+          console.error('Failed to load wall texture:', error)
+        }
+      )
+    }
   }
 
   // 방 크기에 맞는 벽들 생성
@@ -140,19 +148,6 @@ function createCustomGridWalls(
   const tileSize = 1
   const offset = (gridSize - 1) * tileSize / 2
 
-  // 텍스처 로드 (있는 경우)
-  let wallTexture: THREE.Texture | undefined
-  if (customTexture) {
-    const textureLoader = new THREE.TextureLoader()
-    wallTexture = textureLoader.load(customTexture)
-    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping
-    wallTexture.minFilter = THREE.NearestFilter
-    wallTexture.magFilter = THREE.NearestFilter
-    wallTexture.generateMipmaps = false
-    // 벽의 비율(1:3)에 맞춰 텍스처 반복 설정 - 세로로 wallHeight배
-    wallTexture.repeat.set(repeatX, repeatY * wallHeight)
-  }
-
   // 벽 생성 함수
   function createWallSegment(
     position: [number, number, number], 
@@ -161,7 +156,6 @@ function createCustomGridWalls(
   ) {
     const geometry = new THREE.PlaneGeometry(1, 1)
     const material = new THREE.MeshStandardMaterial({
-      map: wallTexture ? wallTexture.clone() : undefined,
       color: new THREE.Color(color),
       roughness: 0.8,
       metalness: 0.1,
@@ -175,6 +169,28 @@ function createCustomGridWalls(
     wall.receiveShadow = true
     wall.userData.isWall = true
     scene.add(wall)
+
+    // 텍스처가 있는 경우 로드 후 적용
+    if (customTexture) {
+      const textureLoader = new THREE.TextureLoader()
+      textureLoader.load(
+        customTexture,
+        (texture) => {
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+          texture.minFilter = THREE.NearestFilter
+          texture.magFilter = THREE.NearestFilter
+          texture.generateMipmaps = false
+          texture.repeat.set(repeatX, repeatY * wallHeight)
+          
+          material.map = texture
+          material.needsUpdate = true
+        },
+        undefined,
+        (error) => {
+          console.error('Failed to load wall texture:', error)
+        }
+      )
+    }
   }
 
   // 격자를 분석해서 벽이 필요한 곳 찾기

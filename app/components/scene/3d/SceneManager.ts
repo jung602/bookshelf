@@ -49,7 +49,7 @@ export class SceneManager {
   private isInitialized: boolean = false
   private gizmoState: GizmoState = { visible: false, selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
-  private customFloorTexture: string = '/ui/BasicTile.png'
+  private customFloorTexture: string = process.env.NODE_ENV === 'production' ? '/bookshelf/ui/BasicTile.png' : '/ui/BasicTile.png'
   private customWallTexture?: string
   private floorTextureRepeat: number = 1
   private wallTextureRepeat: number = 1
@@ -259,7 +259,7 @@ export class SceneManager {
     
     // 커스텀 텍스처 리셋 이벤트 리스너
     window.addEventListener('resetCustomTexture', () => {
-      this.customFloorTexture = '/ui/BasicTile.png'
+      this.customFloorTexture = process.env.NODE_ENV === 'production' ? '/bookshelf/ui/BasicTile.png' : '/ui/BasicTile.png'
       
       // 기본 텍스처로 바닥 재생성
       createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)

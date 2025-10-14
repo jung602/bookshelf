@@ -145,7 +145,7 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
         onClick={() => setActiveCategory(category.id)}
         className={`flex-1 cursor-pointer ${TRANSITIONS.default} select-none flex items-center justify-center`}
         style={{
-          backgroundColor: isActive ? themeColors.inactiveBlock : themeColors.outerContainer,
+          backgroundColor: isActive ? CONTROL_TOKENS.color.panel : themeColors.outerContainer,
           borderTopLeftRadius: CONTROL_TOKENS.radius.panel,
           borderTopRightRadius: CONTROL_TOKENS.radius.panel,
           borderBottomLeftRadius: isActive ? '0' : CONTROL_TOKENS.radius.panel,
@@ -186,7 +186,7 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
       <div 
         className="flex-1 overflow-hidden flex flex-col"
         style={{ 
-          backgroundColor: themeColors.inactiveBlock,
+          backgroundColor: CONTROL_TOKENS.color.panel,
           margin: `0 ${CONTROL_TOKENS.spacing.sm} ${CONTROL_TOKENS.spacing.sm}`,
           borderTopLeftRadius: activeCategory === 'wall' ? CONTROL_TOKENS.radius.panel : '0',
           borderTopRightRadius: activeCategory === 'floor' ? CONTROL_TOKENS.radius.panel : '0',

@@ -16,6 +16,7 @@ import {
   getCenterBlockRounding,
   getResponsiveGridPadding,
   getResponsiveGridGap,
+  CONTROL_TOKENS,
 } from "../utils/cssUtils";
 import { useResponsiveDevice } from "../../../../../hooks/useResponsiveDevice";
 
@@ -466,7 +467,7 @@ export default function FloorTileControl({
             <div
               className="absolute backdrop-blur-[20px] backdrop-filter size-full translate-x-[-50%] translate-y-[-50%]"
               style={{
-                backgroundColor: themeColors.inactiveBlock,
+                backgroundColor: CONTROL_TOKENS.color.panel,
                 boxShadow: `0px 1px 2px 0px ${themeColors.inactiveShadow}`,
                 top: "calc(50% + 0.4px)",
                 left: "calc(50% - 0.2px)",

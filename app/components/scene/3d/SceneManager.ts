@@ -45,11 +45,11 @@ export class SceneManager {
       return grid
     })()
   }
-  private colorParams: ColorParams = { wallColor: '#f5f5f5', floorColor: '#f0f0f0' }
+  private colorParams: ColorParams = { wallColor: '#F3F4F6', floorColor: '#E5E6EA' }
   private isInitialized: boolean = false
   private gizmoState: GizmoState = { visible: false, selectedModelId: null, screenPosition: null }
   private onGizmoStateChange?: (gizmoState: GizmoState) => void
-  private customFloorTexture: string = 'https://threejsfundamentals.org/threejs/resources/images/checker.png'
+  private customFloorTexture: string = '/ui/BasicTile.png'
   private customWallTexture?: string
   private floorTextureRepeat: number = 1
   private wallTextureRepeat: number = 1
@@ -259,7 +259,7 @@ export class SceneManager {
     
     // 커스텀 텍스처 리셋 이벤트 리스너
     window.addEventListener('resetCustomTexture', () => {
-      this.customFloorTexture = 'https://threejsfundamentals.org/threejs/resources/images/checker.png'
+      this.customFloorTexture = '/ui/BasicTile.png'
       
       // 기본 텍스처로 바닥 재생성
       createFloor(this.scene, this.floorTextureRepeat, this.floorTextureRepeat, this.colorParams.floorColor, this.roomParams.customGrid, this.customFloorTexture)
@@ -339,7 +339,7 @@ export class SceneManager {
       color.setRGB(0.145, 0.145, 0.145)
     } else {
       // 라이트 모드: #f3f3f3
-      color.setHex(0xf3f3f3)
+      color.setHex(0xff0000)
     }
     
     // 렌더러 배경색 설정
@@ -359,7 +359,7 @@ export class SceneManager {
         color.setRGB(0.145, 0.145, 0.145)
       } else {
         // 라이트 모드: #f3f3f3
-        color.setHex(0xf3f3f3)
+        color.setHex(0xF9FAFB)
       }
       
       // 씬 배경색 설정

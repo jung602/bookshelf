@@ -42,7 +42,7 @@ export function createLights(scene: THREE.Scene) {
 
   // 방향광 - 주요 조명과 그림자 생성
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
-  directionalLight.position.set(0, 5, 1)
+  directionalLight.position.set(0, 5, 2)
   directionalLight.castShadow = true
   
   // 그림자 설정 개선
@@ -63,7 +63,7 @@ export function createLights(scene: THREE.Scene) {
 
   // 방향광 2 - 반대편 조명 (180도 반대)
   const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3)
-  directionalLight2.position.set(0, 5, -1)
+  directionalLight2.position.set(0, 5, -2)
   directionalLight2.castShadow = true
   
   // 그림자 설정 개선

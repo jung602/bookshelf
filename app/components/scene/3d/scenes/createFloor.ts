@@ -64,8 +64,8 @@ function createRegularFloor(
     // 사용자 정의 텍스처 사용
     floorTexture = textureLoader.load(customTexture)
   } else {
-    // 기본 체커보드 텍스처 로드
-    floorTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png')
+    // 기본 타일 텍스처 로드
+    floorTexture = textureLoader.load('/ui/BasicTile.png')
   }
 
   // 텍스처 반복 설정
@@ -117,8 +117,8 @@ function createCustomGridFloor(
     // 사용자 정의 텍스처 사용
     baseTexture = textureLoader.load(customTexture)
   } else {
-    // 기본 체커보드 텍스처 로드
-    baseTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png')
+    // 기본 타일 텍스처 로드
+    baseTexture = textureLoader.load('/ui/BasicTile.png')
   }
 
   // 텍스처 반복 설정

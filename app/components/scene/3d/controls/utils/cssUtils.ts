@@ -135,10 +135,10 @@ export const getThemeColors = (isDarkMode: boolean): ThemeColors => {
     };
   } else {
     return {
-      outerContainer: "#D4D4D8",
-      gridContainer: "#D4D4D8",
-      centerBlock: "#D4D4D8",
-      inactiveBlock: "#E4E4E7",
+      outerContainer: "#D2D5DB",
+      gridContainer: "#D2D5DB",
+      centerBlock: "#D2D5DB",
+      inactiveBlock: "#F3F4F680",
       activeBackdrop: "rgba(212,212,216,0.1)",
       inactiveShadow: "rgba(0,0,0,0.1)",
       activeShadow: "rgba(0,0,0,0.05)",

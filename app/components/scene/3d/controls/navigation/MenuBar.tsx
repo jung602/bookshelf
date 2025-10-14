@@ -57,7 +57,7 @@ export default function MenuBar({
           key={button.id}
           className={`cursor-pointer ${TRANSITIONS.default} flex items-center justify-center aspect-square`}
           style={{
-            backgroundColor: isActive ? themeColors.activeBackdrop : themeColors.inactiveBlock,
+            backgroundColor: isActive ? themeColors.activeBackdrop : CONTROL_TOKENS.color.panel,
             borderRadius: CONTROL_TOKENS.radius.panel,
           }}
           onClick={() => handleMenuClick(button.id)}

@@ -124,7 +124,41 @@ function createCustomGridFloor(
   const texturePath = customTexture || 
     (process.env.NODE_ENV === 'production' ? '/bookshelf/ui/BasicTile.png' : '/ui/BasicTile.png')
   
-  // 텍스처 로드 완료 후 타일 생성
+  // 먼저 텍스처 없이 타일들을 생성하여 즉시 씬에 추가
+  const tiles: THREE.Mesh[] = []
+  
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (customGrid[row][col]) {
+        // 지오메트리와 머티리얼 생성 (텍스처 없이)
+        const geometry = new THREE.PlaneGeometry(tileSize, tileSize)
+        const material = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(color),
+          roughness: 1.0,
+          metalness: 0.0,
+          side: THREE.DoubleSide
+        })
+
+        // 메시 생성
+        const tile = new THREE.Mesh(geometry, material)
+        
+        // 타일 위치 설정 (격자 좌표를 3D 좌표로 변환)
+        const x = col * tileSize - offset
+        const z = row * tileSize - offset
+        
+        tile.position.set(x, 0, z)
+        tile.rotation.set(-Math.PI / 2, 0, 0)
+        tile.receiveShadow = true
+        tile.userData.isFloor = true
+        tile.userData.gridPosition = { row, col }
+
+        scene.add(tile)
+        tiles.push(tile)
+      }
+    }
+  }
+  
+  // 텍스처를 비동기로 로드하여 나중에 적용
   textureLoader.load(
     texturePath,
     (baseTexture) => {
@@ -135,68 +169,17 @@ function createCustomGridFloor(
       baseTexture.generateMipmaps = false
       baseTexture.repeat.set(repeatX, repeatY)
 
-      // 격자의 각 셀에 대해 타일 생성
-      for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-          if (customGrid[row][col]) {
-            // 지오메트리와 머티리얼 생성
-            const geometry = new THREE.PlaneGeometry(tileSize, tileSize)
-            const material = new THREE.MeshStandardMaterial({
-              map: baseTexture.clone(),
-              color: new THREE.Color(color),
-              roughness: 1.0,
-              metalness: 0.0,
-              side: THREE.DoubleSide
-            })
-
-            // 메시 생성
-            const tile = new THREE.Mesh(geometry, material)
-            
-            // 타일 위치 설정 (격자 좌표를 3D 좌표로 변환)
-            const x = col * tileSize - offset
-            const z = row * tileSize - offset
-            
-            tile.position.set(x, 0, z)
-            tile.rotation.set(-Math.PI / 2, 0, 0)
-            tile.receiveShadow = true
-            tile.userData.isFloor = true
-            tile.userData.gridPosition = { row, col }
-
-            scene.add(tile)
-          }
-        }
-      }
+      // 생성된 타일들에 텍스처 적용
+      tiles.forEach(tile => {
+        const material = tile.material as THREE.MeshStandardMaterial
+        material.map = baseTexture.clone()
+        material.needsUpdate = true
+      })
     },
     undefined,
     (error) => {
       console.error('Failed to load floor texture:', error)
-      
-      // 에러 발생시 텍스처 없이 타일 생성
-      for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-          if (customGrid[row][col]) {
-            const geometry = new THREE.PlaneGeometry(tileSize, tileSize)
-            const material = new THREE.MeshStandardMaterial({
-              color: new THREE.Color(color),
-              roughness: 1.0,
-              metalness: 0.0,
-              side: THREE.DoubleSide
-            })
-
-            const tile = new THREE.Mesh(geometry, material)
-            const x = col * tileSize - offset
-            const z = row * tileSize - offset
-            
-            tile.position.set(x, 0, z)
-            tile.rotation.set(-Math.PI / 2, 0, 0)
-            tile.receiveShadow = true
-            tile.userData.isFloor = true
-            tile.userData.gridPosition = { row, col }
-
-            scene.add(tile)
-          }
-        }
-      }
+      // 텍스처 로딩 실패시에도 타일은 이미 생성되어 있으므로 문제없음
     }
   )
 } 

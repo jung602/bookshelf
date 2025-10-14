@@ -166,13 +166,12 @@ export class SceneManager {
       ditherScale: 0, 
       normalEdgeStrength: 0.15,
       // 팔레트 파라미터 (ColorPalettes.ts의 key와 일치해야 함)
-      usePalette: 0.15, // Pokemon Palette
+      usePalette: 0, // Pokemon Palette
       useMSPaintPalette: 0, // MS Tinta
       useNeutralPalette: 0, // 1bit Monitor Glow
-      useLostGBPalette: 0, // LostGB Creepy
-      useUIPalette: 0, // UI Palette
+      useUIPalette: 0.2, // UI Palette
       // Unity 방식 파라미터 기본값
-      depthEdgeStrength: 0.5,
+      depthEdgeStrength: 0.8,
       edgeThreshold: .05,
       outlineDarknessAmount: 0.1,
       useColorAwareOutline: 1.0,

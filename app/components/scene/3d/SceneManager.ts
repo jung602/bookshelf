@@ -106,9 +106,6 @@ export class SceneManager {
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     
-    // CSS 변수에서 배경색 가져와서 설정
-    this.updateBackgroundColor()
-    
     this.container.appendChild(this.renderer.domElement)
 
     // 씬 설정
@@ -291,7 +288,6 @@ export class SceneManager {
         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
           // 클래스 변경이 감지되면 배경색과 조명 업데이트
           setTimeout(() => {
-            this.updateBackgroundColor()
             this.updateSceneBackground()
             this.updateLights()
             
@@ -312,7 +308,6 @@ export class SceneManager {
     darkModeMediaQuery.addEventListener('change', () => {
       // 시스템 테마 변경 시에도 배경색과 조명 업데이트
       setTimeout(() => {
-        this.updateBackgroundColor()
         this.updateSceneBackground()
         this.updateLights()
         
@@ -321,32 +316,12 @@ export class SceneManager {
 
     // 초기화 시에도 올바른 테마 적용 보장 (빌드 환경 대응)
     setTimeout(() => {
-      this.updateBackgroundColor()
       this.updateSceneBackground()
       this.updateLights()
   
     }, 100)
   }
 
-  private updateBackgroundColor() {
-    // CSS 변수 파싱 대신 테마 클래스를 직접 확인
-    const isDarkMode = this.getCurrentTheme() === 'dark'
-    
-    // 테마에 따른 색상 설정 (CSS 변수 값과 동일)
-    const color = new THREE.Color()
-    if (isDarkMode) {
-      // 다크 모드: oklch(0.145 0 0) ≈ 매우 어두운 회색
-      color.setRGB(0.145, 0.145, 0.145)
-    } else {
-      // 라이트 모드: #f3f3f3
-      color.setHex(0xff0000)
-    }
-    
-    // 렌더러 배경색 설정
-    this.renderer.setClearColor(color)
-    
-
-  }
 
   private updateSceneBackground() {
     // CSS 변수 파싱 대신 테마 클래스를 직접 확인
@@ -355,10 +330,8 @@ export class SceneManager {
     if (this.scene) {
       const color = new THREE.Color()
       if (isDarkMode) {
-        // 다크 모드: oklch(0.145 0 0) ≈ 매우 어두운 회색
-        color.setRGB(0.145, 0.145, 0.145)
+        color.setHex(0x777777)
       } else {
-        // 라이트 모드: #f3f3f3
         color.setHex(0xF9FAFB)
       }
       

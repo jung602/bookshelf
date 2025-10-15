@@ -118,7 +118,7 @@ input[type="range"],
 }
 
 .dark {
-  --background: #242424;
+  --background: #222222;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -155,7 +155,7 @@ input[type="range"],
 
   /* Control Design Tokens (Dark Mode) */
   --control-container-bg: #1a1a1a;
-  --control-panel-bg: #ffffff10;
+  --control-panel-bg: #222222;
   --control-button-bg: #ffffff10;
   --control-button-hover-bg: #ffffff15;
   --control-icon-default: #d1d5db;

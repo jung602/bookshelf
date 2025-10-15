@@ -162,7 +162,7 @@ export const MODEL_CONFIGS: Record<string, SimpleModelConfig> = {
   cardboard: {
     modelPath: '/3d/main/models/cardboard.glb',
     typeName: 'wall', // 중요: 벽 가구로 분류
-    defaultScale: { x: 2.5, y: 2.5, z: 2.5 },
+    defaultScale: { x: 2.3, y: 2.3, z: 2.3 },
     boundingBoxType: 'box'
   },
   kittyrug: {

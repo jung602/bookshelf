@@ -17,6 +17,7 @@ export interface DragState {
   startMouseY: number
   startModelY: number
   previousPosition: { x: number; y: number; z: number } | null
+  previousRotation: { x: number; y: number; z: number } | null
 }
 
 export interface GizmoState {
@@ -85,7 +86,8 @@ export class InteractionManager {
       dragPlane: new THREE.Plane(),
       startMouseY: 0,
       startModelY: 0,
-      previousPosition: null
+      previousPosition: null,
+      previousRotation: null
     }
 
     this.gizmoState = {
@@ -374,11 +376,16 @@ export class InteractionManager {
 
     const modelPosition = model.getPosition()
 
-    // 드래그 시작 시 이전 위치 저장
+    // 드래그 시작 시 이전 위치와 회전 저장
     this.dragState.previousPosition = {
       x: modelPosition.x,
       y: modelPosition.y,
       z: modelPosition.z
+    }
+    this.dragState.previousRotation = {
+      x: model.getRotation().x,
+      y: model.getRotation().y,
+      z: model.getRotation().z
     }
 
     // 모든 가구: 2D UI 드래그 방식 - 화면에서 자유롭게 이동
@@ -457,12 +464,18 @@ export class InteractionManager {
 
           if (!attachedToWall) {
             // 폴백: 기존 방식으로 가장 가까운 벽에 부착
-            this.modelManager.getWallManager().attachToNearestWall(
+            const attachedToNearest = this.modelManager.getWallManager().attachToNearestWall(
               selectedModel,
               currentPosition.x,
               currentPosition.z,
               currentPosition.y
             )
+            
+            // 가까운 벽에도 부착 실패하면 원래 위치와 회전으로 복귀 (벽이 없는 곳으로 드래그한 경우)
+            if (!attachedToNearest && this.dragState.previousPosition && this.dragState.previousRotation) {
+              selectedModel.setPosition(this.dragState.previousPosition)
+              selectedModel.setRotation(this.dragState.previousRotation)
+            }
           }
         } else {
           // 바닥 가구: 2D 드래그 종료 - 화면 위치에서 바닥 레이캐스팅
@@ -493,9 +506,10 @@ export class InteractionManager {
                 if (isRug) newY += 0.013
                 selectedModel.setPosition({ x: nearestValid.x, y: newY, z: nearestValid.z })
               } else {
-                // 마지막 폴백: 원래 위치로 복귀 (비정형 바닥의 빈 공간 배치 방지)
-                if (this.dragState.previousPosition) {
+                // 마지막 폴백: 원래 위치와 회전으로 복귀 (비정형 바닥의 빈 공간 배치 방지)
+                if (this.dragState.previousPosition && this.dragState.previousRotation) {
                   selectedModel.setPosition(this.dragState.previousPosition)
+                  selectedModel.setRotation(this.dragState.previousRotation)
                 }
               }
             }
@@ -522,9 +536,10 @@ export class InteractionManager {
           this.modelManager.getFloorManager().updateModelBoundingBox(selectedModel.getId())
         }
       } else {
-        // 드래그 안 되었으면 원래 위치로 복귀(필요 시)
-        if (this.dragState.previousPosition) {
+        // 드래그 안 되었으면 원래 위치와 회전으로 복귀(필요 시)
+        if (this.dragState.previousPosition && this.dragState.previousRotation) {
           selectedModel.setPosition(this.dragState.previousPosition)
+          selectedModel.setRotation(this.dragState.previousRotation)
         }
 
         // 렌더링 상태 복구
@@ -538,6 +553,7 @@ export class InteractionManager {
     this.dragState.startMouseY = 0
     this.dragState.startModelY = 0
     this.dragState.previousPosition = null
+    this.dragState.previousRotation = null
     this.isDragStarted = false
     this.renderer.domElement.style.cursor = 'default'
     

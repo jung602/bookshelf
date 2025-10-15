@@ -131,15 +131,103 @@ export class WallModelManager extends BaseModelManager {
     return this.isModelSmallerThanWall(model, nearestWall)
   }
 
+  // 특정 점이 벽 범위 안에 있는지 확인
+  private isPointInWallBounds(
+    point: { x: number; y: number; z: number },
+    wall: THREE.Mesh
+  ): boolean {
+    const wallPos = wall.position
+    const wallScale = wall.scale
+    const wallRotation = wall.rotation.y
+    
+    // Y 좌표 범위 체크
+    const wallMinY = wallPos.y - wallScale.y / 2
+    const wallMaxY = wallPos.y + wallScale.y / 2
+    if (point.y < wallMinY || point.y > wallMaxY) {
+      return false
+    }
+    
+    // 벽 방향에 따라 X 또는 Z 범위 체크
+    if (Math.abs(wallRotation) < 0.1 || Math.abs(wallRotation - Math.PI) < 0.1) {
+      // X 방향 벽 (Z축 평행)
+      const wallMinX = wallPos.x - wallScale.x / 2
+      const wallMaxX = wallPos.x + wallScale.x / 2
+      return point.x >= wallMinX && point.x <= wallMaxX
+    } else {
+      // Z 방향 벽 (X축 평행)
+      const wallMinZ = wallPos.z - wallScale.x / 2
+      const wallMaxZ = wallPos.z + wallScale.x / 2
+      return point.z >= wallMinZ && point.z <= wallMaxZ
+    }
+  }
+
+  // 특정 위치에서 가구가 벽 범위 안에 완전히 들어가는지 검증
+  private canPlaceAtWallPosition(
+    model: BaseModel,
+    wall: THREE.Mesh,
+    x: number,
+    y: number,
+    z: number
+  ): boolean {
+    const modelBox = calculateBoundingBox(model, x, z)
+    if (!modelBox) return false
+    
+    // 임시로 Y 위치 조정하여 바운딩 박스 계산
+    const modelHeight = modelBox.max.y - modelBox.min.y
+    const adjustedMinY = y - modelHeight / 2
+    const adjustedMaxY = y + modelHeight / 2
+    
+    // 가구 바운딩 박스의 주요 샘플 포인트들
+    const samplePoints = [
+      // 8개 모서리
+      { x: modelBox.min.x, y: adjustedMinY, z: modelBox.min.z },
+      { x: modelBox.max.x, y: adjustedMinY, z: modelBox.min.z },
+      { x: modelBox.min.x, y: adjustedMaxY, z: modelBox.min.z },
+      { x: modelBox.max.x, y: adjustedMaxY, z: modelBox.min.z },
+      { x: modelBox.min.x, y: adjustedMinY, z: modelBox.max.z },
+      { x: modelBox.max.x, y: adjustedMinY, z: modelBox.max.z },
+      { x: modelBox.min.x, y: adjustedMaxY, z: modelBox.max.z },
+      { x: modelBox.max.x, y: adjustedMaxY, z: modelBox.max.z },
+      // 중앙점
+      { x: (modelBox.min.x + modelBox.max.x) / 2, y, z: (modelBox.min.z + modelBox.max.z) / 2 },
+      // 상/하단 중앙
+      { x: (modelBox.min.x + modelBox.max.x) / 2, y: adjustedMinY, z: (modelBox.min.z + modelBox.max.z) / 2 },
+      { x: (modelBox.min.x + modelBox.max.x) / 2, y: adjustedMaxY, z: (modelBox.min.z + modelBox.max.z) / 2 }
+    ]
+    
+    // 모든 샘플 포인트가 벽 범위 안에 있는지 확인
+    for (const point of samplePoints) {
+      if (!this.isPointInWallBounds(point, wall)) {
+        return false
+      }
+    }
+    
+    return true
+  }
+
   public attachToNearestWall(model: BaseModel, targetX: number, targetZ: number, targetY?: number): boolean {
     const wall = this.findNearestWall(targetX, targetZ)
     if (!wall) {
       return false
     }
+    
+    // 크기 검증: 벽보다 큰 가구는 부착 불가
+    if (!this.isModelSmallerThanWall(model, wall)) {
+      return false
+    }
+    
+    // 모델 바운딩 박스 계산 (가구 크기를 고려한 정확한 클램핑)
+    const modelBox = calculateBoundingBox(model)
+    if (!modelBox) {
+      return false
+    }
+    
+    const modelHalfWidth = (modelBox.max.x - modelBox.min.x) / 2
+    const modelHalfHeight = (modelBox.max.y - modelBox.min.y) / 2
+    
     const wallPos = wall.position
     const wallScale = wall.scale
     const wallRotation = wall.rotation.y
-    const cubeSize = CUBE_SIZE
     let attachX = wallPos.x
     let attachY = wallPos.y
     let attachZ = wallPos.z
@@ -147,39 +235,47 @@ export class WallModelManager extends BaseModelManager {
     // 바닥 높이 계산 (바닥 관통 방지)
     const floorHeight = this.getFloorHeight(targetX, targetZ)
     const modelBottomOffset = this.getModelBottomOffset(model)
-    const minAllowedY = floorHeight - modelBottomOffset + cubeSize/2
+    const minAllowedY = floorHeight - modelBottomOffset + modelHalfHeight
     
     if (targetY !== undefined) {
-      const wallMinY = wallPos.y - wallScale.y/2 + cubeSize/2
-      const wallMaxY = wallPos.y + wallScale.y/2 - cubeSize/2
+      const wallMinY = wallPos.y - wallScale.y/2 + modelHalfHeight
+      const wallMaxY = wallPos.y + wallScale.y/2 - modelHalfHeight
       // 사용자 지정 Y 좌표를 벽 범위와 바닥 관통 방지 조건 내에서 적용
       attachY = Math.max(minAllowedY, Math.max(wallMinY, Math.min(wallMaxY, targetY)))
     } else {
       // targetY가 없으면 벽 중앙(1.5) 또는 벽 최소 Y 중 큰 값 사용
-      const wallMinY = wallPos.y - wallScale.y/2 + cubeSize/2
+      const wallMinY = wallPos.y - wallScale.y/2 + modelHalfHeight
       const preferredY = 1.5 // 벽 중앙 높이
-      attachY = Math.max(minAllowedY, Math.max(wallMinY, Math.min(wallPos.y + wallScale.y/2 - cubeSize/2, preferredY)))
+      attachY = Math.max(minAllowedY, Math.max(wallMinY, Math.min(wallPos.y + wallScale.y/2 - modelHalfHeight, preferredY)))
     }
     
     // 벽 방향에 따라 위치 및 회전 설정
     const offsetDistance = 0.01 // 벽에 딱 붙도록 최소 오프셋
     if (Math.abs(wallRotation) < 0.1 || Math.abs(wallRotation - Math.PI) < 0.1) {
-      const wallMinX = wallPos.x - wallScale.x/2 + cubeSize
-      const wallMaxX = wallPos.x + wallScale.x/2 - cubeSize
+      // 가구 크기를 고려한 X 방향 클램핑
+      const wallMinX = wallPos.x - wallScale.x/2 + modelHalfWidth
+      const wallMaxX = wallPos.x + wallScale.x/2 - modelHalfWidth
       const clampedX = Math.max(wallMinX, Math.min(wallMaxX, targetX))
       attachX = clampedX
       attachZ = wallRotation < 0.1 ? wallPos.z + offsetDistance : wallPos.z - offsetDistance
       // 벽과 평행하게 회전 설정
       this.alignModelToWall(model, wallRotation)
     } else {
-      const wallMinZ = wallPos.z - wallScale.x/2 + cubeSize
-      const wallMaxZ = wallPos.z + wallScale.x/2 - cubeSize
+      // 가구 크기를 고려한 Z 방향 클램핑
+      const wallMinZ = wallPos.z - wallScale.x/2 + modelHalfWidth
+      const wallMaxZ = wallPos.z + wallScale.x/2 - modelHalfWidth
       const clampedZ = Math.max(wallMinZ, Math.min(wallMaxZ, targetZ))
       attachZ = clampedZ
       attachX = Math.abs(wallRotation - Math.PI/2) < 0.1 ? wallPos.x + offsetDistance : wallPos.x - offsetDistance
       // 벽과 평행하게 회전 설정
       this.alignModelToWall(model, wallRotation)
     }
+    
+    // 최종 위치 검증: 가구가 벽 범위 안에 완전히 들어가는지 확인
+    if (!this.canPlaceAtWallPosition(model, wall, attachX, attachY, attachZ)) {
+      return false // 벽 범위를 벗어나면 부착 실패
+    }
+    
     model.setPosition({ x: attachX, y: attachY, z: attachZ })
     return true
   }
@@ -239,6 +335,11 @@ export class WallModelManager extends BaseModelManager {
   // 특정 벽 메시에 모델 부착
   public attachToSpecificWall(model: BaseModel, wall: THREE.Mesh, hitPoint: THREE.Vector3, camera?: THREE.Camera): boolean {
     try {
+      // 크기 검증: 벽보다 큰 가구는 부착 불가
+      if (!this.isModelSmallerThanWall(model, wall)) {
+        return false
+      }
+      
       // 벽의 법선 벡터 계산
       const wallNormal = this.getWallNormal(wall, camera)
 
@@ -269,6 +370,11 @@ export class WallModelManager extends BaseModelManager {
       // 모델 위치/방향 설정 (벽을 바라보도록 정렬)
       model.setPosition({ x: attachPosition.x, y: attachPosition.y, z: attachPosition.z })
       this.alignModelToWall(model, wallNormal, camera)
+
+      // 최종 위치 검증: 가구가 벽 범위 안에 완전히 들어가는지 확인
+      if (!this.canPlaceAtWallPosition(model, wall, attachPosition.x, attachPosition.y, attachPosition.z)) {
+        return false // 벽 범위를 벗어나면 부착 실패
+      }
 
       return true
     } catch {

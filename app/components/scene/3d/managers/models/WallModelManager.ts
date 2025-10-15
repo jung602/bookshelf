@@ -4,9 +4,6 @@ import { SceneIndex } from '../SceneIndex'
 import { BaseModelManager } from './BaseModelManager'
 import { calculateBoundingBox } from '../visualization/BoundingBoxUtils'
 
-// 상수 정의
-const CUBE_SIZE = 0.1
-
 export class WallModelManager extends BaseModelManager {
   constructor(scene: THREE.Scene, models: Map<string, BaseModel>, sceneIndex: SceneIndex) {
     super(scene, models, sceneIndex, 0xffff00)

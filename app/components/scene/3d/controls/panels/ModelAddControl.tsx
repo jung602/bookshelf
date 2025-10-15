@@ -20,7 +20,7 @@ interface ModelAddControlProps {
 export default function ModelAddControl({ onModelAdd, isDarkMode = false }: ModelAddControlProps) {
   const { isMobile } = useResponsiveDevice()
   const themeColors = getThemeColors(isDarkMode)
-  const [activeCategory, setActiveCategory] = useState<ModelCategory>('chairs')
+  const [activeCategory, setActiveCategory] = useState<ModelCategory>('Chair')
 
   const filteredModels = allModels
     .filter(model => model.id !== 'book') // 책 제외

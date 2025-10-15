@@ -493,13 +493,10 @@ export class InteractionManager {
                 if (isRug) newY += 0.013
                 selectedModel.setPosition({ x: nearestValid.x, y: newY, z: nearestValid.z })
               } else {
-                // 마지막 폴백: 경계 클램프 및 표면 높이 계산
-                const clamped = floorManager.clampToBounds(selectedModel, currentPosition.x, currentPosition.z)
-                let newY = isRug
-                  ? floorManager.calculateModelFloorY(selectedModel, clamped.x, clamped.z)
-                  : floorManager.calculateSurfaceY(selectedModel, clamped.x, clamped.z)
-                if (isRug) newY += 0.013
-                selectedModel.setPosition({ x: clamped.x, y: newY, z: clamped.z })
+                // 마지막 폴백: 원래 위치로 복귀 (비정형 바닥의 빈 공간 배치 방지)
+                if (this.dragState.previousPosition) {
+                  selectedModel.setPosition(this.dragState.previousPosition)
+                }
               }
             }
 

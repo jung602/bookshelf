@@ -171,6 +171,44 @@ export const MODEL_CONFIGS: Record<string, SimpleModelConfig> = {
     defaultScale: { x: 1.5, y: 1.5, z: 1.5 },
     boundingBoxType: 'box'
   }
+  ,
+  // Newly added rug/mat models
+  bluedotmat: {
+    modelPath: '/3d/main/models/bluedotmat.glb',
+    typeName: 'rug',
+    defaultScale: { x: 2 , y: 2, z: 2 },
+    boundingBoxType: 'box'
+  },
+  cloudcarfet: {
+    modelPath: '/3d/main/models/cloudcarfet.glb',
+    typeName: 'rug',
+    defaultScale: { x: 1.5, y: 1.5, z: 1.5 },
+    boundingBoxType: 'box'
+  },
+  disccarfet: {
+    modelPath: '/3d/main/models/disccarfet.glb',
+    typeName: 'rug',
+    defaultScale: { x: 1.5, y: 1.5, z: 1.5 },
+    boundingBoxType: 'box'
+  },
+  kitchenmat: {
+    modelPath: '/3d/main/models/kitchenmat.glb',
+    typeName: 'rug',
+    defaultScale: { x: 1.5, y: 1.5, z: 1.5 },
+    boundingBoxType: 'box'
+  },
+  squarecarfet: {
+    modelPath: '/3d/main/models/squarecarfet.glb',
+    typeName: 'rug',
+    defaultScale: { x: 1.5, y: 1.5, z: 1.5 },
+    boundingBoxType: 'box'
+  },
+  sofastool: {
+    modelPath: '/3d/main/models/sofastool.glb',
+    typeName: 'sofastool',
+    defaultScale: { x: 1.5, y: 1.5, z: 1.5 },
+    boundingBoxType: 'box'
+  }
 }
 
 /**
@@ -188,4 +226,3 @@ export function createSimpleModel(
   }
   return new SimpleGLBModel(config, position, scale, rotation)
 }
-

@@ -83,6 +83,43 @@ export class KittyRugModel extends SimpleGLBModel {
   }
 }
 
+export class SofaStoolModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.sofastool, position, scale, rotation)
+  }
+}
+
+// Newly added Rug/Mat models (SimpleGLBModel wrappers)
+export class BlueDotMatModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.bluedotmat, position, scale, rotation)
+  }
+}
+
+export class CloudCarfetModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.cloudcarfet, position, scale, rotation)
+  }
+}
+
+export class DiscCarfetModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.disccarfet, position, scale, rotation)
+  }
+}
+
+export class KitchenMatModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.kitchenmat, position, scale, rotation)
+  }
+}
+
+export class SquareCarfetModel extends SimpleGLBModel {
+  constructor(position?: ModelPosition, scale?: ModelScale, rotation?: ModelRotation) {
+    super(MODEL_CONFIGS.squarecarfet, position, scale, rotation)
+  }
+}
+
 // 모델 카테고리 타입 정의
 export type ModelCategory = 'Chair' | 'Desk' | 'Lighting' | 'Others' | 'Storage' | 'Wall' | 'Rug'
 
@@ -222,6 +259,14 @@ export const allModels: ModelMetadata[] = [
     modelClass: TVModel
   },
   {
+    id: 'sofastool',
+    name: '소파 스툴',
+    description: '소파 앞 발받침/스툴',
+    icon: '🔳',
+    category: 'Chair',
+    modelClass: SofaStoolModel
+  },
+  {
     id: 'cardboard',
     name: 'Cardboard',
     description: '벽에 부착되는 카드보드 박스',
@@ -231,11 +276,51 @@ export const allModels: ModelMetadata[] = [
   },
   {
     id: 'kittyrug',
-    name: '키티 러그',
-    description: '귀여운 고양이 무늬 러그',
-    icon: '🐱',
+    name: '원형 러그',
+    description: '원형 러그',
+    icon: '🟫',
     category: 'Rug',
     modelClass: KittyRugModel
+  },
+  {
+    id: 'bluedotmat',
+    name: '블루 도트 매트',
+    description: '블루 도트 무늬 매트',
+    icon: '🔵',
+    category: 'Rug',
+    modelClass: BlueDotMatModel
+  },
+  {
+    id: 'cloudcarfet',
+    name: '구름 카펫',
+    description: '구름 모양 카펫',
+    icon: '☁️',
+    category: 'Rug',
+    modelClass: CloudCarfetModel
+  },
+  {
+    id: 'disccarfet',
+    name: '디스크 카펫',
+    description: '원형 디스크 카펫',
+    icon: '⚪️',
+    category: 'Rug',
+    modelClass: DiscCarfetModel
+  },
+  {
+    id: 'kitchenmat',
+    name: '키친 매트',
+    description: '주방용 매트',
+    icon: '🟫',
+    category: 'Rug',
+    modelClass: KitchenMatModel
+  },
+  {
+    id: 'squarecarfet',
+    name: '스퀘어 카펫',
+    description: '사각형 카펫',
+    icon: '⬜️',
+    category: 'Rug',
+    modelClass: SquareCarfetModel
   }
 ]
 

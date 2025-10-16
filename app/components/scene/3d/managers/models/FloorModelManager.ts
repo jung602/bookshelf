@@ -451,7 +451,11 @@ export class FloorModelManager extends BaseModelManager {
         targetZ = near.z
       }
     }
-    const surfaceY = this.calculateSurfaceY(model, targetX, targetZ)
+    const isRug = model.getType() === 'rug'
+    let surfaceY = isRug
+      ? this.calculateModelFloorY(model, targetX, targetZ)
+      : this.calculateSurfaceY(model, targetX, targetZ)
+    if (isRug) surfaceY += 0.013
     model.setPosition({ x: targetX, y: surfaceY, z: targetZ })
   }
 
@@ -700,17 +704,28 @@ export class FloorModelManager extends BaseModelManager {
         
         if (supportingModel) {
           // 다른 모델 위에 배치
-          const surfaceY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z, [id])
+          const isRug = model.getType() === 'rug'
+          let surfaceY = this.calculateSurfaceY(model, currentPosition.x, currentPosition.z, [id])
+          if (isRug) {
+            // 안전장치: 이 분기는 rug에 도달하지 않지만 일관성 유지
+            surfaceY = this.calculateModelFloorY(model, currentPosition.x, currentPosition.z) + 0.013
+          }
           model.setPosition({ x: currentPosition.x, y: surfaceY, z: currentPosition.z })
         } else if (this.canPlaceOnFloor(model, currentPosition.x, currentPosition.z)) {
           // 바닥에 배치
-          const floorY = this.calculateModelFloorY(model, currentPosition.x, currentPosition.z)
+          const isRug = model.getType() === 'rug'
+          let floorY = this.calculateModelFloorY(model, currentPosition.x, currentPosition.z)
+          if (isRug) floorY += 0.013
           model.setPosition({ x: currentPosition.x, y: floorY, z: currentPosition.z })
         } else {
           // 현재 위치에 배치할 수 없음 - 가까운 유효 위치 찾기
           const nearestValid = this.findNearestValidPositionNear(model, currentPosition.x, currentPosition.z)
           if (nearestValid) {
-            const newY = this.calculateSurfaceY(model, nearestValid.x, nearestValid.z, [id])
+            const isRug = model.getType() === 'rug'
+            let newY = isRug
+              ? this.calculateModelFloorY(model, nearestValid.x, nearestValid.z)
+              : this.calculateSurfaceY(model, nearestValid.x, nearestValid.z, [id])
+            if (isRug) newY += 0.013
             model.setPosition({ x: nearestValid.x, y: newY, z: nearestValid.z })
           } else {
             // 최후 수단: 바닥의 안전한 위치에 배치
@@ -733,7 +748,9 @@ export class FloorModelManager extends BaseModelManager {
       } catch {
         // 실패 시 안전한 기본 위치로 복원
         try {
-          const safeY = this.calculateModelFloorY(model, currentPosition.x, currentPosition.z)
+          const isRug = model.getType() === 'rug'
+          let safeY = this.calculateModelFloorY(model, currentPosition.x, currentPosition.z)
+          if (isRug) safeY += 0.013
           model.setPosition({ x: currentPosition.x, y: safeY, z: currentPosition.z })
         } catch {
           // 최후의 수단: 원래 위치 유지
@@ -938,14 +955,22 @@ export class FloorModelManager extends BaseModelManager {
       const current = model.getPosition()
       try {
         if (this.canPlaceOnFloor(model, current.x, current.z)) {
-          const newY = this.calculateSurfaceY(model, current.x, current.z)
+          const isRug = model.getType() === 'rug'
+          let newY = isRug
+            ? this.calculateModelFloorY(model, current.x, current.z)
+            : this.calculateSurfaceY(model, current.x, current.z)
+          if (isRug) newY += 0.013
           model.setPosition({ x: current.x, y: newY, z: current.z })
           model.setVisible(true)
         } else {
           // 가까운 유효 위치 탐색
           const near = this.findNearestValidPositionNear(model, current.x, current.z)
           if (near) {
-            const newY = this.calculateSurfaceY(model, near.x, near.z)
+            const isRug = model.getType() === 'rug'
+            let newY = isRug
+              ? this.calculateModelFloorY(model, near.x, near.z)
+              : this.calculateSurfaceY(model, near.x, near.z)
+            if (isRug) newY += 0.013
             model.setPosition({ x: near.x, y: newY, z: near.z })
             model.setVisible(true)
           } else {

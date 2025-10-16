@@ -41,8 +41,8 @@ export function createLights(scene: THREE.Scene) {
   scene.add(hemisphereLight)
 
   // 방향광 - 주요 조명과 그림자 생성
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
-  directionalLight.position.set(0, 1, 0.5)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7)
+  directionalLight.position.set(0, 3, 1)
   directionalLight.castShadow = true
   
   // 그림자 설정 개선
@@ -61,26 +61,6 @@ export function createLights(scene: THREE.Scene) {
   
   scene.add(directionalLight)
 
-  // 방향광 2 - 반대편 조명 (180도 반대)
-  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3)
-  directionalLight2.position.set(0, 1, -0.5)
-  directionalLight2.castShadow = true
-  
-  // 그림자 설정 개선
-  directionalLight2.shadow.mapSize.width = 512
-  directionalLight2.shadow.mapSize.height = 512
-  directionalLight2.shadow.camera.near = 0.1
-  directionalLight2.shadow.camera.far = 50
-  directionalLight2.shadow.camera.left = -10
-  directionalLight2.shadow.camera.right = 10
-  directionalLight2.shadow.camera.top = 10
-  directionalLight2.shadow.camera.bottom = -10
-  
-  // 그림자 부드럽게 만들기
-  directionalLight2.shadow.radius = 5
-  directionalLight2.shadow.blurSamples = 10
-  
-  scene.add(directionalLight2)
 
   // 환경광 추가 - 전체적인 최소 밝기 보장
   const ambientLight = new THREE.AmbientLight(0xf0f0f0, ambientIntensity)

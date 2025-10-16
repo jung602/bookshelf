@@ -36,8 +36,10 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
   const themeColors = getThemeColors(isDarkMode)
   const [activeCategory, setActiveCategory] = useState<TileCategory>('floor')
   
-  // 기본 타일 이미지 (Three.js에서 사용하는 동일한 체커보드 텍스처)
-  const defaultFloorPattern = 'https://threejsfundamentals.org/threejs/resources/images/checker.png'
+  // 기본 타일 이미지 (앱 내 기본 타일 사용)
+  const defaultFloorPattern = process.env.NODE_ENV === 'production' 
+    ? '/bookshelf/ui/BasicTile.png' 
+    : '/ui/BasicTile.png'
   
   // 각 카테고리별 이미지와 배수 상태
   const [floorImage, setFloorImage] = useState<string | null>(defaultFloorPattern)
@@ -72,30 +74,72 @@ export default function TileDesignControl({ isDarkMode = false, sceneManager }: 
     }
   }, [sceneManager])
 
+  // 업로드된 이미지를 128x128로 리사이즈 (중앙 크롭 후 스케일)
+  const resizeImageTo128 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const img = new Image()
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            if (!ctx) return reject(new Error('Canvas context not available'))
+
+            const TARGET = 128
+            canvas.width = TARGET
+            canvas.height = TARGET
+
+            // 중앙 정사각형으로 크롭
+            const cropSize = Math.min(img.width, img.height)
+            const sx = (img.width - cropSize) / 2
+            const sy = (img.height - cropSize) / 2
+
+            // 고해상도 이미지를 줄일 때 품질 향상을 위한 설정
+            ;(ctx as any).imageSmoothingEnabled = true
+            ;(ctx as any).imageSmoothingQuality = 'high'
+
+            ctx.clearRect(0, 0, TARGET, TARGET)
+            ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, TARGET, TARGET)
+
+            // WebP로 내보내기 (품질 0.8). 필요시 품질 조정 가능
+            const dataUrl = canvas.toDataURL('image/webp', 0.8)
+            resolve(dataUrl)
+          } catch (err) {
+            reject(err)
+          }
+        }
+        img.onerror = (e) => reject(e)
+        img.src = reader.result as string
+      }
+      reader.onerror = (e) => reject(e)
+      reader.readAsDataURL(file)
+    })
+  }
+
   // 이미지 업로드 핸들러
-  const handleImageUpload = (category: TileCategory, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (category: TileCategory, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const imageUrl = event.target?.result as string
-      
+    try {
+      const resizedUrl = await resizeImageTo128(file)
+
       if (category === 'floor') {
-        setFloorImage(imageUrl)
-        // TODO: SceneManager에 바닥 텍스처 업데이트
-        if (sceneManager) {
-          // sceneManager.updateFloorTexture(imageUrl, floorRepeat)
-        }
+        setFloorImage(resizedUrl)
+        // 필요 시 즉시 씬에 반영하려면 아래 주석 해제
+        // if (sceneManager) sceneManager.updateFloorTexture(resizedUrl, floorRepeat)
       } else {
-        setWallImage(imageUrl)
-        // TODO: SceneManager에 벽 텍스처 업데이트
-        if (sceneManager) {
-          // sceneManager.updateWallTexture(imageUrl, wallRepeat)
-        }
+        setWallImage(resizedUrl)
+        // 필요 시 즉시 씬에 반영하려면 아래 주석 해제
+        // if (sceneManager) sceneManager.updateWallTexture(resizedUrl, wallRepeat)
       }
+    } catch (err) {
+      console.error('이미지 리사이즈 중 오류:', err)
+    } finally {
+      // 같은 파일 재업로드 허용
+      e.target.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   // 배수 변경 핸들러

@@ -9,7 +9,6 @@ import ModelAddControl from './panels/ModelAddControl'
 import CollectionAddControl from './panels/CollectionAddControl'
 import TileDesignControl from './panels/TileDesignControl'
 import { getModelClass } from '../objects'
-// import { ControlButton, BoundingBoxIcon } from './components' // 사용하지 않음
 
 interface ControlsContainerProps {
   sceneManager: SceneManager | null
@@ -49,14 +48,6 @@ export default function ControlsContainer({
     // 같은 메뉴를 다시 클릭하면 닫기, 다른 메뉴 클릭하면 전환
     setSelectedMenu((prevSelected: string | null) => prevSelected === menuId ? null : menuId)
   }
-  
-  // 바운딩박스 토글 핸들러 (사용하지 않음)
-  // const handleToggleBoundingBoxes = () => {
-  //   if (sceneManager) {
-  //     sceneManager.toggleBoundingBoxVisualization()
-  //     setShowBoundingBoxes(!showBoundingBoxes)
-  //   }
-  // }
 
   // 뒤로가기 핸들러 (메뉴로 돌아가기)
   const handleGoBack = () => {

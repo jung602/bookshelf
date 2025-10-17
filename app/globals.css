@@ -86,7 +86,7 @@ input[type="range"],
 
   /* Control Design Tokens */
   --control-container-size: 400px;
-  --control-container-bg: #D4D4D8;
+  --control-container-bg: #D2D5DB;
   --control-container-radius: 24px;
   
   --control-panel-bg: #E5E6EA;
@@ -115,6 +115,17 @@ input[type="range"],
   
   --control-button-size-mobile: 44px;
   --control-gap-mobile: 12px;
+  
+  /* Outline tokens (Tailwind Gray 기반 한 단계 다음 컬러) */
+  /* width/offset */
+  --outline-width: 1px;
+  --outline-offset: 0px;
+  /* surfaces → outline: 면보다 한단계 다음 색상 */
+  /* panel(~gray-200) → gray-300, container(gray-300) → gray-400, button(white≈gray-50) → gray-100 */
+  --outline-ui: #D1D5DB;         /* gray-300: 기본 UI용 */
+  --outline-container: #CED0D3;  /* gray-400: 컨테이너 */
+  --outline-panel: #D1D5DB;      /* gray-300: 패널 */
+  --outline-button: #F3F4F6;     /* gray-100: 버튼(white 대비 한단계) */
 }
 
 .dark {
@@ -161,6 +172,14 @@ input[type="range"],
   --control-icon-default: #d1d5db;
   --control-shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
   --control-shadow-inner: 0px 1px 2px 0px inset rgba(255, 255, 255, 0.1);
+  
+  /* Outline tokens (Dark: 면보다 한단계 밝은 톤, Gray 팔레트) */
+  --outline-width: 1px;
+  --outline-offset: 0px;
+  --outline-ui: #1F2937;         /* gray-800 */
+  --outline-container: #1F2937;  /* container ~900 → 800 */
+  --outline-panel: #374151;      /* panel ~800 → 700 */
+  --outline-button: #374151;     /* 버튼 베이스 대비 가시성 확보 */
 }
 
 @theme inline {
@@ -226,6 +245,14 @@ input[type="range"],
   --space-control-sm: var(--control-gap-sm);
   --space-control-md: var(--control-gap-md);
   --space-control-lg: var(--control-gap-lg);
+  
+  /* Outline aliases */
+  --color-outline-ui: var(--outline-ui);
+  --color-outline-container: var(--outline-container);
+  --color-outline-panel: var(--outline-panel);
+  --color-outline-button: var(--outline-button);
+  --size-outline-width: var(--outline-width);
+  --size-outline-offset: var(--outline-offset);
 }
 
 @layer base {
@@ -235,6 +262,36 @@ input[type="range"],
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Outline Utilities                                                          */
+/* 공통적으로 사용할 아웃라인 유틸리티. 면보다 한단계 다음 톤을 기본으로 사용.      */
+/* -------------------------------------------------------------------------- */
+@layer components {
+  /* 기본: 컨텍스트 변수(--outline-color-current) 우선, 없으면 UI 기본 */
+  .has-outline {
+    outline: var(--size-outline-width) solid var(--outline-color-current, var(--color-outline-ui));
+    outline-offset: var(--size-outline-offset);
+  }
+
+  /* 특정 표면용 프리셋 */
+  .outline-ui {
+    outline: var(--size-outline-width) solid var(--color-outline-ui);
+    outline-offset: var(--size-outline-offset);
+  }
+  .outline-container {
+    outline: var(--size-outline-width) solid var(--color-outline-container);
+    outline-offset: var(--size-outline-offset);
+  }
+  .outline-panel {
+    outline: var(--size-outline-width) solid var(--color-outline-panel);
+    outline-offset: var(--size-outline-offset);
+  }
+  .outline-button {
+    outline: var(--size-outline-width) solid var(--color-outline-button);
+    outline-offset: var(--size-outline-offset);
   }
 }
 

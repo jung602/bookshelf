@@ -41,6 +41,15 @@ export const CONTROL_TOKENS = {
     sm: 'var(--control-shadow-sm)',
     md: 'var(--control-shadow-md)',
     inner: 'var(--control-shadow-inner)',
+  },
+  // Outline (면보다 한 단계 다음 톤)
+  outline: {
+    width: 'var(--outline-width)',
+    offset: 'var(--outline-offset)',
+    ui: 'var(--outline-ui)',
+    container: 'var(--outline-container)',
+    panel: 'var(--outline-panel)',
+    button: 'var(--outline-button)'
   }
 } as const;
 
@@ -51,6 +60,7 @@ export const CONTROL_TOKENS = {
 // 컨트롤 컨테이너 스타일
 export const getControlContainerStyle = (isMobile: boolean): React.CSSProperties => ({
   backgroundColor: CONTROL_TOKENS.color.container,
+  border: '1px solid var(--outline-container)',
   borderRadius: CONTROL_TOKENS.radius.container,
   width: isMobile ? '100%' : CONTROL_TOKENS.size.container,
   height: isMobile ? '100%' : CONTROL_TOKENS.size.container,
@@ -61,12 +71,24 @@ export const getControlButtonStyle = (isActive: boolean): React.CSSProperties =>
   backgroundColor: isActive ? CONTROL_TOKENS.color.buttonActive : CONTROL_TOKENS.color.button,
   borderRadius: CONTROL_TOKENS.radius.button,
   boxShadow: CONTROL_TOKENS.shadow.sm,
-  border: 'none',
+  border: '1px solid var(--outline-panel)',
 });
 
 // 아이콘 색상 반환
 export const getIconColor = (isActive: boolean): string => 
   isActive ? CONTROL_TOKENS.color.iconActive : CONTROL_TOKENS.color.icon;
+
+// 아웃라인 스타일 유틸리티
+export type OutlineKind = 'ui' | 'container' | 'panel' | 'button';
+
+export const getOutlineStyle = (
+  kind: OutlineKind = 'ui',
+  width?: string,
+  offset?: string
+): React.CSSProperties => ({
+  outline: `${width ?? CONTROL_TOKENS.outline.width} solid ${CONTROL_TOKENS.outline[kind]}`,
+  outlineOffset: offset ?? CONTROL_TOKENS.outline.offset,
+});
 
 // ============================================================================
 // LEGACY 코드 (하위 호환성을 위해 유지, 추후 제거 예정)

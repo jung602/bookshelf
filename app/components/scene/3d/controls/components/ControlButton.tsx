@@ -24,7 +24,7 @@ export function ControlButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-center ${TRANSITIONS.default} ${className}`}
+      className={`flex items-center justify-center outline-button ${TRANSITIONS.default} ${className}`}
       style={{
         backgroundColor: isActive 
           ? CONTROL_TOKENS.color.buttonActive 
@@ -42,5 +42,4 @@ export function ControlButton({
     </button>
   )
 }
-
 

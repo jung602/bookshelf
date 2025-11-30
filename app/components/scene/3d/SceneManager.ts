@@ -1,10 +1,11 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { createLights } from './scenes/createLights'
 import { createFloor } from './scenes/createFloor'
 import { createWalls } from './scenes/createWalls'
-import { RenderPixelatedPass, PixelationParams } from './passes/RenderPixelatedPass'
+import { RenderWBMPPass, WBMPParams } from './passes/RenderWBMPPass'
 import { ModelManager, InteractionManager, type GizmoState } from './managers'
 // import { getModelClass } from './objects' // 사용하지 않음
 
@@ -32,7 +33,7 @@ export class SceneManager {
   private camera!: THREE.OrthographicCamera
   private controls!: OrbitControls
   private composer!: EffectComposer
-  private pixelatedPass!: RenderPixelatedPass
+  private pixelatedPass!: RenderWBMPPass
   private modelManager!: ModelManager
   private interactionManager!: InteractionManager
   private animationId: number | null = null
@@ -87,7 +88,7 @@ export class SceneManager {
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: false,
       powerPreference: "high-performance",
-      alpha: false // 배경색을 사용하므로 alpha를 false로 변경
+      alpha: true // 투명 배경을 위해 alpha 활성화
     })
     
     // 컨테이너 크기 가져오기
@@ -153,51 +154,22 @@ export class SceneManager {
     // EffectComposer 설정
     this.composer = new EffectComposer(this.renderer)
     
-    // 모바일 감지
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 450
+    // 1. 먼저 씬을 렌더링하는 RenderPass 추가
+    const renderPass = new RenderPass(this.scene, this.camera)
+    this.composer.addPass(renderPass)
     
-    // 픽셀화 해상도 계산 (모바일/데스크탑에 따라 다른 기본값)
+    // 2. WBMP 파라미터 기본값
     const defaultParams = { 
-      pixelSize: isMobile ? 1.7 : 2, // 모바일에서 더 큰 픽셀 사이즈
-      ditherStrength: 0.1, 
-      ditherScale: 0, 
-      normalEdgeStrength: 0.2,
-      // 팔레트 파라미터 (ColorPalettes.ts의 key와 일치해야 함)
-      usePalette: 0, // Pokemon Palette
-      useMSPaintPalette: 0, // MS Tinta
-      useNeutralPalette: 0, // 1bit Monitor Glow
-      useUIPalette: 0, // UI Palette
-      // Unity 방식 파라미터 기본값
-      depthEdgeStrength: 0.8,
-      edgeThreshold: .05,
-      outlineDarknessAmount: 0.1,
-      useColorAwareOutline: 1.0,
-      depthIndicatorStrength: 1,
-      // 카메라 거리 기반 조절 파라미터 기본값
-      cameraDistance: 10,
-      edgeScaleFactor: 1,
-      adaptiveEdgeEnabled: 0
-    } as PixelationParams
-    
-    // 컨테이너 크기 가져오기
-    const containerRect = this.container.getBoundingClientRect()
-    const width = containerRect.width || window.innerWidth
-    const height = containerRect.height || window.innerHeight
-    
-    const screenResolution = new THREE.Vector2(width, height)
-    const renderResolution = screenResolution.clone().divideScalar(defaultParams.pixelSize)
-    renderResolution.x = Math.floor(renderResolution.x)
-    renderResolution.y = Math.floor(renderResolution.y)
+      ditherStrength: 0.8,   // 디더링 강도
+      ditherScale: 4.0,      // 디더링 스케일 (큰 블록 느낌)
+      grayLevels: 2,         // 그레이스케일 단계 (2 = 순수 흑백)
+      intensity: 1.0         // 효과 적용 강도 (완전 적용)
+    } as WBMPParams
 
-
-
-    // 픽셀화 패스 추가
-    this.pixelatedPass = new RenderPixelatedPass(renderResolution, this.scene, this.camera, defaultParams)
+    // 3. WBMP 패스 추가 (post-processing)
+    this.pixelatedPass = new RenderWBMPPass(defaultParams)
     this.pixelatedPass.renderToScreen = true
     this.composer.addPass(this.pixelatedPass)
-    
-    // 화면 해상도 업데이트
-    this.pixelatedPass.updateScreenResolution(width, height)
   }
 
   private setupControls() {
@@ -206,7 +178,7 @@ export class SceneManager {
   }
 
   private setupInteraction() {
-    // InteractionManager 초기화
+    // InteractionManager 초기화 (RenderWBMPPass는 드래그 모드 기능이 없으므로 undefined 전달)
     this.interactionManager = new InteractionManager(
       this.scene,
       this.camera,
@@ -223,18 +195,11 @@ export class SceneManager {
         }
       },
       this.controls,
-      this.pixelatedPass
+      undefined // RenderWBMPPass는 드래그 모드를 지원하지 않음
     )
 
     // OrbitControls와 드래그 상호작용 조정
     this.setupControlsInteraction()
-
-    // clearDepth 억제 훅을 패스에 연결
-    if (this.pixelatedPass && typeof this.pixelatedPass.setClearDepthController === 'function') {
-      this.pixelatedPass.setClearDepthController((suppress: boolean) => {
-        this.interactionManager.setClearDepthSuppressed(suppress)
-      })
-    }
   }
 
   private setupCustomTextureListener() {
@@ -324,21 +289,9 @@ export class SceneManager {
 
 
   private updateSceneBackground() {
-    // CSS 변수 파싱 대신 테마 클래스를 직접 확인
-    const isDarkMode = this.getCurrentTheme() === 'dark'
-    
+    // 배경색 제거 (투명하게)
     if (this.scene) {
-      const color = new THREE.Color()
-      if (isDarkMode) {
-        color.setHex(0x777777)
-      } else {
-        color.setHex(0xF9FAFB)
-      }
-      
-      // 씬 배경색 설정
-      this.scene.background = color
-      
-  
+      this.scene.background = null
     }
   }
 
@@ -657,10 +610,11 @@ export class SceneManager {
     // 컴포저 크기 업데이트
     this.composer.setSize(width, height)
 
-    // 픽셀화 패스의 해상도 업데이트
-    if (this.pixelatedPass) {
+    // 픽셀화 패스의 해상도 업데이트 (RenderPixelatedPass에만 필요)
+    if (this.pixelatedPass && 'updateScreenResolution' in this.pixelatedPass) {
       // 화면 해상도 업데이트 후 픽셀 사이즈 적용
-      this.pixelatedPass.updateScreenResolution(width, height)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (this.pixelatedPass as any).updateScreenResolution(width, height)
     }
   }
 
@@ -691,8 +645,8 @@ export class SceneManager {
     this.applySizeAndFrustum(this.currentSize.width, this.currentSize.height, this.currentFrustumSize)
   }
 
-  public updatePixelationParams(params: Partial<PixelationParams>): void {
-    if (this.pixelatedPass) {
+  public updatePixelationParams(params: Partial<WBMPParams>): void {
+    if (this.pixelatedPass && typeof this.pixelatedPass.updateParams === 'function') {
       this.pixelatedPass.updateParams(params)
     }
   }
@@ -738,9 +692,10 @@ export class SceneManager {
     // 컴포저 크기 업데이트
     this.composer.setSize(width, height)
 
-    // 픽셀화 패스의 해상도 업데이트
-    if (this.pixelatedPass) {
-      this.pixelatedPass.updateScreenResolution(width, height)
+    // 픽셀화 패스의 해상도 업데이트 (RenderPixelatedPass에만 필요)
+    if (this.pixelatedPass && 'updateScreenResolution' in this.pixelatedPass) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (this.pixelatedPass as any).updateScreenResolution(width, height)
     }
   }
 

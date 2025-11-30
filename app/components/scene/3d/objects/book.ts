@@ -199,6 +199,9 @@ export class Book extends BaseModel {
     // 메시 생성
     this.bookMesh = new THREE.Mesh(geometry, materials)
     
+    // 책 객체 마킹 (디더링 제외 및 엣지만 적용을 위해)
+    this.bookMesh.userData.isBook = true
+    
     // 그룹 생성 및 메시 추가
     this.model = new THREE.Group()
     this.model.add(this.bookMesh)

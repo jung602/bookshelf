@@ -41,16 +41,16 @@ export class SimpleGLBModel extends BaseModel {
   protected setupModel(): void {
     if (!this.model) return
 
-    // roundtable의 경우 원기둥 바운딩박스 설정 (floorlamp.ts와 동일한 방식)
-    if (this.config.typeName === 'roundtable') {
-      const boundingBox = new THREE.Box3().setFromObject(this.model)
+    const boundingBox = new THREE.Box3().setFromObject(this.model)
+    const height = boundingBox.max.y - boundingBox.min.y
+    const offsetY = boundingBox.min.y - this.model.position.y
+
+    // cylinder-dynamic: 모델에서 자동으로 반지름 계산
+    if (this.config.boundingBoxType === 'cylinder-dynamic') {
       const width = boundingBox.max.x - boundingBox.min.x
       const depth = boundingBox.max.z - boundingBox.min.z
-      const height = boundingBox.max.y - boundingBox.min.y
       const radius = Math.max(width, depth) / 2
-      const offsetY = boundingBox.min.y - this.model.position.y
       
-      // 원기둥 바운딩박스 설정
       this.setCustomBoundingBox({
         type: 'cylinder',
         radius: radius,
@@ -58,6 +58,16 @@ export class SimpleGLBModel extends BaseModel {
         offsetY: offsetY
       })
     }
+    // cylinder-fixed: 설정에서 지정한 반지름 사용
+    else if (this.config.boundingBoxType === 'cylinder-fixed' && this.config.cylinderRadius) {
+      this.setCustomBoundingBox({
+        type: 'cylinder',
+        radius: this.config.cylinderRadius,
+        height: height,
+        offsetY: offsetY
+      })
+    }
+    // box는 기본값이므로 별도 설정 불필요
   }
 
   public update(): void {

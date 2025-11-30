@@ -46,7 +46,7 @@ input[type="range"],
 
 :root {
   --font-size: 14px;
-  --background: #E5E6EA;
+  --background: #000;
   --foreground: oklch(0.145 0 0);
   --card: #ffffff;
   --card-foreground: oklch(0.145 0 0);

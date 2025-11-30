@@ -1,7 +1,6 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { createLights } from './scenes/createLights'
 import { createFloor } from './scenes/createFloor'
 import { createWalls } from './scenes/createWalls'
@@ -154,20 +153,27 @@ export class SceneManager {
     // EffectComposer 설정
     this.composer = new EffectComposer(this.renderer)
     
-    // 1. 먼저 씬을 렌더링하는 RenderPass 추가
-    const renderPass = new RenderPass(this.scene, this.camera)
-    this.composer.addPass(renderPass)
+    // 컨테이너 크기 가져오기
+    const containerRect = this.container.getBoundingClientRect()
+    const width = containerRect.width || window.innerWidth
+    const height = containerRect.height || window.innerHeight
     
-    // 2. WBMP 파라미터 기본값
+    const screenResolution = new THREE.Vector2(width, height)
+    
+    // WBMP 파라미터 기본값
     const defaultParams = { 
-      ditherStrength: 0.8,   // 디더링 강도
-      ditherScale: 4.0,      // 디더링 스케일 (큰 블록 느낌)
+      ditherStrength:  0.8,   // 디더링 강도
+      ditherScale: 3.5,      // 디더링 스케일 (큰 블록 느낌)
       grayLevels: 2,         // 그레이스케일 단계 (2 = 순수 흑백)
-      intensity: 1.0         // 효과 적용 강도 (완전 적용)
+      intensity: 1.0,        // 효과 적용 강도 (완전 적용)
+      // 아웃라인 파라미터 (smoothstep으로 깜빡거림 해결)
+      normalEdgeStrength: 0.2,
+      depthEdgeStrength: 1,
+      edgeThreshold: 0.1
     } as WBMPParams
 
-    // 3. WBMP 패스 추가 (post-processing)
-    this.pixelatedPass = new RenderWBMPPass(defaultParams)
+    // WBMP 패스 추가 (씬을 직접 렌더링)
+    this.pixelatedPass = new RenderWBMPPass(screenResolution, this.scene, this.camera, defaultParams)
     this.pixelatedPass.renderToScreen = true
     this.composer.addPass(this.pixelatedPass)
   }

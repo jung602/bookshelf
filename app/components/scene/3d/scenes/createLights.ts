@@ -20,7 +20,7 @@ export function createLights(scene: THREE.Scene) {
   const currentTheme = getCurrentTheme()
   
   // 테마에 따른 intensity 설정
-  const hemisphereIntensity = currentTheme === 'light' ? 2 : 1
+  const hemisphereIntensity = currentTheme === 'light' ? 2 : 0
   const ambientIntensity = currentTheme === 'light' ? 2 : 0.5
   
   // 기존 조명들 제거 (업데이트 시를 위해)

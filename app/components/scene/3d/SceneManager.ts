@@ -163,13 +163,13 @@ export class SceneManager {
     // WBMP 파라미터 기본값
     const defaultParams = { 
       ditherStrength:  0.8,   // 디더링 강도
-      ditherScale: 3.5,      // 디더링 스케일 (큰 블록 느낌)
+      ditherScale: 4,      // 디더링 스케일 (큰 블록 느낌)
       grayLevels: 2,         // 그레이스케일 단계 (2 = 순수 흑백)
-      intensity: 1.0,        // 효과 적용 강도 (완전 적용)
+      intensity: 1,        // 효과 적용 강도 (완전 적용)
       // 아웃라인 파라미터 (smoothstep으로 깜빡거림 해결)
       normalEdgeStrength: 0.2,
       depthEdgeStrength: 1,
-      edgeThreshold: 0.1
+      edgeThreshold: 0.05
     } as WBMPParams
 
     // WBMP 패스 추가 (씬을 직접 렌더링)

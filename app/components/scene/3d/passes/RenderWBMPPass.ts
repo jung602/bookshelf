@@ -210,17 +210,53 @@ export class RenderWBMPPass extends Pass {
           return bayerMatrix4x4[y * 4 + x];
         }
 
+        // 수평선 패턴 (선 두께 고정)
+        float getHorizontalLines(vec2 coord, float scale) {
+          float pattern = fract(coord.y / scale);
+          // scale이 커져도 선 두께는 일정하게 유지 (약 20%)
+          float lineThickness = 0.2 / (scale / ditherScale);
+          return step(lineThickness, pattern);  // 검은 선이 얇아지도록 반전
+        }
+
+        // 대각선 패턴
+        float getDiagonalLines(vec2 coord, float scale) {
+          return step(0.5, fract((coord.x + coord.y) / scale));
+        }
+
+        // 크로스해치 패턴 (격자)
+        float getCrosshatch(vec2 coord, float scale) {
+          float h = step(0.5, fract(coord.y / scale));
+          float v = step(0.5, fract(coord.x / scale));
+          return max(h, v);
+        }
+
         // RGB를 그레이스케일로 변환 (인간 시각 가중치 사용)
         float toGrayscale(vec3 color) {
           return dot(color, vec3(0.299, 0.587, 0.114));
         }
 
-        // 디더링 적용
-        float applyDither(float gray, vec2 coord) {
+        // Bayer 도트 디더링 (기존 방식)
+        float applyBayerDither(float gray, vec2 coord) {
           float bayerValue = getBayerValue(coord);
-          // 디더링 적용: Bayer 값을 -0.5~0.5 범위로 변환하고 강도 적용
           float dithered = gray + (bayerValue - 0.5) * ditherStrength;
           return clamp(dithered, 0.0, 1.0);
+        }
+
+        // 명도에 따라 다른 패턴 적용
+        float applyDither(float gray, vec2 coord) {
+          if (gray <= 0.3) {
+            // 어두운 영역: 순수 검은색 (디더링 없음)
+            return 0.0;
+          } else if (gray > 0.65) {
+            // 밝은 영역: 도트 패턴 (Bayer matrix)
+            return applyBayerDither(gray, coord);
+          } else {
+            // 중간 영역 (0.3 < gray ≤ 0.65): 수평선 패턴
+            float line = getHorizontalLines(coord, ditherScale * 1.5);  // 선 간격 2배로 넓게
+            // 명도에 따라 선의 밀도 조정
+            float threshold = (gray - 0.3) / 0.35;
+            return step(threshold, line);
+          }
         }
 
         // 제한된 그레이스케일 레벨로 양자화

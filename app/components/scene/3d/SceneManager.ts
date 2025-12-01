@@ -169,7 +169,7 @@ export class SceneManager {
       // 아웃라인 파라미터 (smoothstep으로 깜빡거림 해결)
       normalEdgeStrength: 0.2,
       depthEdgeStrength: 1,
-      edgeThreshold: 0.05
+      edgeThreshold: 0.1
     } as WBMPParams
 
     // WBMP 패스 추가 (씬을 직접 렌더링)
